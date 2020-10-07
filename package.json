@@ -1,0 +1,27 @@
+{
+  "name": "blind-find",
+  "version": "0.0.1",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "tsdx test",
+    "lint": "tsdx lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mhchia/blind-find.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/mhchia/blind-find/issues"
+  },
+  "homepage": "https://github.com/mhchia/blind-find#readme",
+  "dependencies": {
+    "bn.js": "^5.1.3",
+    "js-sha256": "^0.9.0"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^4.11.6",
+    "tsdx": "^0.14.0"
+  }
+}
