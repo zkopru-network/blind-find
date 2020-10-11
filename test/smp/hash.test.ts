@@ -11,17 +11,11 @@ describe('smpHash', () => {
   test('hardcoded test', () => {
     // empty args
     expect(smpHash(version1)).toEqual(
-      new BN(
-        '4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a',
-        'hex'
-      )
+      new BN('11043376183861534927536506085090418075369306574649619885724436265926427398571')
     );
     // with args
     expect(smpHash(version1, ...args1)).toEqual(
-      new BN(
-        'c978fefeb22ed51f470af5e695f4159d3bd19f6da8e272762e3e4252efcb6431',
-        'hex'
-      )
+      new BN('14310149773551574902625093186505070205511254386626408950633442520926831567720')
     );
   });
 
