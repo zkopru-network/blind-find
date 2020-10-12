@@ -70,7 +70,7 @@ class BabyJubPoint implements IGroup {
 
   exponentiate(exponent: BigInt): BabyJubPoint {
     let isNegative = false;
-    if (babyJub.F.lt(exponent, babyJub.F.zero)) {
+    if (BigInt(exponent) < 0) {
       isNegative = true;
       exponent = BigInt(exponent) * (-1n);
     }
