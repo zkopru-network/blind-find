@@ -1,5 +1,3 @@
-import BN from 'bn.js';
-
 import { poseidon } from 'circomlib';
 
 // FIXME:
@@ -14,10 +12,6 @@ import { poseidon } from 'circomlib';
  * @param args - The arguments. Each of them is serialized as [[MPI]] type.
  * @returns The hash result as an [[BN]] type integer.
  */
-export function smpHash(version: number, ...args: BN[]): BN {
-  const argsInBigInt: Array<BigInt> = [BigInt(version)];
-  for (const arg of args) {
-    argsInBigInt.push(BigInt(arg.toString()));
-  }
-  return new BN(poseidon(argsInBigInt).toString());
+export function smpHash(version: number, ...args: BigInt[]): BigInt {
+  return poseidon([BigInt(version), ...args]);
 }
