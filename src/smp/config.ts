@@ -1,7 +1,7 @@
 import { babyJub } from 'circomlib';
-import { SNARK_FIELD_SIZE } from 'maci-crypto';
+import { PubKey as Point, SNARK_FIELD_SIZE } from 'maci-crypto';
 
 const q = SNARK_FIELD_SIZE;
-const G = babyJub.Base8;
+const G = babyJub.Base8 as Point;
 
-export { q, G };
+export { q, G, Point };
