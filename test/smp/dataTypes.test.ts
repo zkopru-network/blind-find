@@ -1,19 +1,30 @@
-import BN from 'bn.js';
-
 import { concatUint8Array } from '../../src/smp/utils';
-import { Byte, Short, Int, MPI } from '../../src/smp/dataTypes';
+import { Byte, Short, Int, Scalar, MPI } from '../../src/smp/dataTypes';
 import { ValueError } from '../../src/smp/exceptions';
 
-describe('Fixed types', () => {
-  const types = [Byte, Short, Int];
+describe.only('Fixed types', () => {
+  const types = [Byte, Short, Int, Scalar];
+  const expectedSize = [1, 2, 4, 32];
+  const expectedValue = [  // 2**(8*x) - 1
+    BigInt("255"),
+    BigInt("65535"),
+    BigInt("4294967295"),
+    BigInt("115792089237316195423570985008687907853269984665640564039457584007913129639935"),
+  ];
+  const expectedSerialized = [
+    new Uint8Array([255]),
+    new Uint8Array([255, 255]),
+    new Uint8Array([255, 255, 255, 255]),
+    new Uint8Array([255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255]),
+  ];
+  const expectedInvalidValue = [  // 2**(8*x)
+    BigInt("256"),
+    BigInt("65536"),
+    BigInt("4294967296"),
+    BigInt("115792089237316195423570985008687907853269984665640564039457584007913129639936"),
+  ];
+
   test('succeeds', () => {
-    const expectedSize = [1, 2, 4];
-    const expectedValue = [255, 255, 255];
-    const expectedSerialized = [
-      new Uint8Array([255]),
-      new Uint8Array([0, 255]),
-      new Uint8Array([0, 0, 0, 255]),
-    ];
     for (const index in types) {
       const Type = types[index];
       const b = new Type(expectedValue[index]);
@@ -30,13 +41,13 @@ describe('Fixed types', () => {
     for (const index in types) {
       const Type = types[index];
       expect(() => {
-        new Type(2 ** (Type.size * 8));
+        new Type(expectedInvalidValue[index]);
       }).toThrowError(ValueError);
     }
     // Negative
     for (const Type of types) {
       expect(() => {
-        new Type(-1);
+        new Type(BigInt(-1));
       }).toThrowError(ValueError);
     }
   });
@@ -45,9 +56,9 @@ describe('Fixed types', () => {
 describe('MPI(variable-length integer)', () => {
   test('succeeds', () => {
     const values = [
-      new BN(0),
-      new BN(256),
-      new BN(2).pow(new BN(64)).subn(1), // 2**64 - 1
+      BigInt(0),
+      BigInt(256),
+      BigInt(2) ** BigInt(64) - BigInt(1), // 2**64 - 1
     ];
     const expectedSerialized = [
       new Uint8Array([0, 0, 0, 1, 0]),
@@ -58,7 +69,7 @@ describe('MPI(variable-length integer)', () => {
       const mpi = new MPI(values[index]);
       const expected = expectedSerialized[index];
       expect(mpi.serialize()).toEqual(expected);
-      expect(MPI.deserialize(expected).value.eq(mpi.value));
+      expect(MPI.deserialize(expected).value == (mpi.value));
     }
   });
   test('consume', () => {
@@ -67,9 +78,9 @@ describe('MPI(variable-length integer)', () => {
       new Uint8Array([0, 0, 0, 2, 1, 0])
     );
     const [mpi1, bytesRemaining] = MPI.consume(bytes);
-    expect(mpi1.value.eqn(0)).toBeTruthy();
+    expect(mpi1.value == BigInt(0)).toBeTruthy();
     const [mpi2, bytesRemaining2] = MPI.consume(bytesRemaining);
-    expect(mpi2.value.eqn(256)).toBeTruthy();
+    expect(mpi2.value == BigInt(256)).toBeTruthy();
     expect(() => {
       MPI.consume(bytesRemaining2);
     }).toThrowError(ValueError);
@@ -77,14 +88,14 @@ describe('MPI(variable-length integer)', () => {
     const b = new Uint8Array([0, 0, 0, 1, 1, 1]);
     const [mpi3, bRemaining] = MPI.consume(b);
     expect(() => {
-      expect(mpi3.value.eqn(1)).toBeTruthy();
+      expect(mpi3.value == BigInt(1)).toBeTruthy();
       expect(bRemaining).toEqual(new Uint8Array([1]));
     });
   });
   test('constructor fails', () => {
     // Negative
     expect(() => {
-      new MPI(new BN(-1));
+      new MPI(BigInt(-1));
     }).toThrowError(ValueError);
   });
   test('deserialize fails', () => {

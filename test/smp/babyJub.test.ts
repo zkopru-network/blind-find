@@ -1,4 +1,3 @@
-// import { babyJub } from 'circomlib';
 import { BabyJubPoint } from '../../src/smp/babyJub';
 import { G } from '../../src/smp/config';
 
@@ -51,6 +50,9 @@ describe('isValid', () => {
     expect(g1.isValid()).toBeTruthy();
     expect(g2.isValid()).toBeTruthy();
     expect(g1Add2.isValid()).toBeTruthy();
+    expect(g3.isValid()).toBeTruthy();
+    expect(g3Inverse.isValid()).toBeTruthy();
+    expect(g3Squared.isValid()).toBeTruthy();
   });
 });
 

@@ -1,13 +1,18 @@
 /**
  * Data types used in SMP protocol in OTR.
- * Ref: https://otr.cypherpunks.ca/Protocol-v3-4.1.1.html
+ * Ref: https://github.com/otrv4/otrv4/blob/master/otrv4.md#data-types
  */
-import { MultiplicativeGroup } from './multiplicativeGroup';
-import { ENDIAN } from './constants';
+
 import BN from 'bn.js';
 
+import { BIG_ENDIAN, LITTLE_ENDIAN } from './constants';
+import { ECPoint } from './config';
+import { babyJub } from 'circomlib';
 import { concatUint8Array } from './utils';
 import { NotImplemented, ValueError } from './exceptions';
+
+
+type TEndian = typeof BIG_ENDIAN | typeof LITTLE_ENDIAN;
 
 /**
  * Base class for types that can be {de}serialized.
@@ -38,7 +43,7 @@ class BaseFixedInt extends BaseSerializable {
   /** Number of bytes the integer occupies. */
   static size: number;
 
-  constructor(readonly value: number) {
+  constructor(readonly value: BigInt) {
     super();
   }
   static deserialize(_: Uint8Array): BaseFixedInt {
@@ -50,39 +55,36 @@ class BaseFixedInt extends BaseSerializable {
 }
 
 /**
- * Serialize `value` to its binary representation.
+ * Serialize `value` to its binary representation. [[BN]] is to perform [de]serialization.
  *
  * @param value - The integer to be serialized.
  * @param size - Number of bytes the binary representation should occupy.
+ * @param endian - Endian the binary representation should follow.
  */
-function numberToUint8Array(value: number, size?: number): Uint8Array {
-  return new Uint8Array(new BN(value).toArray(ENDIAN, size));
+function numberToUint8Array(value: BigInt, endian: TEndian, size?: number): Uint8Array {
+  return new Uint8Array(new BN(value.toString()).toArray(endian, size));
 }
 
 /**
- * Parse a number from its binary representation.
+ * Parse a number from its binary representation. [[BN]] is to perform [de]serialization.
  */
-function uint8ArrayToNumber(a: Uint8Array): number {
-  // The max value of `number` type is `2**53 - 1`.
-  // We roughly set the max length as `6`, where the maximum value is `2**48 - 1`.
-  if (a.length > 6) {
-    throw new ValueError('the binary value is too large for a `number`');
-  }
-  return new BN(a).toNumber();
+function uint8ArrayToNumber(a: Uint8Array, endian: TEndian): BigInt {
+  return BigInt(new BN(a, undefined, endian).toString());
 }
 
 /**
  * Create a `BaseFixedInt` class which occupies `size` bytes.
  */
-function createFixedIntClass(size: number): typeof BaseFixedInt {
+function createFixedIntClass(size: number, endian: TEndian): typeof BaseFixedInt {
   class FixedIntClass extends BaseFixedInt {
     static size: number = size;
 
-    constructor(readonly value: number) {
+    constructor(readonly value: BigInt) {
       super(value);
-      if (value < 0 || value > 2 ** (size * 8) - 1) {
+      const maxValue = BigInt(2) ** BigInt(size * 8) - BigInt(1);
+      if (BigInt(value) < 0 || value > maxValue) {
         throw new ValueError(
-          `invalid value: value=${value}, maximum=${2 ** (size * 8) - 1}`
+          `value should be non-negative: value=${value}`
         );
       }
     }
@@ -91,11 +93,11 @@ function createFixedIntClass(size: number): typeof BaseFixedInt {
       if (bytes.length !== size) {
         throw new ValueError(`length of ${bytes} should be ${size}`);
       }
-      return new FixedIntClass(uint8ArrayToNumber(bytes));
+      return new FixedIntClass(uint8ArrayToNumber(bytes, endian));
     }
 
     serialize(): Uint8Array {
-      return numberToUint8Array(this.value, size);
+      return numberToUint8Array(BigInt(this.value), endian, size);
     }
   }
   return FixedIntClass;
@@ -105,19 +107,19 @@ function createFixedIntClass(size: number): typeof BaseFixedInt {
  * Bytes (BYTE):
  *  1 byte unsigned value
  */
-const Byte = createFixedIntClass(1);
+const Byte = createFixedIntClass(1, BIG_ENDIAN);
 
 /**
  * Shorts (SHORT):
  *  2 byte unsigned value, big-endian
  */
-const Short = createFixedIntClass(2);
+const Short = createFixedIntClass(2, BIG_ENDIAN);
 
 /**
  * Ints (INT):
  *  4 byte unsigned value, big-endian
  */
-const Int = createFixedIntClass(4);
+const Int = createFixedIntClass(4, BIG_ENDIAN);
 
 /**
  * Multi-precision integers (MPI):
@@ -129,15 +131,15 @@ const Int = createFixedIntClass(4);
 class MPI implements BaseSerializable {
   static lengthSize: number = 4;
 
-  constructor(readonly value: BN) {
-    if (value.isNeg()) {
+  constructor(readonly value: BigInt) {
+    if (BigInt(value) < 0) {
       throw new ValueError('expect non-negative value');
     }
   }
 
   serialize(): Uint8Array {
-    const bytes = new Uint8Array(this.value.toArray(ENDIAN));
-    const lenBytes = numberToUint8Array(bytes.length, MPI.lengthSize);
+    const bytes = numberToUint8Array(this.value, BIG_ENDIAN)
+    const lenBytes = numberToUint8Array(BigInt(bytes.length), BIG_ENDIAN, MPI.lengthSize);
     return concatUint8Array(lenBytes, bytes);
   }
 
@@ -148,11 +150,12 @@ class MPI implements BaseSerializable {
    * @param bytes - The binary representation containing a `MPI`.
    */
   static consume(bytes: Uint8Array): [MPI, Uint8Array] {
-    const len = uint8ArrayToNumber(bytes.slice(0, this.lengthSize));
-    if (bytes.length < this.lengthSize + len) {
-      throw new ValueError('`bytes` does not long enough for `len`');
+    // It's safe because `bytes.length <= 2**48 - 1`.
+    const len = Number(uint8ArrayToNumber(bytes.slice(0, this.lengthSize), BIG_ENDIAN));
+    if (bytes.length - this.lengthSize < len) {
+      throw new ValueError('`bytes` is not long enough for `len`');
     }
-    const value = new BN(bytes.slice(this.lengthSize, this.lengthSize + len));
+    const value = BigInt(new BN(bytes.slice(this.lengthSize, this.lengthSize + len)).toString());
     return [new MPI(value), bytes.slice(this.lengthSize + len)];
   }
 
@@ -166,14 +169,39 @@ class MPI implements BaseSerializable {
     return mpi;
   }
 
-  /**
-   * Initialize a `MPI` instance from a multiplicative group element.
-   *
-   * @param g - A Multiplicative group element.
-   */
-  static fromMultiplicativeGroup(g: MultiplicativeGroup): MPI {
-    return new MPI(g.value);
+}
+
+/**
+ * Scalar (INT):
+ *  32 byte unsigned value, little-endian
+ *  NOTE: It's different from OTRv4 since we're using baby jubjub curve, where scalar size is at most 32
+ *    bytes.
+ */
+const Scalar = createFixedIntClass(32, LITTLE_ENDIAN);
+
+/**
+ * Point (POINT):
+ *  32 byte, little-edian
+ *  NOTE: It's different from OTRv4 since we're using baby jubjub curve, where the field size is 32 bytes.
+ */
+
+const POINT_SIZE = 32;
+
+class Point extends BaseSerializable {
+  constructor(readonly point: ECPoint) {
+    super();
+  }
+
+  static deserialize(bytes: Uint8Array): Point {
+    if (bytes.length !== POINT_SIZE) {
+      throw new ValueError(`length of ${bytes} should be ${POINT_SIZE}`);
+    }
+    return new Point(babyJub.unpackPoint(bytes) as ECPoint);
+  }
+
+  serialize(): Uint8Array {
+    return new Uint8Array(babyJub.packPoint(this.point) as Buffer);
   }
 }
 
-export { BaseSerializable, BaseFixedInt, Byte, Short, Int, MPI };
+export { BaseSerializable, BaseFixedInt, Byte, Short, Int, MPI, Scalar, Point };

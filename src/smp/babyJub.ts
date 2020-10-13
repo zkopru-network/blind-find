@@ -1,4 +1,4 @@
-import { Point } from './config';
+import { ECPoint } from './config';
 import { babyJub } from 'circomlib';
 
 /**
@@ -42,7 +42,7 @@ interface IGroup {
 }
 
 class BabyJubPoint implements IGroup {
-  constructor(readonly point: Point) {
+  constructor(readonly point: ECPoint) {
   }
   /**
    * The element is valid or not. This is not done in the constructor to avoid the costly computation.
@@ -61,7 +61,7 @@ class BabyJubPoint implements IGroup {
   }
 
   operate(g: BabyJubPoint): BabyJubPoint {
-    return new BabyJubPoint(babyJub.addPoint(this.point, g.point) as Point);
+    return new BabyJubPoint(babyJub.addPoint(this.point, g.point) as ECPoint);
   }
 
   equal(g: BabyJubPoint): boolean {
@@ -74,7 +74,7 @@ class BabyJubPoint implements IGroup {
       isNegative = true;
       exponent = BigInt(exponent) * (-1n);
     }
-    let res = new BabyJubPoint(babyJub.mulPointEscalar(this.point, exponent) as Point);
+    let res = new BabyJubPoint(babyJub.mulPointEscalar(this.point, exponent) as ECPoint);
     if (isNegative) {
       return res.inverse();
     } else {
