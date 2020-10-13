@@ -1,8 +1,8 @@
 import { concatUint8Array } from '../../src/smp/utils';
-import { Byte, Short, Int, Scalar, MPI } from '../../src/smp/dataTypes';
+import { Byte, Short, Int, Scalar, MPI, Point } from '../../src/smp/dataTypes';
 import { ValueError } from '../../src/smp/exceptions';
 
-describe.only('Fixed types', () => {
+describe('Fixed types', () => {
   const types = [Byte, Short, Int, Scalar];
   const expectedSize = [1, 2, 4, 32];
   const expectedValue = [  // 2**(8*x) - 1
@@ -113,3 +113,57 @@ describe('MPI(variable-length integer)', () => {
     }).toThrowError(ValueError);
   });
 });
+
+describe('Point', () => {
+  test('succeeds', () => {
+    const points = [
+      [BigInt(0), BigInt(1)],
+      [
+        BigInt("17777552123799933955779906779655732241715742912184938656739573121738514868268"),
+        BigInt("2626589144620713026669568689430873010625803728049924121243784502389097019475"),
+      ],
+      [
+        BigInt("16540640123574156134436876038791482806971768689494387082833631921987005038935"),
+        BigInt("20819045374670962167435360035096875258406992893633759881276124905556507972311"),
+      ]
+    ];
+    const expectedSerialized = [
+      new Uint8Array([
+        1, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0
+      ]),
+      new Uint8Array([
+        83, 184,  30, 213, 191, 254, 149,  69,
+        181,  64,  22,  35,  70, 130, 231, 178,
+        246, 153, 189,  66, 165, 233, 234, 226,
+        127, 244,   5,  27, 198, 152, 206, 133
+      ]),
+      new Uint8Array([
+        215,  82, 145, 249, 247, 216, 141,  52,
+        209, 193, 176,  12, 237, 212, 169, 249,
+        131,  85, 195,  36, 253, 221, 219,  24,
+        120,  61,  60, 141, 127,  41,   7, 174
+      ]),
+    ];
+    for (const index in points) {
+      const point = points[index];
+      const p = new Point(point);
+      expect(p.serialize()).toEqual(expectedSerialized[index]);
+      expect(Point.deserialize(p.serialize())).toEqual(p);
+    }
+  });
+
+  test('deserialize fails', () => {
+    // Length too short
+    expect(() => {
+      Point.deserialize(new Uint8Array([0, 0, 0, 2, 0]));
+    }).toThrowError(ValueError);
+    // Length too long
+    expect(() => {
+      Point.deserialize(new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
+    }).toThrowError(ValueError);
+  });
+});
+

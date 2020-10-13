@@ -185,22 +185,26 @@ const Scalar = createFixedIntClass(32, LITTLE_ENDIAN);
  *  NOTE: It's different from OTRv4 since we're using baby jubjub curve, where the field size is 32 bytes.
  */
 
-const POINT_SIZE = 32;
-
 class Point extends BaseSerializable {
+  static size: number = 32;
+
   constructor(readonly point: ECPoint) {
     super();
   }
 
   static deserialize(bytes: Uint8Array): Point {
-    if (bytes.length !== POINT_SIZE) {
-      throw new ValueError(`length of ${bytes} should be ${POINT_SIZE}`);
+    if (bytes.length !== Point.size) {
+      throw new ValueError(`length of ${bytes} should be ${Point.size}`);
     }
     return new Point(babyJub.unpackPoint(bytes) as ECPoint);
   }
 
   serialize(): Uint8Array {
-    return new Uint8Array(babyJub.packPoint(this.point) as Buffer);
+    const res =  new Uint8Array(babyJub.packPoint(this.point) as Buffer);
+    if (res.length !== Point.size) {
+      throw new ValueError(`length of \`res\` should be ${Point.size}: length=${res}`);
+    }
+    return res;
   }
 }
 
