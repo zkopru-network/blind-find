@@ -1,4 +1,5 @@
 import BN from "bn.js";
+import { ValueError } from "./exceptions";
 
 /**
  * Concatenate two `Uint8Array` into one.
@@ -19,4 +20,15 @@ export const bigIntMod = (a: BigInt, modulus: BigInt): BigInt => {
   return BigInt(
     new BN(a.toString()).umod(new BN(modulus.toString())).toString()
   );
+};
+
+/**
+ * Safely cast a `BigInt` to `Number`.
+ * @param a Number to be cast.
+ */
+export const bigIntToNumber = (a: BigInt): number => {
+  if (a > BigInt(Number.MAX_SAFE_INTEGER) || a < BigInt(Number.MIN_SAFE_INTEGER)) {
+    throw new ValueError('unsafe to cast the integer because it\'s out of range of `Number`');
+  }
+  return Number(a);
 };

@@ -8,7 +8,7 @@ import BN from "bn.js";
 import { BIG_ENDIAN, LITTLE_ENDIAN } from "./constants";
 import { ECPoint } from "./config";
 import { babyJub } from "circomlib";
-import { concatUint8Array } from "./utils";
+import { concatUint8Array, bigIntToNumber } from "./utils";
 import { NotImplemented, ValueError } from "./exceptions";
 
 type TEndian = typeof BIG_ENDIAN | typeof LITTLE_ENDIAN;
@@ -167,7 +167,7 @@ class MPI implements BaseSerializable {
    */
   static consume(bytes: Uint8Array): [MPI, Uint8Array] {
     // It's safe because `bytes.length <= 2**48 - 1`.
-    const len = Number(
+    const len = bigIntToNumber(
       uint8ArrayToNumber(bytes.slice(0, this.lengthSize), BIG_ENDIAN)
     );
     if (bytes.length - this.lengthSize < len) {

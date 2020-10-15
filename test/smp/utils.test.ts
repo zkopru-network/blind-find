@@ -1,4 +1,5 @@
-import { concatUint8Array, bigIntMod } from "../../src/smp/utils";
+import { ValueError } from "../../src/smp/exceptions";
+import { concatUint8Array, bigIntMod, bigIntToNumber } from "../../src/smp/utils";
 
 describe("concatUint8Array", () => {
   test("hardcoded", () => {
@@ -40,5 +41,22 @@ describe("bigIntMod", () => {
     const a = BigInt(-1);
     const expectedRes = BigInt(q) - BigInt(1);
     expect(bigIntMod(a, q)).toEqual(expectedRes);
+  });
+});
+
+describe('bigIntToNumber', () => {
+  test("succeeds", () => {
+    bigIntToNumber(BigInt(Number.MAX_SAFE_INTEGER));
+    bigIntToNumber(BigInt(0));
+    bigIntToNumber(BigInt(Number.MIN_SAFE_INTEGER));
+  });
+
+  test("fails", () => {
+    expect(() => {
+        bigIntToNumber(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1));
+    }).toThrowError(ValueError);
+    expect(() => {
+        bigIntToNumber(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1));
+    }).toThrowError(ValueError);
   });
 });

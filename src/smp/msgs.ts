@@ -8,7 +8,7 @@ import {
 
 import { BaseFixedInt, BaseSerializable, Short, Int, MPI } from "./dataTypes";
 
-import { concatUint8Array } from "./utils";
+import { concatUint8Array, bigIntToNumber } from "./utils";
 import { NotImplemented, ValueError } from "./exceptions";
 
 /**
@@ -34,7 +34,7 @@ class TLV extends BaseSerializable {
     const length = Short.deserialize(
       bytes.slice(typeSize, typeSize + lengthSize)
     );
-    const expectedTLVTotalSize = typeSize + lengthSize + length.value;
+    const expectedTLVTotalSize = bigIntToNumber(BigInt(typeSize) + BigInt(lengthSize) + BigInt(length.value));
     if (bytes.length < expectedTLVTotalSize) {
       throw new ValueError("`bytes` is not long enough");
     }
