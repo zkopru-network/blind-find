@@ -1,2 +1,2 @@
-export const BIG_ENDIAN = 'be';
-export const LITTLE_ENDIAN = 'le';
+export const BIG_ENDIAN = "be";
+export const LITTLE_ENDIAN = "le";

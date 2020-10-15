@@ -1,5 +1,9 @@
-import { ECPoint } from './config';
-import { babyJub } from 'circomlib';
+import BN from "bn.js";
+
+import { q, ECPoint } from "./config";
+import { babyJub } from "circomlib";
+import { Point } from "./dataTypes";
+import { bigIntMod } from "./utils";
 
 /**
  * A general interface of a [group element](https://en.wikipedia.org/wiki/Group_(mathematics)).
@@ -41,9 +45,7 @@ interface IGroup {
   equal(g: IGroup): boolean;
 }
 
-class BabyJubPoint implements IGroup {
-  constructor(readonly point: ECPoint) {
-  }
+class BabyJubPoint extends Point implements IGroup {
   /**
    * The element is valid or not. This is not done in the constructor to avoid the costly computation.
    */
@@ -65,21 +67,27 @@ class BabyJubPoint implements IGroup {
   }
 
   equal(g: BabyJubPoint): boolean {
-    return (this.point[0] == g.point[0]) && (this.point[1] == g.point[1]);
+    return this.point[0] === g.point[0] && this.point[1] === g.point[1];
   }
 
   exponentiate(exponent: BigInt): BabyJubPoint {
     let isNegative = false;
     if (BigInt(exponent) < 0) {
       isNegative = true;
-      exponent = BigInt(exponent) * (-1n);
+      exponent = BigInt(exponent) * -1n;
     }
-    let res = new BabyJubPoint(babyJub.mulPointEscalar(this.point, exponent) as ECPoint);
+    let res = new BabyJubPoint(
+      babyJub.mulPointEscalar(this.point, exponent) as ECPoint
+    );
     if (isNegative) {
       return res.inverse();
     } else {
       return res;
     }
+  }
+
+  toScalar(): BigInt {
+    return bigIntMod(BigInt(new BN(this.serialize()).toString()), q);
   }
 }
 

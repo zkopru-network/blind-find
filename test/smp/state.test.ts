@@ -1,23 +1,23 @@
-import BN from 'bn.js';
+import BN from "bn.js";
 
-import { SMPStateMachine } from '../../src/smp/state';
-import { SMPNotFinished, ValueError } from '../../src/smp/exceptions';
+import { SMPStateMachine } from "../../src/smp/state";
+import { SMPNotFinished, ValueError } from "../../src/smp/exceptions";
 import {
   tlvFactory,
   smpMessage1Factory,
   smpMessage2Factory,
   smpMessage3Factory,
-  smpMessage4Factory,
-} from '../../src/smp/factories';
-import { BaseSMPMessage } from '../../src/smp/msgs';
+  smpMessage4Factory
+} from "../../src/smp/factories";
+import { BaseSMPMessage } from "../../src/smp/msgs";
 
-describe('test `SMPStateMachine`', () => {
-  test('secret types', () => {
+describe("test `SMPStateMachine`", () => {
+  test("secret types", () => {
     expect(() => {
       // A `number` is fine to be a secret
       new SMPStateMachine(1);
       // A `string` is fine to be a secret
-      new SMPStateMachine('secret');
+      new SMPStateMachine("secret");
       // A `BN` is fine to be a secret
       new SMPStateMachine(new BN(1));
       // A `Uint8Array` is fine too.
@@ -26,13 +26,13 @@ describe('test `SMPStateMachine`', () => {
   });
 });
 
-describe('test `SMPStateMachine` succeeds', () => {
-  const string0 = 'string0';
-  const string1 = 'string1';
-  test('same secrets', () => {
+describe("test `SMPStateMachine` succeeds", () => {
+  const string0 = "string0";
+  const string1 = "string1";
+  test("same secrets", () => {
     expect(smp(string0, string0)).toBeTruthy();
   });
-  test('different secrets', () => {
+  test("different secrets", () => {
     expect(smp(string0, string1)).toBeFalsy();
   });
 });
@@ -45,10 +45,10 @@ function expectToThrowWhenReceive(s: SMPStateMachine, msgs: BaseSMPMessage[]) {
   }
 }
 
-describe('test `SMPStateMachine` fails', () => {
-  test('transit fails when wrong messages are received', () => {
-    const x = 'x';
-    const y = 'y';
+describe("test `SMPStateMachine` fails", () => {
+  test("transit fails when wrong messages are received", () => {
+    const x = "x";
+    const y = "y";
     const aliceState1 = new SMPStateMachine(x);
     const bobState1 = new SMPStateMachine(y);
 
@@ -60,7 +60,7 @@ describe('test `SMPStateMachine` fails', () => {
     expectToThrowWhenReceive(aliceState1, [
       smpMessage2Factory(),
       smpMessage3Factory(),
-      smpMessage4Factory(),
+      smpMessage4Factory()
     ]);
 
     const msg1 = aliceState1.transit(null);
@@ -74,7 +74,7 @@ describe('test `SMPStateMachine` fails', () => {
     expectToThrowWhenReceive(aliceState2, [
       smpMessage1Factory(),
       smpMessage3Factory(),
-      smpMessage4Factory(),
+      smpMessage4Factory()
     ]);
 
     const msg2 = bobState1.transit(msg1);
@@ -88,7 +88,7 @@ describe('test `SMPStateMachine` fails', () => {
     expectToThrowWhenReceive(bobState3, [
       smpMessage1Factory(),
       smpMessage2Factory(),
-      smpMessage4Factory(),
+      smpMessage4Factory()
     ]);
 
     const msg3 = aliceState2.transit(msg2);
@@ -102,7 +102,7 @@ describe('test `SMPStateMachine` fails', () => {
     expectToThrowWhenReceive(aliceState4, [
       smpMessage1Factory(),
       smpMessage2Factory(),
-      smpMessage3Factory(),
+      smpMessage3Factory()
     ]);
 
     const msg4 = bobState3.transit(msg3);
@@ -120,7 +120,7 @@ function expectSMPFinished(
   if (isFinished) {
     if (result === undefined) {
       throw new Error(
-        '`stateMachine` has finished, the expected result should be provided.'
+        "`stateMachine` has finished, the expected result should be provided."
       );
     }
     expect(stateMachine.getResult()).toEqual(result);
@@ -150,13 +150,13 @@ function smp(x: string, y: string): boolean {
   const resAlice = alice.getResult();
   const resBob = bob.getResult();
   if (resAlice === null) {
-    throw new Error('result should have been set on Alice side');
+    throw new Error("result should have been set on Alice side");
   }
   if (resBob === null) {
-    throw new Error('result should have been set on Bob side');
+    throw new Error("result should have been set on Bob side");
   }
   if (resAlice !== resBob) {
-    throw new Error('Alice and Bob got different results');
+    throw new Error("Alice and Bob got different results");
   }
   return resAlice;
 }

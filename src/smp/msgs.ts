@@ -1,16 +1,15 @@
-import BN from 'bn.js';
+import BN from "bn.js";
 
-import { MultiplicativeGroup } from './multiplicativeGroup';
 import {
   ProofDiscreteLog,
   ProofEqualDiscreteCoordinates,
-  ProofEqualDiscreteLogs,
-} from './proofs';
+  ProofEqualDiscreteLogs
+} from "./proofs";
 
-import { BaseFixedInt, BaseSerializable, Short, Int, MPI } from './dataTypes';
+import { BaseFixedInt, BaseSerializable, Short, Int, MPI } from "./dataTypes";
 
-import { concatUint8Array } from './utils';
-import { NotImplemented, ValueError } from './exceptions';
+import { concatUint8Array } from "./utils";
+import { NotImplemented, ValueError } from "./exceptions";
 
 /**
  * `TLV` stands for "Type, Length, and Value", literally its wire format.
@@ -37,7 +36,7 @@ class TLV extends BaseSerializable {
     );
     const expectedTLVTotalSize = typeSize + lengthSize + length.value;
     if (bytes.length < expectedTLVTotalSize) {
-      throw new ValueError('`bytes` does not long enough');
+      throw new ValueError("`bytes` is not long enough");
     }
     const value = bytes.slice(typeSize + lengthSize, expectedTLVTotalSize);
     return new TLV(type, value);
@@ -128,7 +127,7 @@ abstract class BaseSMPMessage {
       if (element instanceof BN) {
         mpi = new MPI(element);
       } else {
-        mpi = MPI.fromMultiplicativeGroup(element);
+        mpi = new MPI(element.value);
       }
       res = concatUint8Array(res, mpi.serialize());
     }
@@ -172,7 +171,7 @@ class SMPMessage1 extends BaseSMPMessage {
       g2aProof.d,
       g3a,
       g3aProof.c,
-      g3aProof.d,
+      g3aProof.d
     ];
   }
 
@@ -245,7 +244,7 @@ class SMPMessage2 extends BaseSMPMessage {
       qb,
       pbqbProof.c,
       pbqbProof.d0,
-      pbqbProof.d1,
+      pbqbProof.d1
     ];
   }
 
@@ -309,7 +308,7 @@ class SMPMessage3 extends BaseSMPMessage {
       paqaProof.d1,
       ra,
       raProof.c,
-      raProof.d,
+      raProof.d
     ];
   }
 
@@ -352,7 +351,7 @@ class SMPMessage4 extends BaseSMPMessage {
     const mpis = this.tlvToMPIs(TLVTypeSMPMessage4, 3, tlv);
     return new SMPMessage4(new MultiplicativeGroup(groupOrder, mpis[0].value), {
       c: mpis[1].value,
-      d: mpis[2].value,
+      d: mpis[2].value
     });
   }
 
@@ -367,5 +366,5 @@ export {
   SMPMessage2,
   SMPMessage3,
   SMPMessage4,
-  TLV,
+  TLV
 };

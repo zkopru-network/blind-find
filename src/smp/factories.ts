@@ -2,52 +2,48 @@
  * Factory functions used for testing.
  */
 
-import { randomBytes } from 'crypto';
+// import { q, G } from './config';
 
-import BN from 'bn.js';
+import { genPrivKey, genPubKey } from "maci-crypto";
+import { BabyJubPoint } from "./babyJub";
 
-import { defaultConfig } from './config';
-import { MultiplicativeGroup } from './multiplicativeGroup';
-import {
-  TLV,
-  SMPMessage1,
-  SMPMessage2,
-  SMPMessage3,
-  SMPMessage4,
-} from '../../src/smp/msgs';
-import {
-  makeProofDiscreteLog,
-  makeProofEqualDiscreteLogs,
-  makeProofEqualDiscreteCoordinates,
-} from '../../src/smp/proofs';
-import { smpHash } from '../../src/smp/hash';
+// import {
+//   TLV,
+//   SMPMessage1,
+//   SMPMessage2,
+//   SMPMessage3,
+//   SMPMessage4,
+// } from '../../src/smp/msgs';
+// import {
+//   makeProofDiscreteLog,
+//   makeProofEqualDiscreteLogs,
+//   makeProofEqualDiscreteCoordinates,
+// } from '../../src/smp/proofs';
+// import { smpHash } from '../../src/smp/hash';
 
-function secretFactory(): BN {
-  const buf = randomBytes(defaultConfig.modulusSize);
-  return new BN(buf.toString('hex'), 'hex').umod(defaultConfig.q);
+function secretFactory(): BigInt {
+  return genPrivKey();
 }
 
-function multiplicativeGroupFactory(): MultiplicativeGroup {
-  const secret = secretFactory();
-  return defaultConfig.g.exponentiate(secret);
+function babyJubPointFactory(): BabyJubPoint {
+  return new BabyJubPoint(genPubKey(secretFactory()));
 }
 
 const version = 1;
 
-function hash(...args: BN[]): BN {
-  return smpHash(version, ...args);
+function hash(...args: BabyJubPoint[]): BigInt {
+  return smpHash(version, ...(args.map((p: BabyJubPoint) => { return p.toScalar()})));
 }
 
 function smpMessage1Factory(): SMPMessage1 {
-  const g = defaultConfig.g;
+  const g = babyJubPointFactory();
   const bn = secretFactory();
-  const q = defaultConfig.q;
   const proofDiscreteLog = makeProofDiscreteLog(hash, g, bn, bn, q);
   return new SMPMessage1(g, proofDiscreteLog, g, proofDiscreteLog);
 }
 
 function smpMessage2Factory(): SMPMessage2 {
-  const g = multiplicativeGroupFactory();
+  const g = new BabyJubPoint(G);
   const bn = secretFactory();
   const q = secretFactory();
   const proofDiscreteLog = makeProofDiscreteLog(hash, g, bn, bn, q);
@@ -74,7 +70,7 @@ function smpMessage2Factory(): SMPMessage2 {
 }
 
 function smpMessage3Factory(): SMPMessage3 {
-  const g = multiplicativeGroupFactory();
+  const g = babyJubPointFactory();
   const bn = secretFactory();
   const q = secretFactory();
   const proofEDC = makeProofEqualDiscreteCoordinates(
@@ -93,7 +89,7 @@ function smpMessage3Factory(): SMPMessage3 {
 }
 
 function smpMessage4Factory(): SMPMessage4 {
-  const g = multiplicativeGroupFactory();
+  const g = babyJubPointFactory();
   const bn = secretFactory();
   const q = secretFactory();
   const proofEDL = makeProofEqualDiscreteLogs(hash, g, g, bn, bn, q);
@@ -106,7 +102,7 @@ function tlvFactory(): TLV {
 
 export {
   secretFactory,
-  multiplicativeGroupFactory,
+  babyJubPointFactory
   tlvFactory,
   smpMessage1Factory,
   smpMessage2Factory,

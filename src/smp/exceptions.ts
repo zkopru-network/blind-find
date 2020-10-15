@@ -79,5 +79,5 @@ export {
   ValueError,
   SMPNotFinished,
   SMPStateError,
-  BaseSMPError,
+  BaseSMPError
 };

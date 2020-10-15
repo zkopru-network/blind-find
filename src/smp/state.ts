@@ -2,14 +2,14 @@
  * SMP state and state machine
  */
 
-import { randomBytes } from 'crypto';
+import { randomBytes } from "crypto";
 
-import BN from 'bn.js';
-import { sha256 } from 'js-sha256';
+import BN from "bn.js";
+import { sha256 } from "js-sha256";
 
-import { MultiplicativeGroup } from './multiplicativeGroup';
-import { Config, defaultConfig } from './config';
-import { smpHash } from './hash';
+import { MultiplicativeGroup } from "./babyJub";
+import { Config, defaultConfig } from "./config";
+import { smpHash } from "./hash";
 
 import {
   makeProofDiscreteLog,
@@ -21,20 +21,20 @@ import {
   ProofDiscreteLog,
   ProofEqualDiscreteCoordinates,
   ProofEqualDiscreteLogs,
-  THashFunc,
-} from './proofs';
+  THashFunc
+} from "./proofs";
 
 import {
   InvalidGroupElement,
   InvalidProof,
   ValueError,
   NotImplemented,
-  SMPNotFinished,
-} from './exceptions';
+  SMPNotFinished
+} from "./exceptions";
 
-import { SMPMessage1, SMPMessage2, SMPMessage3, SMPMessage4 } from './msgs';
+import { SMPMessage1, SMPMessage2, SMPMessage3, SMPMessage4 } from "./msgs";
 
-import { TLV } from './msgs';
+import { TLV } from "./msgs";
 
 type TypeTLVOrNull = TLV | null;
 
@@ -85,7 +85,7 @@ abstract class BaseSMPState implements ISMPState {
    */
   getRandomSecret(): BN {
     const buf = randomBytes(this.config.modulusSize);
-    return new BN(buf.toString('hex'), 'hex').umod(this.config.q);
+    return new BN(buf.toString("hex"), "hex").umod(this.config.q);
   }
 
   /**
@@ -594,17 +594,17 @@ class SMPStateMachine {
    */
   private normalizeSecret(x: TSecret): BN {
     let res: BN;
-    if (typeof x === 'number') {
+    if (typeof x === "number") {
       res = new BN(x);
-    } else if (typeof x === 'string') {
-      res = new BN(sha256(x), 'hex');
+    } else if (typeof x === "string") {
+      res = new BN(sha256(x), "hex");
     } else if (x instanceof Uint8Array) {
       res = new BN(x);
     } else if (x instanceof BN) {
       res = x;
     } else {
       // Sanity check
-      throw new ValueError('secret can only be the type of `TSecret`');
+      throw new ValueError("secret can only be the type of `TSecret`");
     }
     return res;
   }

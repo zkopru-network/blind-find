@@ -3,14 +3,13 @@
  * Ref: https://github.com/otrv4/otrv4/blob/master/otrv4.md#data-types
  */
 
-import BN from 'bn.js';
+import BN from "bn.js";
 
-import { BIG_ENDIAN, LITTLE_ENDIAN } from './constants';
-import { ECPoint } from './config';
-import { babyJub } from 'circomlib';
-import { concatUint8Array } from './utils';
-import { NotImplemented, ValueError } from './exceptions';
-
+import { BIG_ENDIAN, LITTLE_ENDIAN } from "./constants";
+import { ECPoint } from "./config";
+import { babyJub } from "circomlib";
+import { concatUint8Array } from "./utils";
+import { NotImplemented, ValueError } from "./exceptions";
 
 type TEndian = typeof BIG_ENDIAN | typeof LITTLE_ENDIAN;
 
@@ -42,9 +41,17 @@ abstract class BaseSerializable {
 class BaseFixedInt extends BaseSerializable {
   /** Number of bytes the integer occupies. */
   static size: number;
+  value: BigInt;
 
-  constructor(readonly value: BigInt) {
+  constructor(value: number | BigInt) {
     super();
+    if (typeof value === "number") {
+      this.value = BigInt(value);
+    } else if (typeof value === "bigint") {
+      this.value = value;
+    } else {
+      throw new ValueError("typeof value should only be number or bigint");
+    }
   }
   static deserialize(_: Uint8Array): BaseFixedInt {
     throw new NotImplemented(); // Make tsc happy
@@ -61,7 +68,11 @@ class BaseFixedInt extends BaseSerializable {
  * @param size - Number of bytes the binary representation should occupy.
  * @param endian - Endian the binary representation should follow.
  */
-function numberToUint8Array(value: BigInt, endian: TEndian, size?: number): Uint8Array {
+function numberToUint8Array(
+  value: BigInt,
+  endian: TEndian,
+  size?: number
+): Uint8Array {
   return new Uint8Array(new BN(value.toString()).toArray(endian, size));
 }
 
@@ -75,7 +86,10 @@ function uint8ArrayToNumber(a: Uint8Array, endian: TEndian): BigInt {
 /**
  * Create a `BaseFixedInt` class which occupies `size` bytes.
  */
-function createFixedIntClass(size: number, endian: TEndian): typeof BaseFixedInt {
+function createFixedIntClass(
+  size: number,
+  endian: TEndian
+): typeof BaseFixedInt {
   class FixedIntClass extends BaseFixedInt {
     static size: number = size;
 
@@ -83,9 +97,7 @@ function createFixedIntClass(size: number, endian: TEndian): typeof BaseFixedInt
       super(value);
       const maxValue = BigInt(2) ** BigInt(size * 8) - BigInt(1);
       if (BigInt(value) < 0 || value > maxValue) {
-        throw new ValueError(
-          `value should be non-negative: value=${value}`
-        );
+        throw new ValueError(`value should be non-negative: value=${value}`);
       }
     }
 
@@ -133,13 +145,17 @@ class MPI implements BaseSerializable {
 
   constructor(readonly value: BigInt) {
     if (BigInt(value) < 0) {
-      throw new ValueError('expect non-negative value');
+      throw new ValueError("expect non-negative value");
     }
   }
 
   serialize(): Uint8Array {
-    const bytes = numberToUint8Array(this.value, BIG_ENDIAN)
-    const lenBytes = numberToUint8Array(BigInt(bytes.length), BIG_ENDIAN, MPI.lengthSize);
+    const bytes = numberToUint8Array(this.value, BIG_ENDIAN);
+    const lenBytes = numberToUint8Array(
+      BigInt(bytes.length),
+      BIG_ENDIAN,
+      MPI.lengthSize
+    );
     return concatUint8Array(lenBytes, bytes);
   }
 
@@ -151,11 +167,15 @@ class MPI implements BaseSerializable {
    */
   static consume(bytes: Uint8Array): [MPI, Uint8Array] {
     // It's safe because `bytes.length <= 2**48 - 1`.
-    const len = Number(uint8ArrayToNumber(bytes.slice(0, this.lengthSize), BIG_ENDIAN));
+    const len = Number(
+      uint8ArrayToNumber(bytes.slice(0, this.lengthSize), BIG_ENDIAN)
+    );
     if (bytes.length - this.lengthSize < len) {
-      throw new ValueError('`bytes` is not long enough for `len`');
+      throw new ValueError("`bytes` is not long enough for `len`");
     }
-    const value = BigInt(new BN(bytes.slice(this.lengthSize, this.lengthSize + len)).toString());
+    const value = BigInt(
+      new BN(bytes.slice(this.lengthSize, this.lengthSize + len)).toString()
+    );
     return [new MPI(value), bytes.slice(this.lengthSize + len)];
   }
 
@@ -168,7 +188,6 @@ class MPI implements BaseSerializable {
     }
     return mpi;
   }
-
 }
 
 /**
@@ -200,9 +219,11 @@ class Point extends BaseSerializable {
   }
 
   serialize(): Uint8Array {
-    const res =  new Uint8Array(babyJub.packPoint(this.point) as Buffer);
+    const res = new Uint8Array(babyJub.packPoint(this.point) as Buffer);
     if (res.length !== Point.size) {
-      throw new ValueError(`length of \`res\` should be ${Point.size}: length=${res}`);
+      throw new ValueError(
+        `length of \`res\` should be ${Point.size}: length=${res}`
+      );
     }
     return res;
   }

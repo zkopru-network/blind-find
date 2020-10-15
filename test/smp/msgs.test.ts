@@ -1,36 +1,36 @@
-import BN from 'bn.js';
+import BN from "bn.js";
 
-import { Short } from '../../src/smp/dataTypes';
+import { Short } from "../../src/smp/dataTypes";
 import {
   BaseSMPMessage,
   SMPMessage1,
   SMPMessage2,
   SMPMessage3,
   SMPMessage4,
-  TLV,
-} from '../../src/smp/msgs';
+  TLV
+} from "../../src/smp/msgs";
 import {
   smpMessage1Factory,
   smpMessage2Factory,
   smpMessage3Factory,
-  smpMessage4Factory,
-} from '../../src/smp/factories';
-import { ValueError } from '../../src/smp/exceptions';
-import { MultiplicativeGroup } from '../../src/smp/multiplicativeGroup';
-import { defaultConfig } from '../../src/smp/config';
+  smpMessage4Factory
+} from "../../src/smp/factories";
+import { ValueError } from "../../src/smp/exceptions";
+import { MultiplicativeGroup } from "../../src/smp/multiplicativeGroup";
+import { defaultConfig } from "../../src/smp/config";
 
-describe('TLV', () => {
-  test('succeeds', () => {
+describe("TLV", () => {
+  test("succeeds", () => {
     const types = [new Short(3), new Short(5), new Short(7)];
     const values = [
       new Uint8Array([5566, 5577]),
       new Uint8Array([1, 2, 3, 4, 5]),
-      new Uint8Array([]),
+      new Uint8Array([])
     ];
     const expectedSerialized = [
       new Uint8Array([0, 3, 0, 2, 5566, 5577]),
       new Uint8Array([0, 5, 0, 5, 1, 2, 3, 4, 5]),
-      new Uint8Array([0, 7, 0, 0]),
+      new Uint8Array([0, 7, 0, 0])
     ];
     for (const index in values) {
       const type = types[index];
@@ -43,7 +43,7 @@ describe('TLV', () => {
       expect(tlvFromExpected.value).toEqual(tlv.value);
     }
   });
-  test('deserialize fails', () => {
+  test("deserialize fails", () => {
     // Empty
     expect(() => {
       TLV.deserialize(new Uint8Array([]));
@@ -55,8 +55,8 @@ describe('TLV', () => {
   });
 });
 
-describe('BaseSMPMessage', () => {
-  test('tlvToMPIs succeeds', () => {
+describe("BaseSMPMessage", () => {
+  test("tlvToMPIs succeeds", () => {
     const bytes = new Uint8Array([
       0,
       0,
@@ -71,7 +71,7 @@ describe('BaseSMPMessage', () => {
       0,
       0,
       1,
-      2, // 2
+      2 // 2
     ]);
     const type = new Short(0);
     const tlv = new TLV(type, bytes);
@@ -79,7 +79,7 @@ describe('BaseSMPMessage', () => {
     expect(mpis[0].value.eqn(1)).toBeTruthy();
     expect(mpis[1].value.eqn(2)).toBeTruthy();
   });
-  test('tlvToMPIs fails', () => {
+  test("tlvToMPIs fails", () => {
     const bytes = new Uint8Array([
       0,
       0,
@@ -94,7 +94,7 @@ describe('BaseSMPMessage', () => {
       0,
       0,
       1,
-      2, // 2
+      2 // 2
     ]);
     const type = new Short(0);
     const tlv = new TLV(type, bytes);
@@ -113,7 +113,7 @@ describe('BaseSMPMessage', () => {
       0,
       0,
       1, // length=1
-      0,
+      0
     ]);
     const wrongTLV = new TLV(type, wrongMPIs);
     expect(() => {
@@ -122,7 +122,7 @@ describe('BaseSMPMessage', () => {
   });
 });
 
-describe('SMPMessages', () => {
+describe("SMPMessages", () => {
   const q = defaultConfig.q;
   const areSMPMessagesEqual = (
     a: BaseSMPMessage,
@@ -148,25 +148,25 @@ describe('SMPMessages', () => {
     return true;
   };
 
-  test('SMPMessage1 succeeds', () => {
+  test("SMPMessage1 succeeds", () => {
     const msg = smpMessage1Factory();
     expect(
       areSMPMessagesEqual(msg, SMPMessage1.fromTLV(msg.toTLV(), q))
     ).toBeTruthy();
   });
-  test('SMPMessage2 succeeds', () => {
+  test("SMPMessage2 succeeds", () => {
     const msg = smpMessage2Factory();
     expect(
       areSMPMessagesEqual(msg, SMPMessage2.fromTLV(msg.toTLV(), q))
     ).toBeTruthy();
   });
-  test('SMPMessage3 succeeds', () => {
+  test("SMPMessage3 succeeds", () => {
     const msg = smpMessage3Factory();
     expect(
       areSMPMessagesEqual(msg, SMPMessage3.fromTLV(msg.toTLV(), q))
     ).toBeTruthy();
   });
-  test('SMPMessage4 succeeds', () => {
+  test("SMPMessage4 succeeds", () => {
     const msg = smpMessage4Factory();
     expect(
       areSMPMessagesEqual(msg, SMPMessage4.fromTLV(msg.toTLV(), q))
