@@ -53,38 +53,10 @@ class TLV extends BaseSerializable {
   }
 }
 
-/** TLV types */
-/**
- * Type 2: SMP Message 1
- *  The value represents an initiating message of the Socialist Millionaires' Protocol.
- */
-const TLVTypeSMPMessage1 = new Short(2);
-/**
- * Type 3: SMP Message 2
- *  The value represents the second message in an instance of SMP.
- */
-const TLVTypeSMPMessage2 = new Short(3);
-/**
- * Type 4: SMP Message 3
- *  The value represents the third message in an instance of SMP.
- */
-const TLVTypeSMPMessage3 = new Short(4);
-/**
- * Type 5: SMP Message 4
- *  The value represents the final message in an instance of SMP.
- */
-const TLVTypeSMPMessage4 = new Short(5);
-
 /**
  * TODO: Consider extending from `TLV`.
- * SMP Message TLVs (types 2-5) all carry two possible types: `Scalar` and `Point`.
+ * SMP Message TLVs (types 2-5) carry two possible types: `Scalar` and `Point`.
  */
-
-// Given types(the list of items in this message).
-//  1. Deserialize from TLV by the wire information.
-//    `deserialize(tlv: TLV) -> BaseSMPMessage`
-//  2. Serialize data to TLV.
-//    `serialize() -> TLV
 
 type SMPMessageElement = BigInt | BabyJubPoint;
 type SMPMessageElementList = SMPMessageElement[];
@@ -92,6 +64,7 @@ type WireTypes = (typeof BigInt | typeof BabyJubPoint)[];
 
 abstract class BaseSMPMessage {
   static wireTypes: WireTypes;
+  static tlvType: BaseFixedInt;
 
   static fromTLVToElements(expectedMsgType: BaseFixedInt, tlv: TLV): SMPMessageElementList {
     if (expectedMsgType.value !== tlv.type.value) {
@@ -161,6 +134,7 @@ abstract class BaseSMPMessage {
  */
 class SMPMessage1 extends BaseSMPMessage {
   static wireTypes = [BabyJubPoint, BigInt, BigInt, BabyJubPoint, BigInt, BigInt];
+  static tlvType = new Short(2);
 
   constructor(
     readonly g2a: BabyJubPoint,
@@ -172,7 +146,7 @@ class SMPMessage1 extends BaseSMPMessage {
   }
 
   static fromTLV(tlv: TLV): SMPMessage1 {
-    const elements = this.fromTLVToElements(TLVTypeSMPMessage1, tlv);
+    const elements = this.fromTLVToElements(this.tlvType, tlv);
     return new SMPMessage1(
       elements[0] as BabyJubPoint,
       { c: elements[1] as BigInt, d: elements[2] as BigInt },
@@ -182,9 +156,8 @@ class SMPMessage1 extends BaseSMPMessage {
   }
 
   toTLV(): TLV {
-    console.log(SMPMessage1.wireTypes);
     return SMPMessage1.fromElementsToTLV(
-      TLVTypeSMPMessage1,
+      SMPMessage1.tlvType,
       [ this.g2a, this.g2aProof.c, this.g2aProof.d, this.g3a, this.g3aProof.c, this.g3aProof.d],
     );
   }
@@ -222,6 +195,7 @@ class SMPMessage2 extends BaseSMPMessage {
     BigInt,
     BigInt
   ];
+  static tlvType = new Short(3);
 
   constructor(
     readonly g2b: BabyJubPoint,
@@ -236,7 +210,7 @@ class SMPMessage2 extends BaseSMPMessage {
   }
 
   static fromTLV(tlv: TLV): SMPMessage2 {
-    const elements = this.fromTLVToElements(TLVTypeSMPMessage2, tlv);
+    const elements = this.fromTLVToElements(this.tlvType, tlv);
     return new SMPMessage2(
       elements[0] as BabyJubPoint,
       { c: elements[1] as BigInt, d: elements[2] as BigInt },
@@ -250,7 +224,7 @@ class SMPMessage2 extends BaseSMPMessage {
 
   toTLV(): TLV {
     return SMPMessage2.fromElementsToTLV(
-      TLVTypeSMPMessage2,
+      SMPMessage2.tlvType,
       [ this.g2b, this.g2bProof.c, this.g2bProof.d, this.g3b, this.g3bProof.c, this.g3bProof.d, this.pb, this.qb, this.pbqbProof.c, this.pbqbProof.d0, this.pbqbProof.d1],
     );
   }
@@ -281,6 +255,7 @@ class SMPMessage3 extends BaseSMPMessage {
     BigInt,
     BigInt
   ];
+  static tlvType = new Short(4);
 
   constructor(
     readonly pa: BabyJubPoint,
@@ -293,7 +268,7 @@ class SMPMessage3 extends BaseSMPMessage {
   }
 
   static fromTLV(tlv: TLV): SMPMessage3 {
-    const elements = this.fromTLVToElements(TLVTypeSMPMessage3, tlv);
+    const elements = this.fromTLVToElements(this.tlvType, tlv);
     return new SMPMessage3(
       elements[0] as BabyJubPoint,
       elements[1] as BabyJubPoint,
@@ -305,7 +280,7 @@ class SMPMessage3 extends BaseSMPMessage {
 
   toTLV(): TLV {
     return SMPMessage3.fromElementsToTLV(
-      TLVTypeSMPMessage3,
+      SMPMessage3.tlvType,
       [
         this.pa,
         this.qa,
@@ -331,6 +306,8 @@ class SMPMessage3 extends BaseSMPMessage {
  */
 class SMPMessage4 extends BaseSMPMessage {
   static wireTypes = [BabyJubPoint, BigInt, BigInt];
+  static tlvType = new Short(5);
+
   constructor(
     readonly rb: BabyJubPoint,
     readonly rbProof: ProofEqualDiscreteLogs
@@ -339,7 +316,7 @@ class SMPMessage4 extends BaseSMPMessage {
   }
 
   static fromTLV(tlv: TLV): SMPMessage4 {
-    const elements = this.fromTLVToElements(TLVTypeSMPMessage4, tlv);
+    const elements = this.fromTLVToElements(this.tlvType, tlv);
     return new SMPMessage4(
       elements[0] as BabyJubPoint,
       { c: elements[1] as BigInt, d: elements[2] as BigInt },
@@ -348,7 +325,7 @@ class SMPMessage4 extends BaseSMPMessage {
 
   toTLV(): TLV {
     return SMPMessage4.fromElementsToTLV(
-      TLVTypeSMPMessage4,
+      SMPMessage4.tlvType,
       [this.rb, this.rbProof.c, this.rbProof.d]
     );
   }
