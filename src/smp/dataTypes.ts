@@ -6,9 +6,14 @@
 import { BIG_ENDIAN, LITTLE_ENDIAN } from "./constants";
 import { ECPoint } from "./config";
 import { babyJub } from "circomlib";
-import { concatUint8Array, bigIntToNumber, uint8ArrayToBigInt, bigIntToUint8Array } from "./utils";
+import {
+  concatUint8Array,
+  bigIntToNumber,
+  uint8ArrayToBigInt,
+  bigIntToUint8Array
+} from "./utils";
 import { NotImplemented, ValueError } from "./exceptions";
-import { TEndian } from './types';
+import { TEndian } from "./types";
 
 /**
  * Base class for types that can be {de}serialized.
@@ -143,7 +148,10 @@ class MPI implements BaseSerializable {
     if (bytes.length - this.lengthSize < len) {
       throw new ValueError("`bytes` is not long enough for `len`");
     }
-    const value = uint8ArrayToBigInt(bytes.slice(this.lengthSize, this.lengthSize + len), BIG_ENDIAN);
+    const value = uint8ArrayToBigInt(
+      bytes.slice(this.lengthSize, this.lengthSize + len),
+      BIG_ENDIAN
+    );
     return [new MPI(value), bytes.slice(this.lengthSize + len)];
   }
 

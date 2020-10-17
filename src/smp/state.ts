@@ -1,12 +1,12 @@
 /**
  * SMP state and state machine
  */
-import BN from 'bn.js';
+import BN from "bn.js";
 import { BabyJubPoint } from "./babyJub";
-import { sha256 } from 'js-sha256';
+import { sha256 } from "js-sha256";
 import { q, G } from "./config";
 import { smpHash } from "./hash";
-import { BIG_ENDIAN } from './constants';
+import { BIG_ENDIAN } from "./constants";
 
 import {
   makeProofDiscreteLog,
@@ -127,10 +127,7 @@ abstract class BaseSMPState implements ISMPState {
    * @param g - Public key from the other.
    * @param secretKey - Our private key.
    */
-  makeDHSharedSecret(
-    g: BabyJubPoint,
-    secretKey: BigInt
-  ): BabyJubPoint {
+  makeDHSharedSecret(g: BabyJubPoint, secretKey: BigInt): BabyJubPoint {
     return g.exponentiate(secretKey);
   }
 
@@ -289,13 +286,7 @@ class SMPState1 extends BaseSMPState {
       const [g2a, g2aProof] = this.makeDHPubkey(1, this.s2);
       const [g3a, g3aProof] = this.makeDHPubkey(2, this.s3);
       const msg = new SMPMessage1(g2a, g2aProof, g3a, g3aProof);
-      const state = new SMPState2(
-        this.x,
-        this.s2,
-        this.s3,
-        g2a,
-        g3a
-      );
+      const state = new SMPState2(this.x, this.s2, this.s3, g2a, g3a);
       return [state, msg.toTLV()];
     } else {
       /*
@@ -304,10 +295,7 @@ class SMPState1 extends BaseSMPState {
       */
       const msg = SMPMessage1.fromTLV(tlv);
       // Verify pubkey's value
-      if (
-        !this.verifyGroup(msg.g2a) ||
-        !this.verifyGroup(msg.g3a)
-      ) {
+      if (!this.verifyGroup(msg.g2a) || !this.verifyGroup(msg.g3a)) {
         throw new InvalidGroupElement();
       }
       // Verify the proofs
@@ -470,12 +458,7 @@ class SMPState3 extends BaseSMPState {
     const [rb, rbProof] = this.makeRL(8, this.s3, msg.qa, this.qL);
     const msg4 = new SMPMessage4(rb, rbProof);
     const rab = this.makeRab(this.s3, msg.ra);
-    const state = new SMPStateFinished(
-      this.x,
-      msg.pa,
-      this.pL,
-      rab
-    );
+    const state = new SMPStateFinished(this.x, msg.pa, this.pL, rab);
     return [state, msg4.toTLV()];
   }
 }
@@ -519,12 +502,7 @@ class SMPState4 extends BaseSMPState {
       throw new InvalidProof();
     }
     const rab = this.makeRab(this.s3, msg.rb);
-    const state = new SMPStateFinished(
-      this.x,
-      this.pL,
-      this.pR,
-      rab
-    );
+    const state = new SMPStateFinished(this.x, this.pL, this.pR, rab);
     return [state, null];
   }
 }
@@ -586,7 +564,7 @@ class SMPStateMachine {
       res = BigInt(new BN(sha256(x), "hex").toString());
     } else if (x instanceof Uint8Array) {
       res = uint8ArrayToBigInt(x, BIG_ENDIAN);
-    } else if (typeof x === 'bigint') {
+    } else if (typeof x === "bigint") {
       res = x;
     } else {
       // Sanity check
