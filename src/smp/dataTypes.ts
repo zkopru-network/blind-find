@@ -45,14 +45,9 @@ class BaseFixedInt extends BaseSerializable {
 
   constructor(value: number | BigInt) {
     super();
-    if (typeof value === "number") {
-      this.value = BigInt(value);
-    } else if (typeof value === "bigint") {
-      this.value = value;
-    } else {
-      throw new ValueError("typeof value should only be number or bigint");
-    }
+    this.value = BigInt(value);
   }
+
   static deserialize(_: Uint8Array): BaseFixedInt {
     throw new NotImplemented(); // Make tsc happy
   }
@@ -68,7 +63,7 @@ class BaseFixedInt extends BaseSerializable {
  * @param size - Number of bytes the binary representation should occupy.
  * @param endian - Endian the binary representation should follow.
  */
-function numberToUint8Array(
+function bigIntToUint8Array(
   value: BigInt,
   endian: TEndian,
   size?: number
@@ -79,7 +74,7 @@ function numberToUint8Array(
 /**
  * Parse a number from its binary representation. [[BN]] is to perform [de]serialization.
  */
-function uint8ArrayToNumber(a: Uint8Array, endian: TEndian): BigInt {
+function uint8ArrayToBigInt(a: Uint8Array, endian: TEndian): BigInt {
   return BigInt(new BN(a, undefined, endian).toString());
 }
 
@@ -93,10 +88,10 @@ function createFixedIntClass(
   class FixedIntClass extends BaseFixedInt {
     static size: number = size;
 
-    constructor(readonly value: BigInt) {
+    constructor(value: number | BigInt) {
       super(value);
       const maxValue = BigInt(2) ** BigInt(size * 8) - BigInt(1);
-      if (BigInt(value) < 0 || value > maxValue) {
+      if (this.value < BigInt(0) || this.value > maxValue) {
         throw new ValueError(`value should be non-negative: value=${value}`);
       }
     }
@@ -105,11 +100,11 @@ function createFixedIntClass(
       if (bytes.length !== size) {
         throw new ValueError(`length of ${bytes} should be ${size}`);
       }
-      return new FixedIntClass(uint8ArrayToNumber(bytes, endian));
+      return new FixedIntClass(uint8ArrayToBigInt(bytes, endian));
     }
 
     serialize(): Uint8Array {
-      return numberToUint8Array(BigInt(this.value), endian, size);
+      return bigIntToUint8Array(BigInt(this.value), endian, size);
     }
   }
   return FixedIntClass;
@@ -150,8 +145,8 @@ class MPI implements BaseSerializable {
   }
 
   serialize(): Uint8Array {
-    const bytes = numberToUint8Array(this.value, BIG_ENDIAN);
-    const lenBytes = numberToUint8Array(
+    const bytes = bigIntToUint8Array(this.value, BIG_ENDIAN);
+    const lenBytes = bigIntToUint8Array(
       BigInt(bytes.length),
       BIG_ENDIAN,
       MPI.lengthSize
@@ -168,7 +163,7 @@ class MPI implements BaseSerializable {
   static consume(bytes: Uint8Array): [MPI, Uint8Array] {
     // It's safe because `bytes.length <= 2**48 - 1`.
     const len = bigIntToNumber(
-      uint8ArrayToNumber(bytes.slice(0, this.lengthSize), BIG_ENDIAN)
+      uint8ArrayToBigInt(bytes.slice(0, this.lengthSize), BIG_ENDIAN)
     );
     if (bytes.length - this.lengthSize < len) {
       throw new ValueError("`bytes` is not long enough for `len`");

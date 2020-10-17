@@ -11,6 +11,7 @@ import { q } from "../../src/smp/config";
 import { secretFactory, babyJubPointFactory } from "../../src/smp/factories";
 import { smpHash } from "../../src/smp/hash";
 import { BabyJubPoint } from "../../src/smp/babyJub";
+import { babyJubPointToScalar } from "../../src/smp/utils";
 
 const version = 1;
 const numTimesRetry = 100;
@@ -18,9 +19,7 @@ const numTimesRetry = 100;
 function hash(...args: BabyJubPoint[]): BigInt {
   return smpHash(
     version,
-    ...args.map((p: BabyJubPoint) => {
-      return p.toScalar();
-    })
+    ...args.map(babyJubPointToScalar),
   );
 }
 

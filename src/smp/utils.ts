@@ -1,5 +1,8 @@
 import BN from "bn.js";
+import { BabyJubPoint } from "./babyJub";
 import { ValueError } from "./exceptions";
+import { q } from './config';
+import { Point } from './dataTypes';
 
 /**
  * Concatenate two `Uint8Array` into one.
@@ -32,3 +35,7 @@ export const bigIntToNumber = (a: BigInt): number => {
   }
   return Number(a);
 };
+
+export const babyJubPointToScalar = (a: BabyJubPoint): BigInt => {
+  return bigIntMod(BigInt(new BN(new Point(a.point).serialize()).toString()), q)
+}

@@ -1,4 +1,4 @@
-import BN from "bn.js";
+import { BabyJubPoint } from './babyJub';
 
 import {
   ProofDiscreteLog,
@@ -6,13 +6,13 @@ import {
   ProofEqualDiscreteLogs
 } from "./proofs";
 
-import { BaseFixedInt, BaseSerializable, Short, Int, MPI } from "./dataTypes";
+import { BaseFixedInt, BaseSerializable, Short, Scalar, Point } from "./dataTypes";
 
 import { concatUint8Array, bigIntToNumber } from "./utils";
 import { NotImplemented, ValueError } from "./exceptions";
 
 /**
- * `TLV` stands for "Type, Length, and Value", literally its wire format.
+ * `TLV` stands for "Type, Length, and Value", literally it's the wire format.
  * A `TLV` record consist of the fields:
  *  Type: `Short`
  *    The type of this record. Records with unrecognized types should be ignored.
@@ -77,67 +77,71 @@ const TLVTypeSMPMessage4 = new Short(5);
 
 /**
  * TODO: Consider extending from `TLV`.
- * SMP Message TLVs (types 2-5) all carry data sharing the same general format:
- *  MPI count (INT)
- *    The number of MPIs contained in the remainder of the TLV.
- *  MPI 1 (MPI)
- *    The first MPI of the TLV, serialized into a byte array.
- *  MPI 2 (MPI)
- *    The second MPI of the TLV, serialized into a byte array.
- *  ,...etc.
+ * SMP Message TLVs (types 2-5) all carry two possible types: `Scalar` and `Point`.
  */
-abstract class BaseSMPMessage {
-  abstract wireValues: (BN | MultiplicativeGroup)[];
 
-  static tlvToMPIs(
-    type: BaseFixedInt,
-    expectedLength: number,
-    tlv: TLV
-  ): MPI[] {
-    if (type.value !== tlv.type.value) {
+// Given types(the list of items in this message).
+//  1. Deserialize from TLV by the wire information.
+//    `deserialize(tlv: TLV) -> BaseSMPMessage`
+//  2. Serialize data to TLV.
+//    `serialize() -> TLV
+
+type SMPMessageElement = BigInt | BabyJubPoint;
+type SMPMessageElementList = SMPMessageElement[];
+type WireTypes = (typeof BigInt | typeof BabyJubPoint)[];
+
+abstract class BaseSMPMessage {
+  static wireTypes: WireTypes;
+
+  static fromTLVToElements(expectedMsgType: BaseFixedInt, tlv: TLV): SMPMessageElementList {
+    if (expectedMsgType.value !== tlv.type.value) {
       throw new ValueError(
-        `type mismatch: type.value=${type.value}, tlv.type.value=${tlv.type.value}`
+        `type mismatch: type.value=${expectedMsgType.value}, tlv.type.value=${tlv.type.value}`
       );
     }
     let bytes = tlv.value;
-    const mpiCount = Int.deserialize(bytes.slice(0, Int.size));
-    let bytesRemaining = bytes.slice(Int.size);
-    const mpis: MPI[] = [];
-    let mpi: MPI;
-    for (let i = 0; i < mpiCount.value; i++) {
-      [mpi, bytesRemaining] = MPI.consume(bytesRemaining);
-      mpis.push(mpi);
+    const res: SMPMessageElementList = [];
+    for (const t of this.wireTypes) {
+      let value: SMPMessageElement;
+      if (t === BigInt) {
+        value = Scalar.deserialize(bytes.slice(0, Scalar.size)).value;
+        bytes = bytes.slice(Scalar.size);
+      } else {
+        value = new BabyJubPoint(Point.deserialize(bytes.slice(0, Point.size)).point);
+        bytes = bytes.slice(Point.size);
+      }
+      res.push(value);
     }
-    if (expectedLength !== mpis.length) {
-      throw new ValueError(
-        `length of tlv=${tlv} mismatches: expectedLength=${expectedLength}`
-      );
-    }
-    return mpis;
+    return res;
   }
 
-  mpisToTLV(
-    type: BaseFixedInt,
-    ...elements: (BN | MultiplicativeGroup)[]
+  static fromElementsToTLV(
+    msgType: BaseFixedInt,
+    elements: SMPMessageElementList
   ): TLV {
-    const length = new Int(elements.length);
-    let res = length.serialize();
-    for (const element of elements) {
-      let mpi: MPI;
-      if (element instanceof BN) {
-        mpi = new MPI(element);
-      } else {
-        mpi = new MPI(element.value);
-      }
-      res = concatUint8Array(res, mpi.serialize());
+    if (elements.length !== this.wireTypes.length) {
+      throw new ValueError('length mismatch between elements and wireTypes');
     }
-    return new TLV(type, res);
+    let res = new Uint8Array([]);
+    for (const index in this.wireTypes) {
+      let valueBytes: Uint8Array;
+      const t = this.wireTypes[index];
+      const element = elements[index];
+      if (t === BigInt) {
+        valueBytes = new Scalar(element as BigInt).serialize();
+      } else {
+        valueBytes = new Point((element as BabyJubPoint).point).serialize();
+      }
+      res = concatUint8Array(res, valueBytes);
+    }
+    return new TLV(msgType, res);
   }
 
   // abstract methods
-  static fromTLV(_: TLV, __: BN): BaseSMPMessage {
+  static fromTLV(_: TLV): BaseSMPMessage {
     throw new NotImplemented();
   }
+
   abstract toTLV(): TLV;
 }
 
@@ -156,37 +160,33 @@ abstract class BaseSMPMessage {
  *    g3a.
  */
 class SMPMessage1 extends BaseSMPMessage {
-  wireValues: [MultiplicativeGroup, BN, BN, MultiplicativeGroup, BN, BN];
+  static wireTypes = [BabyJubPoint, BigInt, BigInt, BabyJubPoint, BigInt, BigInt];
 
   constructor(
-    readonly g2a: MultiplicativeGroup,
+    readonly g2a: BabyJubPoint,
     readonly g2aProof: ProofDiscreteLog,
-    readonly g3a: MultiplicativeGroup,
+    readonly g3a: BabyJubPoint,
     readonly g3aProof: ProofDiscreteLog
   ) {
     super();
-    this.wireValues = [
-      g2a,
-      g2aProof.c,
-      g2aProof.d,
-      g3a,
-      g3aProof.c,
-      g3aProof.d
-    ];
   }
 
-  static fromTLV(tlv: TLV, groupOrder: BN): SMPMessage1 {
-    const mpis = this.tlvToMPIs(TLVTypeSMPMessage1, 6, tlv);
+  static fromTLV(tlv: TLV): SMPMessage1 {
+    const elements = this.fromTLVToElements(TLVTypeSMPMessage1, tlv);
     return new SMPMessage1(
-      new MultiplicativeGroup(groupOrder, mpis[0].value),
-      { c: mpis[1].value, d: mpis[2].value },
-      new MultiplicativeGroup(groupOrder, mpis[3].value),
-      { c: mpis[4].value, d: mpis[5].value }
+      elements[0] as BabyJubPoint,
+      { c: elements[1] as BigInt, d: elements[2] as BigInt },
+      elements[3] as BabyJubPoint,
+      { c: elements[4] as BigInt, d: elements[5] as BigInt }
     );
   }
 
   toTLV(): TLV {
-    return this.mpisToTLV(TLVTypeSMPMessage1, ...this.wireValues);
+    console.log(SMPMessage1.wireTypes);
+    return SMPMessage1.fromElementsToTLV(
+      TLVTypeSMPMessage1,
+      [ this.g2a, this.g2aProof.c, this.g2aProof.d, this.g3a, this.g3aProof.c, this.g3aProof.d],
+    );
   }
 }
 
@@ -209,60 +209,50 @@ class SMPMessage1 extends BaseSMPMessage {
  *    A zero-knowledge proof that Pb and Qb were created according to the protcol given above.
  */
 class SMPMessage2 extends BaseSMPMessage {
-  wireValues: [
-    MultiplicativeGroup,
-    BN,
-    BN,
-    MultiplicativeGroup,
-    BN,
-    BN,
-    MultiplicativeGroup,
-    MultiplicativeGroup,
-    BN,
-    BN,
-    BN
+  static wireTypes = [
+    BabyJubPoint,
+    BigInt,
+    BigInt,
+    BabyJubPoint,
+    BigInt,
+    BigInt,
+    BabyJubPoint,
+    BabyJubPoint,
+    BigInt,
+    BigInt,
+    BigInt
   ];
 
   constructor(
-    readonly g2b: MultiplicativeGroup,
+    readonly g2b: BabyJubPoint,
     readonly g2bProof: ProofDiscreteLog,
-    readonly g3b: MultiplicativeGroup,
+    readonly g3b: BabyJubPoint,
     readonly g3bProof: ProofDiscreteLog,
-    readonly pb: MultiplicativeGroup,
-    readonly qb: MultiplicativeGroup,
+    readonly pb: BabyJubPoint,
+    readonly qb: BabyJubPoint,
     readonly pbqbProof: ProofEqualDiscreteCoordinates
   ) {
     super();
-    this.wireValues = [
-      g2b,
-      g2bProof.c,
-      g2bProof.d,
-      g3b,
-      g3bProof.c,
-      g3bProof.d,
-      pb,
-      qb,
-      pbqbProof.c,
-      pbqbProof.d0,
-      pbqbProof.d1
-    ];
   }
 
-  static fromTLV(tlv: TLV, groupOrder: BN): SMPMessage2 {
-    const mpis = this.tlvToMPIs(TLVTypeSMPMessage2, 11, tlv);
+  static fromTLV(tlv: TLV): SMPMessage2 {
+    const elements = this.fromTLVToElements(TLVTypeSMPMessage2, tlv);
     return new SMPMessage2(
-      new MultiplicativeGroup(groupOrder, mpis[0].value),
-      { c: mpis[1].value, d: mpis[2].value },
-      new MultiplicativeGroup(groupOrder, mpis[3].value),
-      { c: mpis[4].value, d: mpis[5].value },
-      new MultiplicativeGroup(groupOrder, mpis[6].value),
-      new MultiplicativeGroup(groupOrder, mpis[7].value),
-      { c: mpis[8].value, d0: mpis[9].value, d1: mpis[10].value }
+      elements[0] as BabyJubPoint,
+      { c: elements[1] as BigInt, d: elements[2] as BigInt },
+      elements[3] as BabyJubPoint,
+      { c: elements[4] as BigInt, d: elements[5] as BigInt },
+      elements[6] as BabyJubPoint,
+      elements[7] as BabyJubPoint,
+      { c: elements[8] as BigInt, d0: elements[9] as BigInt, d1: elements[10] as BigInt },
     );
   }
 
   toTLV(): TLV {
-    return this.mpisToTLV(TLVTypeSMPMessage2, ...this.wireValues);
+    return SMPMessage2.fromElementsToTLV(
+      TLVTypeSMPMessage2,
+      [ this.g2b, this.g2bProof.c, this.g2bProof.d, this.g3b, this.g3bProof.c, this.g3bProof.d, this.pb, this.qb, this.pbqbProof.c, this.pbqbProof.d0, this.pbqbProof.d1],
+    );
   }
 }
 
@@ -281,50 +271,52 @@ class SMPMessage2 extends BaseSMPMessage {
  *    A zero-knowledge proof that Ra was created according to the protcol given above.
  */
 class SMPMessage3 extends BaseSMPMessage {
-  wireValues: [
-    MultiplicativeGroup,
-    MultiplicativeGroup,
-    BN,
-    BN,
-    BN,
-    MultiplicativeGroup,
-    BN,
-    BN
+  static wireTypes = [
+    BabyJubPoint,
+    BabyJubPoint,
+    BigInt,
+    BigInt,
+    BigInt,
+    BabyJubPoint,
+    BigInt,
+    BigInt
   ];
 
   constructor(
-    readonly pa: MultiplicativeGroup,
-    readonly qa: MultiplicativeGroup,
+    readonly pa: BabyJubPoint,
+    readonly qa: BabyJubPoint,
     readonly paqaProof: ProofEqualDiscreteCoordinates,
-    readonly ra: MultiplicativeGroup,
+    readonly ra: BabyJubPoint,
     readonly raProof: ProofEqualDiscreteLogs
   ) {
     super();
-    this.wireValues = [
-      pa,
-      qa,
-      paqaProof.c,
-      paqaProof.d0,
-      paqaProof.d1,
-      ra,
-      raProof.c,
-      raProof.d
-    ];
   }
 
-  static fromTLV(tlv: TLV, groupOrder: BN): SMPMessage3 {
-    const mpis = this.tlvToMPIs(TLVTypeSMPMessage3, 8, tlv);
+  static fromTLV(tlv: TLV): SMPMessage3 {
+    const elements = this.fromTLVToElements(TLVTypeSMPMessage3, tlv);
     return new SMPMessage3(
-      new MultiplicativeGroup(groupOrder, mpis[0].value),
-      new MultiplicativeGroup(groupOrder, mpis[1].value),
-      { c: mpis[2].value, d0: mpis[3].value, d1: mpis[4].value },
-      new MultiplicativeGroup(groupOrder, mpis[5].value),
-      { c: mpis[6].value, d: mpis[7].value }
+      elements[0] as BabyJubPoint,
+      elements[1] as BabyJubPoint,
+      { c: elements[2] as BigInt, d0: elements[3] as BigInt, d1: elements[4] as BigInt },
+      elements[5] as BabyJubPoint,
+      { c: elements[6] as BigInt, d: elements[7] as BigInt },
     );
   }
 
   toTLV(): TLV {
-    return this.mpisToTLV(TLVTypeSMPMessage3, ...this.wireValues);
+    return SMPMessage3.fromElementsToTLV(
+      TLVTypeSMPMessage3,
+      [
+        this.pa,
+        this.qa,
+        this.paqaProof.c,
+        this.paqaProof.d0,
+        this.paqaProof.d1,
+        this.ra,
+        this.raProof.c,
+        this.raProof.d
+      ],
+    );
   }
 }
 
@@ -338,25 +330,27 @@ class SMPMessage3 extends BaseSMPMessage {
  *    A zero-knowledge proof that Rb was created according to the protcol given above.
  */
 class SMPMessage4 extends BaseSMPMessage {
-  wireValues: [MultiplicativeGroup, BN, BN];
+  static wireTypes = [BabyJubPoint, BigInt, BigInt];
   constructor(
-    readonly rb: MultiplicativeGroup,
+    readonly rb: BabyJubPoint,
     readonly rbProof: ProofEqualDiscreteLogs
   ) {
     super();
-    this.wireValues = [rb, rbProof.c, rbProof.d];
   }
 
-  static fromTLV(tlv: TLV, groupOrder: BN): SMPMessage4 {
-    const mpis = this.tlvToMPIs(TLVTypeSMPMessage4, 3, tlv);
-    return new SMPMessage4(new MultiplicativeGroup(groupOrder, mpis[0].value), {
-      c: mpis[1].value,
-      d: mpis[2].value
-    });
+  static fromTLV(tlv: TLV): SMPMessage4 {
+    const elements = this.fromTLVToElements(TLVTypeSMPMessage4, tlv);
+    return new SMPMessage4(
+      elements[0] as BabyJubPoint,
+      { c: elements[1] as BigInt, d: elements[2] as BigInt },
+    );
   }
 
   toTLV(): TLV {
-    return this.mpisToTLV(TLVTypeSMPMessage4, ...this.wireValues);
+    return SMPMessage4.fromElementsToTLV(
+      TLVTypeSMPMessage4,
+      [this.rb, this.rbProof.c, this.rbProof.d]
+    );
   }
 }
 
@@ -366,5 +360,5 @@ export {
   SMPMessage2,
   SMPMessage3,
   SMPMessage4,
-  TLV
+  TLV,
 };

@@ -1,9 +1,5 @@
-import BN from "bn.js";
-
-import { q, ECPoint } from "./config";
+import { ECPoint } from "./config";
 import { babyJub } from "circomlib";
-import { Point } from "./dataTypes";
-import { bigIntMod } from "./utils";
 
 /**
  * A general interface of a [group element](https://en.wikipedia.org/wiki/Group_(mathematics)).
@@ -45,7 +41,9 @@ interface IGroup {
   equal(g: IGroup): boolean;
 }
 
-class BabyJubPoint extends Point implements IGroup {
+class BabyJubPoint implements IGroup {
+  constructor(readonly point: ECPoint) {
+  }
   /**
    * The element is valid or not. This is not done in the constructor to avoid the costly computation.
    */
@@ -84,10 +82,6 @@ class BabyJubPoint extends Point implements IGroup {
     } else {
       return res;
     }
-  }
-
-  toScalar(): BigInt {
-    return bigIntMod(BigInt(new BN(this.serialize()).toString()), q);
   }
 }
 

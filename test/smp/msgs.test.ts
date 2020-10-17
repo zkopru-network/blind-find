@@ -1,13 +1,11 @@
-import BN from "bn.js";
-
-import { Short } from "../../src/smp/dataTypes";
+import { Scalar, Point, Short } from "../../src/smp/dataTypes";
 import {
   BaseSMPMessage,
   SMPMessage1,
   SMPMessage2,
   SMPMessage3,
   SMPMessage4,
-  TLV
+  TLV,
 } from "../../src/smp/msgs";
 import {
   smpMessage1Factory,
@@ -16,8 +14,7 @@ import {
   smpMessage4Factory
 } from "../../src/smp/factories";
 import { ValueError } from "../../src/smp/exceptions";
-import { MultiplicativeGroup } from "../../src/smp/multiplicativeGroup";
-import { defaultConfig } from "../../src/smp/config";
+import { BabyJubPoint } from "../../src/smp/babyJub";
 
 describe("TLV", () => {
   test("succeeds", () => {
@@ -56,120 +53,77 @@ describe("TLV", () => {
 });
 
 describe("BaseSMPMessage", () => {
-  test("tlvToMPIs succeeds", () => {
-    const bytes = new Uint8Array([
-      0,
-      0,
-      0,
-      2, // Int: length=2
-      0,
-      0,
-      0,
-      1,
-      1, // 1
-      0,
-      0,
-      0,
-      1,
-      2 // 2
-    ]);
-    const type = new Short(0);
-    const tlv = new TLV(type, bytes);
-    const mpis = BaseSMPMessage.tlvToMPIs(type, 2, tlv);
-    expect(mpis[0].value.eqn(1)).toBeTruthy();
-    expect(mpis[1].value.eqn(2)).toBeTruthy();
+  const t = new Short(1);
+  const p = new Point([
+    BigInt(
+      "17777552123799933955779906779655732241715742912184938656739573121738514868268"
+    ),
+    BigInt(
+      "2626589144620713026669568689430873010625803728049924121243784502389097019475"
+    )
+  ]);
+  const pObj = new BabyJubPoint(p.point);
+  const s = new Scalar(4);
+  const sObj = s.value;
+  const elements = [
+    pObj, sObj, sObj, pObj, sObj, sObj
+  ];
+  const bytes = new Uint8Array([
+    ...p.serialize(),
+    ...s.serialize(),
+    ...s.serialize(),
+    ...p.serialize(),
+    ...s.serialize(),
+    ...s.serialize(),
+  ]);
+  const tlv = new TLV(t, bytes);
+
+  test('fromTLVToElements', () => {
+    const values = SMPMessage1.fromTLVToElements(t, tlv);
+    expect(values).toEqual(elements);
   });
-  test("tlvToMPIs fails", () => {
-    const bytes = new Uint8Array([
-      0,
-      0,
-      0,
-      2, // Int: length=2
-      0,
-      0,
-      0,
-      1,
-      1, // 1
-      0,
-      0,
-      0,
-      1,
-      2 // 2
-    ]);
-    const type = new Short(0);
-    const tlv = new TLV(type, bytes);
-    const typeAnother = new Short(1);
-    // Wrong type
-    expect(() => {
-      BaseSMPMessage.tlvToMPIs(typeAnother, 2, tlv);
-    }).toThrowError(ValueError);
-    // Wrong length
-    expect(() => {
-      BaseSMPMessage.tlvToMPIs(type, 3, tlv);
-    }).toThrowError(ValueError);
-    // Invalid MPI format
-    const wrongMPIs = new Uint8Array([
-      0,
-      0,
-      0,
-      1, // length=1
-      0
-    ]);
-    const wrongTLV = new TLV(type, wrongMPIs);
-    expect(() => {
-      BaseSMPMessage.tlvToMPIs(type, 2, wrongTLV);
-    }).toThrowError(ValueError);
+
+  test('fromElementsToTLV', () => {
+    const tlv2 = SMPMessage1.fromElementsToTLV(t, elements);
+    expect(tlv2.type.value).toEqual(tlv.type.value);
+    expect(tlv2.value).toEqual(tlv.value);
   });
+
+  test('fromElementsToTLV(fromTLVToElements(tlv))', () => {
+    const tlv2 = SMPMessage1.fromElementsToTLV(t, SMPMessage1.fromTLVToElements(t, tlv));
+    expect(tlv2.type.value).toEqual(tlv.type.value);
+    expect(tlv2.value).toEqual(tlv.value);
+  });
+
 });
 
 describe("SMPMessages", () => {
-  const q = defaultConfig.q;
   const areSMPMessagesEqual = (
     a: BaseSMPMessage,
     b: BaseSMPMessage
-  ): boolean => {
-    if (a.wireValues.length !== b.wireValues.length) {
-      return false;
-    }
-    for (const index in a.wireValues) {
-      const aField = a.wireValues[index];
-      const bField = a.wireValues[index];
-      if (aField instanceof BN && bField instanceof BN) {
-        return aField.eq(bField);
-      } else if (
-        aField instanceof MultiplicativeGroup &&
-        bField instanceof MultiplicativeGroup
-      ) {
-        return aField.equal(bField);
-      } else {
-        return false;
-      }
-    }
-    return true;
+  ): void => {
+    const tlvA = a.toTLV();
+    const tlvB = b.toTLV();
+    expect(tlvA.type.value).toEqual(tlvB.type.value);
+    expect(tlvA.value).toEqual(tlvB.value);
   };
 
   test("SMPMessage1 succeeds", () => {
     const msg = smpMessage1Factory();
-    expect(
-      areSMPMessagesEqual(msg, SMPMessage1.fromTLV(msg.toTLV(), q))
-    ).toBeTruthy();
+    areSMPMessagesEqual(msg, SMPMessage1.fromTLV(msg.toTLV()));
   });
+
   test("SMPMessage2 succeeds", () => {
     const msg = smpMessage2Factory();
-    expect(
-      areSMPMessagesEqual(msg, SMPMessage2.fromTLV(msg.toTLV(), q))
-    ).toBeTruthy();
+    areSMPMessagesEqual(msg, SMPMessage2.fromTLV(msg.toTLV()));
   });
+
   test("SMPMessage3 succeeds", () => {
     const msg = smpMessage3Factory();
-    expect(
-      areSMPMessagesEqual(msg, SMPMessage3.fromTLV(msg.toTLV(), q))
-    ).toBeTruthy();
+    areSMPMessagesEqual(msg, SMPMessage3.fromTLV(msg.toTLV()));
   });
   test("SMPMessage4 succeeds", () => {
     const msg = smpMessage4Factory();
-    expect(
-      areSMPMessagesEqual(msg, SMPMessage4.fromTLV(msg.toTLV(), q))
-    ).toBeTruthy();
+    areSMPMessagesEqual(msg, SMPMessage4.fromTLV(msg.toTLV()));
   });
 });
