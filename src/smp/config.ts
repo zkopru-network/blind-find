@@ -1,5 +1,5 @@
 import { babyJub } from "circomlib";
-import { PubKey as ECPoint } from "maci-crypto";
+import { ECPoint } from './types';
 
 const q = babyJub.subOrder as BigInt;
 const G = babyJub.Base8 as ECPoint;

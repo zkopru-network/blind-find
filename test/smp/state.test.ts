@@ -1,5 +1,3 @@
-import BN from "bn.js";
-
 import { SMPStateMachine } from "../../src/smp/state";
 import { SMPNotFinished, ValueError } from "../../src/smp/exceptions";
 import {
@@ -18,8 +16,8 @@ describe("test `SMPStateMachine`", () => {
       new SMPStateMachine(1);
       // A `string` is fine to be a secret
       new SMPStateMachine("secret");
-      // A `BN` is fine to be a secret
-      new SMPStateMachine(new BN(1));
+      // A `BigInt` is fine to be a secret
+      new SMPStateMachine(BigInt(1));
       // A `Uint8Array` is fine too.
       new SMPStateMachine(new Uint8Array([1]));
     });

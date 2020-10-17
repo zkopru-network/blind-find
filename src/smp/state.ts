@@ -1,15 +1,12 @@
 /**
  * SMP state and state machine
  */
-
-import { randomBytes } from "crypto";
-
-import BN from "bn.js";
-import { sha256 } from "js-sha256";
-
-import { MultiplicativeGroup } from "./babyJub";
-import { Config, defaultConfig } from "./config";
+import BN from 'bn.js';
+import { BabyJubPoint } from "./babyJub";
+import { sha256 } from 'js-sha256';
+import { q, G } from "./config";
 import { smpHash } from "./hash";
+import { BIG_ENDIAN } from './constants';
 
 import {
   makeProofDiscreteLog,
@@ -35,6 +32,8 @@ import {
 import { SMPMessage1, SMPMessage2, SMPMessage3, SMPMessage4 } from "./msgs";
 
 import { TLV } from "./msgs";
+import { babyJubPointToScalar, bigIntMod, uint8ArrayToBigInt } from "./utils";
+import { genPrivKey } from "maci-crypto";
 
 type TypeTLVOrNull = TLV | null;
 
@@ -59,13 +58,12 @@ interface ISMPState {
  */
 abstract class BaseSMPState implements ISMPState {
   // Public
-  readonly q: BN;
-  readonly g1: MultiplicativeGroup;
+  readonly q: BigInt;
+  readonly g1: BabyJubPoint;
 
-  constructor(readonly x: BN, readonly config: Config) {
-    this.q = config.q;
-    this.g1 = config.g;
-    this.config = config;
+  constructor(readonly x: BigInt) {
+    this.q = q;
+    this.g1 = new BabyJubPoint(G);
   }
 
   abstract transit(msg: TypeTLVOrNull): [ISMPState, TypeTLVOrNull];
@@ -75,17 +73,16 @@ abstract class BaseSMPState implements ISMPState {
    * Hash function used by SMP protocol. A `version` is prefixed before inputs.
    */
   getHashFunc(version: number): THashFunc {
-    return (...args: BN[]): BN => {
-      return smpHash(version, ...args);
+    return (...args: BabyJubPoint[]): BigInt => {
+      return smpHash(version, ...args.map(babyJubPointToScalar));
     };
   }
 
   /**
-   * Generate a random integer in the range [0, `this.config.modulus`).
+   * Generate a random integer in scalar's field.
    */
-  getRandomSecret(): BN {
-    const buf = randomBytes(this.config.modulusSize);
-    return new BN(buf.toString("hex"), "hex").umod(this.config.q);
+  getRandomSecret(): BigInt {
+    return genPrivKey();
   }
 
   /**
@@ -95,8 +92,8 @@ abstract class BaseSMPState implements ISMPState {
    */
   makeDHPubkey(
     version: number,
-    secretKey: BN
-  ): [MultiplicativeGroup, ProofDiscreteLog] {
+    secretKey: BigInt
+  ): [BabyJubPoint, ProofDiscreteLog] {
     const pubkey = this.g1.exponentiate(secretKey);
     const proof = makeProofDiscreteLog(
       this.getHashFunc(version),
@@ -113,7 +110,7 @@ abstract class BaseSMPState implements ISMPState {
    */
   verifyDHPubkey(
     version: number,
-    pubkey: MultiplicativeGroup,
+    pubkey: BabyJubPoint,
     proof: ProofDiscreteLog
   ): boolean {
     return verifyProofDiscreteLog(
@@ -131,19 +128,18 @@ abstract class BaseSMPState implements ISMPState {
    * @param secretKey - Our private key.
    */
   makeDHSharedSecret(
-    g: MultiplicativeGroup,
-    secretKey: BN
-  ): MultiplicativeGroup {
+    g: BabyJubPoint,
+    secretKey: BigInt
+  ): BabyJubPoint {
     return g.exponentiate(secretKey);
   }
 
   /**
-   * Check if a multiplicative group element is valid for SMP protocol.
-   * @param g - A multiplicative group element used in SMP protocol.
+   * Check if a group element is valid for SMP protocol.
+   * @param g - A group element used in SMP protocol.
    */
-  verifyMultiplicativeGroup(g: MultiplicativeGroup): boolean {
-    // 2 <= g.value <= (modulus - 2)
-    return g.value.gtn(1) && g.value.lt(this.config.modulus.subn(1));
+  verifyGroup(g: BabyJubPoint): boolean {
+    return g.isValid();
   }
 
   /**
@@ -156,9 +152,9 @@ abstract class BaseSMPState implements ISMPState {
    */
   makePLQL(
     version: number,
-    g2: MultiplicativeGroup,
-    g3: MultiplicativeGroup
-  ): [MultiplicativeGroup, MultiplicativeGroup, ProofEqualDiscreteCoordinates] {
+    g2: BabyJubPoint,
+    g3: BabyJubPoint
+  ): [BabyJubPoint, BabyJubPoint, ProofEqualDiscreteCoordinates] {
     const randomValue = this.getRandomSecret();
     const pL = g3.exponentiate(randomValue);
     const qL = this.g1
@@ -190,10 +186,10 @@ abstract class BaseSMPState implements ISMPState {
    */
   verifyPRQRProof(
     version: number,
-    g2: MultiplicativeGroup,
-    g3: MultiplicativeGroup,
-    pR: MultiplicativeGroup,
-    qR: MultiplicativeGroup,
+    g2: BabyJubPoint,
+    g3: BabyJubPoint,
+    pR: BabyJubPoint,
+    qR: BabyJubPoint,
     proof: ProofEqualDiscreteCoordinates
   ): boolean {
     return verifyProofEqualDiscreteCoordinates(
@@ -217,10 +213,10 @@ abstract class BaseSMPState implements ISMPState {
    */
   makeRL(
     version: number,
-    s3: BN,
-    qa: MultiplicativeGroup,
-    qb: MultiplicativeGroup
-  ): [MultiplicativeGroup, ProofEqualDiscreteLogs] {
+    s3: BigInt,
+    qa: BabyJubPoint,
+    qb: BabyJubPoint
+  ): [BabyJubPoint, ProofEqualDiscreteLogs] {
     const qaDivQb = qa.operate(qb.inverse());
     const rL = qaDivQb.exponentiate(s3);
     const raProof = makeProofEqualDiscreteLogs(
@@ -248,11 +244,11 @@ abstract class BaseSMPState implements ISMPState {
    */
   verifyRR(
     version: number,
-    g3R: MultiplicativeGroup,
-    rR: MultiplicativeGroup,
+    g3R: BabyJubPoint,
+    rR: BabyJubPoint,
     proof: ProofEqualDiscreteLogs,
-    qa: MultiplicativeGroup,
-    qb: MultiplicativeGroup
+    qa: BabyJubPoint,
+    qb: BabyJubPoint
   ): boolean {
     return verifyProofEqualDiscreteLogs(
       this.getHashFunc(version),
@@ -270,17 +266,17 @@ abstract class BaseSMPState implements ISMPState {
    * @param rR - Partial `R` from the remote. It is `Rb` in the spec if we are an initiator,
    *  otherwise, `Ra`.
    */
-  makeRab(s3: BN, rR: MultiplicativeGroup): MultiplicativeGroup {
+  makeRab(s3: BigInt, rR: BabyJubPoint): BabyJubPoint {
     return rR.exponentiate(s3);
   }
 }
 
 class SMPState1 extends BaseSMPState {
-  s2: BN;
-  s3: BN;
+  s2: BigInt;
+  s3: BigInt;
 
-  constructor(x: BN, config: Config) {
-    super(x, config);
+  constructor(x: BigInt) {
+    super(x);
     this.s2 = this.getRandomSecret();
     this.s3 = this.getRandomSecret();
   }
@@ -295,7 +291,6 @@ class SMPState1 extends BaseSMPState {
       const msg = new SMPMessage1(g2a, g2aProof, g3a, g3aProof);
       const state = new SMPState2(
         this.x,
-        this.config,
         this.s2,
         this.s3,
         g2a,
@@ -307,11 +302,11 @@ class SMPState1 extends BaseSMPState {
         Step 1: Bob verifies received data, makes its slice of DH, and sends
         `g2b`, `g3b`, `Pb`, `Qb` to Alice.
       */
-      const msg = SMPMessage1.fromTLV(tlv, this.config.modulus);
+      const msg = SMPMessage1.fromTLV(tlv);
       // Verify pubkey's value
       if (
-        !this.verifyMultiplicativeGroup(msg.g2a) ||
-        !this.verifyMultiplicativeGroup(msg.g3a)
+        !this.verifyGroup(msg.g2a) ||
+        !this.verifyGroup(msg.g3a)
       ) {
         throw new InvalidGroupElement();
       }
@@ -340,7 +335,6 @@ class SMPState1 extends BaseSMPState {
       );
       const state = new SMPState3(
         this.x,
-        this.config,
         this.s2,
         this.s3,
         g2b,
@@ -359,14 +353,13 @@ class SMPState1 extends BaseSMPState {
 
 class SMPState2 extends BaseSMPState {
   constructor(
-    x: BN,
-    config: Config,
-    readonly s2: BN,
-    readonly s3: BN,
-    readonly g2L: MultiplicativeGroup,
-    readonly g3L: MultiplicativeGroup
+    x: BigInt,
+    readonly s2: BigInt,
+    readonly s3: BigInt,
+    readonly g2L: BabyJubPoint,
+    readonly g3L: BabyJubPoint
   ) {
-    super(x, config);
+    super(x);
   }
   getResult(): boolean | null {
     return null;
@@ -376,16 +369,16 @@ class SMPState2 extends BaseSMPState {
     if (tlv === null) {
       throw new ValueError();
     }
-    const msg = SMPMessage2.fromTLV(tlv, this.config.modulus);
+    const msg = SMPMessage2.fromTLV(tlv);
     /*
       Step 2: Alice receives bob's DH slices, P Q, and their proofs.
     */
     // Verify
     if (
-      !this.verifyMultiplicativeGroup(msg.g2b) ||
-      !this.verifyMultiplicativeGroup(msg.g3b) ||
-      !this.verifyMultiplicativeGroup(msg.pb) ||
-      !this.verifyMultiplicativeGroup(msg.qb)
+      !this.verifyGroup(msg.g2b) ||
+      !this.verifyGroup(msg.g3b) ||
+      !this.verifyGroup(msg.pb) ||
+      !this.verifyGroup(msg.qb)
     ) {
       throw new InvalidGroupElement();
     }
@@ -410,7 +403,6 @@ class SMPState2 extends BaseSMPState {
     // Advance the step
     const state = new SMPState4(
       this.x,
-      this.config,
       this.s2,
       this.s3,
       this.g2L,
@@ -432,20 +424,19 @@ class SMPState2 extends BaseSMPState {
 
 class SMPState3 extends BaseSMPState {
   constructor(
-    x: BN,
-    config: Config,
-    readonly s2: BN,
-    readonly s3: BN,
-    readonly g2L: MultiplicativeGroup,
-    readonly g3L: MultiplicativeGroup,
-    readonly g2: MultiplicativeGroup,
-    readonly g3: MultiplicativeGroup,
-    readonly g2R: MultiplicativeGroup,
-    readonly g3R: MultiplicativeGroup,
-    readonly pL: MultiplicativeGroup,
-    readonly qL: MultiplicativeGroup
+    x: BigInt,
+    readonly s2: BigInt,
+    readonly s3: BigInt,
+    readonly g2L: BabyJubPoint,
+    readonly g3L: BabyJubPoint,
+    readonly g2: BabyJubPoint,
+    readonly g3: BabyJubPoint,
+    readonly g2R: BabyJubPoint,
+    readonly g3R: BabyJubPoint,
+    readonly pL: BabyJubPoint,
+    readonly qL: BabyJubPoint
   ) {
-    super(x, config);
+    super(x);
   }
   getResult(): boolean | null {
     return null;
@@ -454,16 +445,16 @@ class SMPState3 extends BaseSMPState {
     if (tlv === null) {
       throw new ValueError();
     }
-    const msg = SMPMessage3.fromTLV(tlv, this.config.modulus);
+    const msg = SMPMessage3.fromTLV(tlv);
     /*
       Step 3: Bob receives `Pa`, `Qa`, `Ra` along with their proofs,
       calculates `Rb` and `Rab` accordingly.
     */
     // Verify
     if (
-      !this.verifyMultiplicativeGroup(msg.pa) ||
-      !this.verifyMultiplicativeGroup(msg.qa) ||
-      !this.verifyMultiplicativeGroup(msg.ra)
+      !this.verifyGroup(msg.pa) ||
+      !this.verifyGroup(msg.qa) ||
+      !this.verifyGroup(msg.ra)
     ) {
       throw new InvalidGroupElement();
     }
@@ -481,7 +472,6 @@ class SMPState3 extends BaseSMPState {
     const rab = this.makeRab(this.s3, msg.ra);
     const state = new SMPStateFinished(
       this.x,
-      this.config,
       msg.pa,
       this.pL,
       rab
@@ -492,23 +482,22 @@ class SMPState3 extends BaseSMPState {
 
 class SMPState4 extends BaseSMPState {
   constructor(
-    x: BN,
-    config: Config,
-    readonly s2: BN,
-    readonly s3: BN,
-    readonly g2L: MultiplicativeGroup,
-    readonly g3L: MultiplicativeGroup,
-    readonly g2R: MultiplicativeGroup,
-    readonly g3R: MultiplicativeGroup,
-    readonly g2: MultiplicativeGroup,
-    readonly g3: MultiplicativeGroup,
-    readonly pL: MultiplicativeGroup,
-    readonly qL: MultiplicativeGroup,
-    readonly pR: MultiplicativeGroup,
-    readonly qR: MultiplicativeGroup,
-    readonly rL: MultiplicativeGroup
+    x: BigInt,
+    readonly s2: BigInt,
+    readonly s3: BigInt,
+    readonly g2L: BabyJubPoint,
+    readonly g3L: BabyJubPoint,
+    readonly g2R: BabyJubPoint,
+    readonly g3R: BabyJubPoint,
+    readonly g2: BabyJubPoint,
+    readonly g3: BabyJubPoint,
+    readonly pL: BabyJubPoint,
+    readonly qL: BabyJubPoint,
+    readonly pR: BabyJubPoint,
+    readonly qR: BabyJubPoint,
+    readonly rL: BabyJubPoint
   ) {
-    super(x, config);
+    super(x);
   }
   getResult(): boolean | null {
     return null;
@@ -522,8 +511,8 @@ class SMPState4 extends BaseSMPState {
     if (tlv === null) {
       throw new ValueError();
     }
-    const msg = SMPMessage4.fromTLV(tlv, this.config.modulus);
-    if (!this.verifyMultiplicativeGroup(msg.rb)) {
+    const msg = SMPMessage4.fromTLV(tlv);
+    if (!this.verifyGroup(msg.rb)) {
       throw new InvalidGroupElement();
     }
     if (!this.verifyRR(8, this.g3R, msg.rb, msg.rbProof, this.qL, this.qR)) {
@@ -532,7 +521,6 @@ class SMPState4 extends BaseSMPState {
     const rab = this.makeRab(this.s3, msg.rb);
     const state = new SMPStateFinished(
       this.x,
-      this.config,
       this.pL,
       this.pR,
       rab
@@ -543,13 +531,12 @@ class SMPState4 extends BaseSMPState {
 
 class SMPStateFinished extends BaseSMPState {
   constructor(
-    x: BN,
-    config: Config,
-    readonly pa: MultiplicativeGroup,
-    readonly pb: MultiplicativeGroup,
-    readonly rab: MultiplicativeGroup
+    x: BigInt,
+    readonly pa: BabyJubPoint,
+    readonly pb: BabyJubPoint,
+    readonly rab: BabyJubPoint
   ) {
-    super(x, config);
+    super(x);
   }
   getResult(): boolean {
     return this.rab.equal(this.pa.operate(this.pb.inverse()));
@@ -559,7 +546,7 @@ class SMPStateFinished extends BaseSMPState {
   }
 }
 
-type TSecret = number | string | BN | Uint8Array;
+type TSecret = number | string | BigInt | Uint8Array;
 
 /**
  * SMP state machine in the spec. `SMPStateMachine` is initialized, performs state transition with
@@ -580,33 +567,32 @@ class SMPStateMachine {
 
   /**
    * @param x - Our secret to be compared in SMP protocol.
-   * @param config - Config for the underlying math and serialization.
    */
-  constructor(x: TSecret, config: Config = defaultConfig) {
-    this.state = new SMPState1(this.normalizeSecret(x).umod(config.q), config);
+  constructor(x: TSecret) {
+    this.state = new SMPState1(this.normalizeSecret(x));
   }
 
   /**
-   * Transform the secret from different types to the internal type `BN`. Multiple types are
-   * accepted for the secret to make it convenient for users, but we use `BN` internally.
+   * Transform the secret from different types to the internal type `BigInt`. Multiple types are
+   * accepted for the secret to make it convenient for users, but we use `BigInt` internally.
    *
    * @param x - Our SMP secret.
    */
-  private normalizeSecret(x: TSecret): BN {
-    let res: BN;
+  private normalizeSecret(x: TSecret): BigInt {
+    let res: BigInt;
     if (typeof x === "number") {
-      res = new BN(x);
+      res = BigInt(x);
     } else if (typeof x === "string") {
-      res = new BN(sha256(x), "hex");
+      res = BigInt(new BN(sha256(x), "hex").toString());
     } else if (x instanceof Uint8Array) {
-      res = new BN(x);
-    } else if (x instanceof BN) {
+      res = uint8ArrayToBigInt(x, BIG_ENDIAN);
+    } else if (typeof x === 'bigint') {
       res = x;
     } else {
       // Sanity check
       throw new ValueError("secret can only be the type of `TSecret`");
     }
-    return res;
+    return bigIntMod(res, q);
   }
 
   // TODO: Add initiate, which makes `transit` get rid of `null`.

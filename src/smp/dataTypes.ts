@@ -3,15 +3,12 @@
  * Ref: https://github.com/otrv4/otrv4/blob/master/otrv4.md#data-types
  */
 
-import BN from "bn.js";
-
 import { BIG_ENDIAN, LITTLE_ENDIAN } from "./constants";
 import { ECPoint } from "./config";
 import { babyJub } from "circomlib";
-import { concatUint8Array, bigIntToNumber } from "./utils";
+import { concatUint8Array, bigIntToNumber, uint8ArrayToBigInt, bigIntToUint8Array } from "./utils";
 import { NotImplemented, ValueError } from "./exceptions";
-
-type TEndian = typeof BIG_ENDIAN | typeof LITTLE_ENDIAN;
+import { TEndian } from './types';
 
 /**
  * Base class for types that can be {de}serialized.
@@ -54,28 +51,6 @@ class BaseFixedInt extends BaseSerializable {
   serialize(): Uint8Array {
     throw new NotImplemented(); // Make tsc happy
   }
-}
-
-/**
- * Serialize `value` to its binary representation. [[BN]] is to perform [de]serialization.
- *
- * @param value - The integer to be serialized.
- * @param size - Number of bytes the binary representation should occupy.
- * @param endian - Endian the binary representation should follow.
- */
-function bigIntToUint8Array(
-  value: BigInt,
-  endian: TEndian,
-  size?: number
-): Uint8Array {
-  return new Uint8Array(new BN(value.toString()).toArray(endian, size));
-}
-
-/**
- * Parse a number from its binary representation. [[BN]] is to perform [de]serialization.
- */
-function uint8ArrayToBigInt(a: Uint8Array, endian: TEndian): BigInt {
-  return BigInt(new BN(a, undefined, endian).toString());
 }
 
 /**
@@ -168,9 +143,7 @@ class MPI implements BaseSerializable {
     if (bytes.length - this.lengthSize < len) {
       throw new ValueError("`bytes` is not long enough for `len`");
     }
-    const value = BigInt(
-      new BN(bytes.slice(this.lengthSize, this.lengthSize + len)).toString()
-    );
+    const value = uint8ArrayToBigInt(bytes.slice(this.lengthSize, this.lengthSize + len), BIG_ENDIAN);
     return [new MPI(value), bytes.slice(this.lengthSize + len)];
   }
 

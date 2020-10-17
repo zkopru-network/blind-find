@@ -3,6 +3,7 @@ import { BabyJubPoint } from "./babyJub";
 import { ValueError } from "./exceptions";
 import { q } from "./config";
 import { Point } from "./dataTypes";
+import { TEndian } from './types';
 
 /**
  * Concatenate two `Uint8Array` into one.
@@ -40,6 +41,30 @@ export const bigIntToNumber = (a: BigInt): number => {
   }
   return Number(a);
 };
+
+
+/**
+ * Serialize `value` to its binary representation. [[BN]] is to perform [de]serialization.
+ *
+ * @param value - The integer to be serialized.
+ * @param size - Number of bytes the binary representation should occupy.
+ * @param endian - Endian the binary representation should follow.
+ */
+export const bigIntToUint8Array = (
+  value: BigInt,
+  endian: TEndian,
+  size?: number
+): Uint8Array => {
+  return new Uint8Array(new BN(value.toString()).toArray(endian, size));
+}
+
+/**
+ * Parse a number from its binary representation. [[BN]] is to perform [de]serialization.
+ */
+export const uint8ArrayToBigInt = (a: Uint8Array, endian: TEndian): BigInt => {
+  return BigInt(new BN(a, undefined, endian).toString());
+}
+
 
 export const babyJubPointToScalar = (a: BabyJubPoint): BigInt => {
   return bigIntMod(
