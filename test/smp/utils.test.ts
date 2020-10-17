@@ -1,5 +1,9 @@
 import { ValueError } from "../../src/smp/exceptions";
-import { concatUint8Array, bigIntMod, bigIntToNumber } from "../../src/smp/utils";
+import {
+  concatUint8Array,
+  bigIntMod,
+  bigIntToNumber
+} from "../../src/smp/utils";
 
 describe("concatUint8Array", () => {
   test("hardcoded", () => {
@@ -44,7 +48,7 @@ describe("bigIntMod", () => {
   });
 });
 
-describe('bigIntToNumber', () => {
+describe("bigIntToNumber", () => {
   test("succeeds", () => {
     bigIntToNumber(BigInt(Number.MAX_SAFE_INTEGER));
     bigIntToNumber(BigInt(0));
@@ -53,10 +57,10 @@ describe('bigIntToNumber', () => {
 
   test("fails", () => {
     expect(() => {
-        bigIntToNumber(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1));
+      bigIntToNumber(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1));
     }).toThrowError(ValueError);
     expect(() => {
-        bigIntToNumber(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1));
+      bigIntToNumber(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1));
     }).toThrowError(ValueError);
   });
 });

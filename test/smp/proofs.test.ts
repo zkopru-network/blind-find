@@ -17,10 +17,7 @@ const version = 1;
 const numTimesRetry = 100;
 
 function hash(...args: BabyJubPoint[]): BigInt {
-  return smpHash(
-    version,
-    ...args.map(babyJubPointToScalar),
-  );
+  return smpHash(version, ...args.map(babyJubPointToScalar));
 }
 
 function factoryExclude<T>(

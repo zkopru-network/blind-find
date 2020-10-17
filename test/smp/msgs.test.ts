@@ -5,7 +5,7 @@ import {
   SMPMessage2,
   SMPMessage3,
   SMPMessage4,
-  TLV,
+  TLV
 } from "../../src/smp/msgs";
 import {
   smpMessage1Factory,
@@ -65,43 +65,40 @@ describe("BaseSMPMessage", () => {
   const pObj = new BabyJubPoint(p.point);
   const s = new Scalar(4);
   const sObj = s.value;
-  const elements = [
-    pObj, sObj, sObj, pObj, sObj, sObj
-  ];
+  const elements = [pObj, sObj, sObj, pObj, sObj, sObj];
   const bytes = new Uint8Array([
     ...p.serialize(),
     ...s.serialize(),
     ...s.serialize(),
     ...p.serialize(),
     ...s.serialize(),
-    ...s.serialize(),
+    ...s.serialize()
   ]);
   const tlv = new TLV(t, bytes);
 
-  test('fromTLVToElements', () => {
+  test("fromTLVToElements", () => {
     const values = SMPMessage1.fromTLVToElements(t, tlv);
     expect(values).toEqual(elements);
   });
 
-  test('fromElementsToTLV', () => {
+  test("fromElementsToTLV", () => {
     const tlv2 = SMPMessage1.fromElementsToTLV(t, elements);
     expect(tlv2.type.value).toEqual(tlv.type.value);
     expect(tlv2.value).toEqual(tlv.value);
   });
 
-  test('fromElementsToTLV(fromTLVToElements(tlv))', () => {
-    const tlv2 = SMPMessage1.fromElementsToTLV(t, SMPMessage1.fromTLVToElements(t, tlv));
+  test("fromElementsToTLV(fromTLVToElements(tlv))", () => {
+    const tlv2 = SMPMessage1.fromElementsToTLV(
+      t,
+      SMPMessage1.fromTLVToElements(t, tlv)
+    );
     expect(tlv2.type.value).toEqual(tlv.type.value);
     expect(tlv2.value).toEqual(tlv.value);
   });
-
 });
 
 describe("SMPMessages", () => {
-  const areSMPMessagesEqual = (
-    a: BaseSMPMessage,
-    b: BaseSMPMessage
-  ): void => {
+  const areSMPMessagesEqual = (a: BaseSMPMessage, b: BaseSMPMessage): void => {
     const tlvA = a.toTLV();
     const tlvB = b.toTLV();
     expect(tlvA.type.value).toEqual(tlvB.type.value);

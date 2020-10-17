@@ -42,8 +42,7 @@ interface IGroup {
 }
 
 class BabyJubPoint implements IGroup {
-  constructor(readonly point: ECPoint) {
-  }
+  constructor(readonly point: ECPoint) {}
   /**
    * The element is valid or not. This is not done in the constructor to avoid the costly computation.
    */

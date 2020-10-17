@@ -1,4 +1,4 @@
-import { BabyJubPoint } from './babyJub';
+import { BabyJubPoint } from "./babyJub";
 
 import {
   ProofDiscreteLog,
@@ -6,7 +6,13 @@ import {
   ProofEqualDiscreteLogs
 } from "./proofs";
 
-import { BaseFixedInt, BaseSerializable, Short, Scalar, Point } from "./dataTypes";
+import {
+  BaseFixedInt,
+  BaseSerializable,
+  Short,
+  Scalar,
+  Point
+} from "./dataTypes";
 
 import { concatUint8Array, bigIntToNumber } from "./utils";
 import { NotImplemented, ValueError } from "./exceptions";
@@ -34,7 +40,9 @@ class TLV extends BaseSerializable {
     const length = Short.deserialize(
       bytes.slice(typeSize, typeSize + lengthSize)
     );
-    const expectedTLVTotalSize = bigIntToNumber(BigInt(typeSize) + BigInt(lengthSize) + BigInt(length.value));
+    const expectedTLVTotalSize = bigIntToNumber(
+      BigInt(typeSize) + BigInt(lengthSize) + BigInt(length.value)
+    );
     if (bytes.length < expectedTLVTotalSize) {
       throw new ValueError("`bytes` is not long enough");
     }
@@ -66,7 +74,10 @@ abstract class BaseSMPMessage {
   static wireTypes: WireTypes;
   static tlvType: BaseFixedInt;
 
-  static fromTLVToElements(expectedMsgType: BaseFixedInt, tlv: TLV): SMPMessageElementList {
+  static fromTLVToElements(
+    expectedMsgType: BaseFixedInt,
+    tlv: TLV
+  ): SMPMessageElementList {
     if (expectedMsgType.value !== tlv.type.value) {
       throw new ValueError(
         `type mismatch: type.value=${expectedMsgType.value}, tlv.type.value=${tlv.type.value}`
@@ -80,7 +91,9 @@ abstract class BaseSMPMessage {
         value = Scalar.deserialize(bytes.slice(0, Scalar.size)).value;
         bytes = bytes.slice(Scalar.size);
       } else {
-        value = new BabyJubPoint(Point.deserialize(bytes.slice(0, Point.size)).point);
+        value = new BabyJubPoint(
+          Point.deserialize(bytes.slice(0, Point.size)).point
+        );
         bytes = bytes.slice(Point.size);
       }
       res.push(value);
@@ -93,7 +106,7 @@ abstract class BaseSMPMessage {
     elements: SMPMessageElementList
   ): TLV {
     if (elements.length !== this.wireTypes.length) {
-      throw new ValueError('length mismatch between elements and wireTypes');
+      throw new ValueError("length mismatch between elements and wireTypes");
     }
     let res = new Uint8Array([]);
     for (const index in this.wireTypes) {
@@ -133,7 +146,14 @@ abstract class BaseSMPMessage {
  *    g3a.
  */
 class SMPMessage1 extends BaseSMPMessage {
-  static wireTypes = [BabyJubPoint, BigInt, BigInt, BabyJubPoint, BigInt, BigInt];
+  static wireTypes = [
+    BabyJubPoint,
+    BigInt,
+    BigInt,
+    BabyJubPoint,
+    BigInt,
+    BigInt
+  ];
   static tlvType = new Short(2);
 
   constructor(
@@ -156,10 +176,14 @@ class SMPMessage1 extends BaseSMPMessage {
   }
 
   toTLV(): TLV {
-    return SMPMessage1.fromElementsToTLV(
-      SMPMessage1.tlvType,
-      [ this.g2a, this.g2aProof.c, this.g2aProof.d, this.g3a, this.g3aProof.c, this.g3aProof.d],
-    );
+    return SMPMessage1.fromElementsToTLV(SMPMessage1.tlvType, [
+      this.g2a,
+      this.g2aProof.c,
+      this.g2aProof.d,
+      this.g3a,
+      this.g3aProof.c,
+      this.g3aProof.d
+    ]);
   }
 }
 
@@ -218,15 +242,28 @@ class SMPMessage2 extends BaseSMPMessage {
       { c: elements[4] as BigInt, d: elements[5] as BigInt },
       elements[6] as BabyJubPoint,
       elements[7] as BabyJubPoint,
-      { c: elements[8] as BigInt, d0: elements[9] as BigInt, d1: elements[10] as BigInt },
+      {
+        c: elements[8] as BigInt,
+        d0: elements[9] as BigInt,
+        d1: elements[10] as BigInt
+      }
     );
   }
 
   toTLV(): TLV {
-    return SMPMessage2.fromElementsToTLV(
-      SMPMessage2.tlvType,
-      [ this.g2b, this.g2bProof.c, this.g2bProof.d, this.g3b, this.g3bProof.c, this.g3bProof.d, this.pb, this.qb, this.pbqbProof.c, this.pbqbProof.d0, this.pbqbProof.d1],
-    );
+    return SMPMessage2.fromElementsToTLV(SMPMessage2.tlvType, [
+      this.g2b,
+      this.g2bProof.c,
+      this.g2bProof.d,
+      this.g3b,
+      this.g3bProof.c,
+      this.g3bProof.d,
+      this.pb,
+      this.qb,
+      this.pbqbProof.c,
+      this.pbqbProof.d0,
+      this.pbqbProof.d1
+    ]);
   }
 }
 
@@ -272,26 +309,27 @@ class SMPMessage3 extends BaseSMPMessage {
     return new SMPMessage3(
       elements[0] as BabyJubPoint,
       elements[1] as BabyJubPoint,
-      { c: elements[2] as BigInt, d0: elements[3] as BigInt, d1: elements[4] as BigInt },
+      {
+        c: elements[2] as BigInt,
+        d0: elements[3] as BigInt,
+        d1: elements[4] as BigInt
+      },
       elements[5] as BabyJubPoint,
-      { c: elements[6] as BigInt, d: elements[7] as BigInt },
+      { c: elements[6] as BigInt, d: elements[7] as BigInt }
     );
   }
 
   toTLV(): TLV {
-    return SMPMessage3.fromElementsToTLV(
-      SMPMessage3.tlvType,
-      [
-        this.pa,
-        this.qa,
-        this.paqaProof.c,
-        this.paqaProof.d0,
-        this.paqaProof.d1,
-        this.ra,
-        this.raProof.c,
-        this.raProof.d
-      ],
-    );
+    return SMPMessage3.fromElementsToTLV(SMPMessage3.tlvType, [
+      this.pa,
+      this.qa,
+      this.paqaProof.c,
+      this.paqaProof.d0,
+      this.paqaProof.d1,
+      this.ra,
+      this.raProof.c,
+      this.raProof.d
+    ]);
   }
 }
 
@@ -317,17 +355,18 @@ class SMPMessage4 extends BaseSMPMessage {
 
   static fromTLV(tlv: TLV): SMPMessage4 {
     const elements = this.fromTLVToElements(this.tlvType, tlv);
-    return new SMPMessage4(
-      elements[0] as BabyJubPoint,
-      { c: elements[1] as BigInt, d: elements[2] as BigInt },
-    );
+    return new SMPMessage4(elements[0] as BabyJubPoint, {
+      c: elements[1] as BigInt,
+      d: elements[2] as BigInt
+    });
   }
 
   toTLV(): TLV {
-    return SMPMessage4.fromElementsToTLV(
-      SMPMessage4.tlvType,
-      [this.rb, this.rbProof.c, this.rbProof.d]
-    );
+    return SMPMessage4.fromElementsToTLV(SMPMessage4.tlvType, [
+      this.rb,
+      this.rbProof.c,
+      this.rbProof.d
+    ]);
   }
 }
 
@@ -337,5 +376,5 @@ export {
   SMPMessage2,
   SMPMessage3,
   SMPMessage4,
-  TLV,
+  TLV
 };

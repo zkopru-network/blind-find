@@ -2,7 +2,7 @@
  * Factory functions used for testing.
  */
 
-import { q, G } from './config';
+import { q, G } from "./config";
 
 import { genPrivKey, genPubKey } from "maci-crypto";
 import { BabyJubPoint } from "./babyJub";
@@ -12,16 +12,16 @@ import {
   SMPMessage1,
   SMPMessage2,
   SMPMessage3,
-  SMPMessage4,
-} from '../../src/smp/msgs';
+  SMPMessage4
+} from "../../src/smp/msgs";
 import {
   makeProofDiscreteLog,
   makeProofEqualDiscreteLogs,
-  makeProofEqualDiscreteCoordinates,
-} from '../../src/smp/proofs';
-import { smpHash } from '../../src/smp/hash';
+  makeProofEqualDiscreteCoordinates
+} from "../../src/smp/proofs";
+import { smpHash } from "../../src/smp/hash";
 
-import { babyJubPointToScalar } from './utils'
+import { babyJubPointToScalar } from "./utils";
 
 function secretFactory(): BigInt {
   return genPrivKey();
@@ -34,7 +34,7 @@ function babyJubPointFactory(): BabyJubPoint {
 const version = 1;
 
 function hash(...args: BabyJubPoint[]): BigInt {
-  return smpHash(version, ...(args.map(babyJubPointToScalar)));
+  return smpHash(version, ...args.map(babyJubPointToScalar));
 }
 
 function smpMessage1Factory(): SMPMessage1 {
@@ -109,5 +109,5 @@ export {
   smpMessage1Factory,
   smpMessage2Factory,
   smpMessage3Factory,
-  smpMessage4Factory,
+  smpMessage4Factory
 };
