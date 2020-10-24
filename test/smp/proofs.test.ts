@@ -42,7 +42,7 @@ function factoryExclude<T>(
   throw new Error(`failed to create a value excluding ${toBeExcluded}`);
 }
 
-function multiplicativeGroupFactoryExclude(
+function babyJubPointFactoryExclude(
   toBeExcluded: BabyJubPoint[]
 ): BabyJubPoint {
   return factoryExclude<BabyJubPoint>(
@@ -58,7 +58,7 @@ describe("ProofDiscreteLog", () => {
   const y = g.exponentiate(x);
   const r = secretFactory();
   const pf = makeProofDiscreteLog(hash, g, x, r, q);
-  const gAnother = multiplicativeGroupFactoryExclude([g, y]);
+  const gAnother = babyJubPointFactoryExclude([g, y]);
   test("make and verify", () => {
     expect(verifyProofDiscreteLog(hash, pf, g, y)).toBeTruthy();
   });
@@ -91,7 +91,7 @@ describe("ProofEqualDiscreteCoordinates", () => {
     r1,
     q
   );
-  const gAnother = multiplicativeGroupFactoryExclude([g0, g1, g2, y0, y1]);
+  const gAnother = babyJubPointFactoryExclude([g0, g1, g2, y0, y1]);
   test("make and verify", () => {
     expect(
       verifyProofEqualDiscreteCoordinates(hash, g0, g1, g2, y0, y1, proof)
@@ -132,7 +132,7 @@ describe("ProofEqualDiscreteLogs", () => {
   const y0 = g0.exponentiate(x);
   const y1 = g1.exponentiate(x);
   const proof = makeProofEqualDiscreteLogs(hash, g0, g1, x, r, q);
-  const gAnother = multiplicativeGroupFactoryExclude([g0, g1, y0, y1]);
+  const gAnother = babyJubPointFactoryExclude([g0, g1, y0, y1]);
   test("make and verify", () => {
     expect(
       verifyProofEqualDiscreteLogs(hash, g0, g1, y0, y1, proof)

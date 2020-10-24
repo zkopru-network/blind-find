@@ -13,13 +13,13 @@ import {
   SMPMessage2,
   SMPMessage3,
   SMPMessage4
-} from "../../src/smp/msgs";
+} from "./msgs";
 import {
   makeProofDiscreteLog,
   makeProofEqualDiscreteLogs,
   makeProofEqualDiscreteCoordinates
-} from "../../src/smp/proofs";
-import { smpHash } from "../../src/smp/hash";
+} from "./proofs";
+import { smpHash } from "./hash";
 
 import { babyJubPointToScalar } from "./utils";
 
