@@ -3,9 +3,9 @@
  * Ref: https://github.com/otrv4/otrv4/blob/master/otrv4.md#data-types
  */
 
-import { BIG_ENDIAN, LITTLE_ENDIAN } from "./constants";
-import { ECPoint } from "./config";
 import { babyJub } from "circomlib";
+import { BIG_ENDIAN, LITTLE_ENDIAN } from "./constants";
+import { ECPoint } from "./types";
 import {
   concatUint8Array,
   bigIntToNumber,
