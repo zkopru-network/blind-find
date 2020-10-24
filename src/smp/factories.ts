@@ -5,6 +5,7 @@
 import { q, G } from "./config";
 
 import { genPrivKey, genPubKey } from "maci-crypto";
+import { IGroup } from "./interfaces";
 import { BabyJubPoint } from "./babyJub";
 
 import {
@@ -33,8 +34,13 @@ function babyJubPointFactory(): BabyJubPoint {
 
 const version = 1;
 
-function hash(...args: BabyJubPoint[]): BigInt {
-  return smpHash(version, ...args.map(babyJubPointToScalar));
+function hash(...args: IGroup[]): BigInt {
+  return smpHash(
+    version,
+    ...args.map((g: IGroup) => {
+      return babyJubPointToScalar(g as BabyJubPoint);
+    })
+  );
 }
 
 function smpMessage1Factory(): SMPMessage1 {

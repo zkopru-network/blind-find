@@ -3,6 +3,7 @@
  */
 import BN from "bn.js";
 import { BabyJubPoint } from "./babyJub";
+import { IGroup } from "./interfaces";
 import { sha256 } from "js-sha256";
 import { q, G } from "./config";
 import { smpHash } from "./hash";
@@ -73,8 +74,13 @@ abstract class BaseSMPState implements ISMPState {
    * Hash function used by SMP protocol. A `version` is prefixed before inputs.
    */
   getHashFunc(version: number): THashFunc {
-    return (...args: BabyJubPoint[]): BigInt => {
-      return smpHash(version, ...args.map(babyJubPointToScalar));
+    return (...args: IGroup[]): BigInt => {
+      return smpHash(
+        version,
+        ...args.map((g: IGroup) => {
+          return babyJubPointToScalar(g as BabyJubPoint);
+        })
+      );
     };
   }
 

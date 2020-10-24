@@ -8,10 +8,10 @@
  * TODO: Change the proof types to classes?
  */
 
-import { BabyJubPoint } from "./babyJub";
+import { IGroup } from "./interfaces";
 import { bigIntMod } from "./utils";
 
-type THashFunc = (...args: BabyJubPoint[]) => BigInt;
+type THashFunc = (...args: IGroup[]) => BigInt;
 
 /**
  * Proof of discrete log based on Schnorr’s protocol, which proves that we know `x`
@@ -34,7 +34,7 @@ type ProofEqualDiscreteLogs = { c: BigInt; d: BigInt };
 
 function makeProofDiscreteLog(
   hashFunc: THashFunc,
-  g: BabyJubPoint,
+  g: IGroup,
   exponent: BigInt,
   randomValue: BigInt,
   q: BigInt
@@ -47,8 +47,8 @@ function makeProofDiscreteLog(
 function verifyProofDiscreteLog(
   hashFunc: THashFunc,
   proof: ProofDiscreteLog,
-  g: BabyJubPoint,
-  y: BabyJubPoint
+  g: IGroup,
+  y: IGroup
 ): boolean {
   return (
     proof.c ===
@@ -58,9 +58,9 @@ function verifyProofDiscreteLog(
 
 function makeProofEqualDiscreteCoordinates(
   hashFunc: THashFunc,
-  g0: BabyJubPoint,
-  g1: BabyJubPoint,
-  g2: BabyJubPoint,
+  g0: IGroup,
+  g1: IGroup,
+  g2: IGroup,
   exponent0: BigInt,
   exponent1: BigInt,
   randomValue0: BigInt,
@@ -80,11 +80,11 @@ function makeProofEqualDiscreteCoordinates(
 
 function verifyProofEqualDiscreteCoordinates(
   hashFunc: THashFunc,
-  g0: BabyJubPoint,
-  g1: BabyJubPoint,
-  g2: BabyJubPoint,
-  y0: BabyJubPoint,
-  y1: BabyJubPoint,
+  g0: IGroup,
+  g1: IGroup,
+  g2: IGroup,
+  y0: IGroup,
+  y1: IGroup,
   proof: ProofEqualDiscreteCoordinates
 ): boolean {
   return (
@@ -101,8 +101,8 @@ function verifyProofEqualDiscreteCoordinates(
 
 function makeProofEqualDiscreteLogs(
   hashFunc: THashFunc,
-  g0: BabyJubPoint,
-  g1: BabyJubPoint,
+  g0: IGroup,
+  g1: IGroup,
   exponent: BigInt,
   randomValue: BigInt,
   q: BigInt
@@ -118,10 +118,10 @@ function makeProofEqualDiscreteLogs(
 
 function verifyProofEqualDiscreteLogs(
   hashFunc: THashFunc,
-  g0: BabyJubPoint,
-  g1: BabyJubPoint,
-  y0: BabyJubPoint,
-  y1: BabyJubPoint,
+  g0: IGroup,
+  g1: IGroup,
+  y0: IGroup,
+  y1: IGroup,
   proof: ProofEqualDiscreteLogs
 ): boolean {
   return (
