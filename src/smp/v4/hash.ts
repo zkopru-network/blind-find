@@ -18,7 +18,8 @@ export function smpHash(version: number, ...args: BigInt[]): BigInt {
   }
   // Pad `0` to make args of length `numTotalArgs`.
   const elements: BigInt[] = [BigInt(version), ...args];
-  for (let i = 0; i < numTotalArgs - elements.length; i++) {
+  const numElementsToPush = numTotalArgs - elements.length;
+  for (let i = 0; i < numElementsToPush; i++) {
     elements.push(BigInt(0));
   }
   return hash5(elements);
