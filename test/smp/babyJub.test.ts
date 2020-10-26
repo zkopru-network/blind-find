@@ -1,5 +1,5 @@
 import { BabyJubPoint } from "../../src/smp/babyJub";
-import { G } from "../../src/smp/config";
+import { G } from "../../src/smp/state";
 
 const gIdentity = new BabyJubPoint([BigInt(0), BigInt(1)]);
 const gBase = new BabyJubPoint(G);

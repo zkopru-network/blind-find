@@ -2,7 +2,7 @@
  * Factory functions used for testing.
  */
 
-import { q, G } from "./config";
+import { q } from "./state";
 
 import { genPrivKey, genPubKey } from "maci-crypto";
 import { IGroup } from "./interfaces";
@@ -24,9 +24,7 @@ import {
   makeProofEqualDiscreteLogs,
   makeProofEqualDiscreteCoordinates
 } from "./proofs";
-import { smpHash } from "./hash";
-
-import { babyJubPointToScalar } from "./utils";
+import { getHashFunc } from "./state";
 
 function secretFactory(): BigInt {
   return genPrivKey();
@@ -36,15 +34,9 @@ function babyJubPointFactory(): BabyJubPoint {
   return new BabyJubPoint(genPubKey(secretFactory()));
 }
 
-const version = 1;
-
 function hash(...args: IGroup[]): BigInt {
-  return smpHash(
-    version,
-    ...args.map((g: IGroup) => {
-      return babyJubPointToScalar(g as BabyJubPoint);
-    })
-  );
+  const version = 1;
+  return getHashFunc(version)(...args);
 }
 
 function smpMessage1Factory(): SMPMessage1 {
@@ -55,7 +47,7 @@ function smpMessage1Factory(): SMPMessage1 {
 }
 
 function smpMessage2Factory(): SMPMessage2 {
-  const g = new BabyJubPoint(G);
+  const g = babyJubPointFactory();
   const bn = secretFactory();
   const q = secretFactory();
   const proofDiscreteLog = makeProofDiscreteLog(hash, g, bn, bn, q);

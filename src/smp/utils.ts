@@ -1,8 +1,5 @@
 import BN from "bn.js";
-import { BabyJubPoint } from "./babyJub";
 import { ValueError } from "./exceptions";
-import { q } from "./config";
-import { Point } from "./dataTypes";
 import { TEndian } from "./types";
 
 /**
@@ -62,11 +59,4 @@ export const concatUint8Array = (a: Uint8Array, b: Uint8Array): Uint8Array => {
   c.set(a);
   c.set(b, a.length);
   return c;
-};
-
-export const babyJubPointToScalar = (a: BabyJubPoint): BigInt => {
-  return bigIntMod(
-    BigInt(new BN(new Point(a.point).serialize()).toString()),
-    q
-  );
 };
