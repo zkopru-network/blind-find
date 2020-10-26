@@ -1,13 +1,11 @@
+import { NotImplemented } from "./exceptions";
+import { IGroup } from "./interfaces";
 import {
   ProofDiscreteLog,
   ProofEqualDiscreteCoordinates,
   ProofEqualDiscreteLogs
 } from "./proofs";
-
 import { TLV } from "./serialization";
-
-import { NotImplemented } from "./exceptions";
-import { IGroup } from "./interfaces";
 
 class BaseSMPMessage {
   static fromTLV(_: TLV): BaseSMPMessage {

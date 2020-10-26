@@ -1,4 +1,5 @@
 import { hash5 } from "maci-crypto";
+
 import { ValueError } from "../exceptions";
 
 /**

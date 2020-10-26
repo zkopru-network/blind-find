@@ -2,29 +2,27 @@
  * SMP state and state machine
  */
 import BN from "bn.js";
-import { genPrivKey } from "maci-crypto";
+import { babyJub } from "circomlib";
 import { sha256 } from "js-sha256";
+import { genPrivKey } from "maci-crypto";
 
 import { BabyJubPoint } from "./babyJub";
-import { IGroup } from "../interfaces";
-
-import { BIG_ENDIAN } from "../constants";
 import { smpHash } from "./hash";
-import { Point } from "./serialization";
-
 import {
+  Point,
   SMPMessage1Wire,
   SMPMessage2Wire,
   SMPMessage3Wire,
   SMPMessage4Wire
 } from "./serialization";
+import { ECPoint } from "./types";
+
+import { BIG_ENDIAN } from "../constants";
+import { IGroup } from "../interfaces";
 import { THashFunc, TSecret } from "../types";
 import { bigIntMod, uint8ArrayToBigInt } from "../utils";
 import { BaseSMPStateMachine, SMPState1 } from "../state";
 import { ValueError } from "../exceptions";
-
-import { babyJub } from "circomlib";
-import { ECPoint } from "./types";
 
 const q = babyJub.subOrder as BigInt;
 const G = babyJub.Base8 as ECPoint;

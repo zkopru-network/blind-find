@@ -4,21 +4,22 @@
  */
 
 import { babyJub } from "circomlib";
-import { LITTLE_ENDIAN } from "../constants";
-import { ECPoint } from "./types";
-import { BaseSerializable, createFixedIntClass } from "../serialization";
+
 import { BabyJubPoint } from "./babyJub";
+import { ECPoint } from "./types";
 
-import { BaseFixedInt, Short, TLV } from "../serialization";
-
-import { SMPMessage1, SMPMessage2, SMPMessage3, SMPMessage4 } from "../msgs";
-
-// import {   Scalar,
-//   Point}
-
-import { concatUint8Array } from "../utils";
+import { LITTLE_ENDIAN } from "../constants";
 import { ValueError } from "../exceptions";
 import { IGroup } from "../interfaces";
+import { SMPMessage1, SMPMessage2, SMPMessage3, SMPMessage4 } from "../msgs";
+import {
+  BaseSerializable,
+  BaseFixedInt,
+  Short,
+  TLV,
+  createFixedIntClass
+} from "../serialization";
+import { concatUint8Array } from "../utils";
 
 /**
  * Scalar (INT):

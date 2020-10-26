@@ -4,14 +4,14 @@
  */
 
 import { BIG_ENDIAN } from "./constants";
+import { NotImplemented, ValueError } from "./exceptions";
+import { TEndian } from "./types";
 import {
   concatUint8Array,
   bigIntToNumber,
   uint8ArrayToBigInt,
   bigIntToUint8Array
 } from "./utils";
-import { NotImplemented, ValueError } from "./exceptions";
-import { TEndian } from "./types";
 
 /**
  * Base class for types that can be {de}serialized.

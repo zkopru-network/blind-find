@@ -1,7 +1,15 @@
 /**
  * SMP state and state machine
  */
+import {
+  InvalidGroupElement,
+  InvalidProof,
+  ValueError,
+  NotImplemented,
+  SMPNotFinished
+} from "./exceptions";
 import { IGroup, ISMPState, ISMPConfig } from "./interfaces";
+import { SMPMessage1, SMPMessage2, SMPMessage3, SMPMessage4 } from "./msgs";
 import {
   makeProofDiscreteLog,
   verifyProofDiscreteLog,
@@ -13,16 +21,6 @@ import {
   ProofEqualDiscreteCoordinates,
   ProofEqualDiscreteLogs
 } from "./proofs";
-
-import {
-  InvalidGroupElement,
-  InvalidProof,
-  ValueError,
-  NotImplemented,
-  SMPNotFinished
-} from "./exceptions";
-
-import { SMPMessage1, SMPMessage2, SMPMessage3, SMPMessage4 } from "./msgs";
 import { TLV } from "./serialization";
 import { TypeTLVOrNull, THashFunc } from "./types";
 

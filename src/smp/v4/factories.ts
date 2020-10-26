@@ -1,27 +1,25 @@
 /**
  * Factory functions used for testing.
  */
-
-import { q } from "./state";
-
 import { genPrivKey, genPubKey } from "maci-crypto";
-import { IGroup } from "../interfaces";
-import { BabyJubPoint } from "./babyJub";
 
-import { TLV } from "../serialization";
-import { SMPMessage1, SMPMessage2, SMPMessage3, SMPMessage4 } from "../msgs";
+import { BabyJubPoint } from "./babyJub";
+import { q, getHashFunc } from "./state";
 import {
   SMPMessage4Wire,
   SMPMessage3Wire,
   SMPMessage2Wire,
   SMPMessage1Wire
 } from "./serialization";
+
+import { IGroup } from "../interfaces";
+import { SMPMessage1, SMPMessage2, SMPMessage3, SMPMessage4 } from "../msgs";
 import {
   makeProofDiscreteLog,
   makeProofEqualDiscreteLogs,
   makeProofEqualDiscreteCoordinates
 } from "../proofs";
-import { getHashFunc } from "./state";
+import { TLV } from "../serialization";
 
 function secretFactory(): BigInt {
   return genPrivKey();

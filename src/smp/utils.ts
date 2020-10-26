@@ -1,4 +1,5 @@
 import BN from "bn.js";
+
 import { ValueError } from "./exceptions";
 import { TEndian } from "./types";
 
