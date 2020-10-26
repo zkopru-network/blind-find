@@ -1,5 +1,6 @@
 import { concatUint8Array } from "../../src/smp/utils";
-import { Byte, Short, Int, Scalar, MPI, Point } from "../../src/smp/dataTypes";
+import { Byte, Short, Int, MPI } from "../../src/smp/serialization";
+import { Scalar, Point } from "../../src/smp/v4/serialization";
 import { ValueError } from "../../src/smp/exceptions";
 
 describe("Fixed types", () => {

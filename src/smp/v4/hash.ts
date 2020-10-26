@@ -1,5 +1,5 @@
 import { hash5 } from "maci-crypto";
-import { ValueError } from "./exceptions";
+import { ValueError } from "../exceptions";
 
 /**
  * SMP hash function. Poseidon is used with `version` as prefix.

@@ -1,4 +1,4 @@
-import { SMPStateMachine } from "../../src/smp/state";
+import { SMPStateMachine } from "../../src/smp/v4/state";
 import { SMPNotFinished, ValueError } from "../../src/smp/exceptions";
 import {
   tlvFactory,
@@ -6,7 +6,7 @@ import {
   smpMessage2Factory,
   smpMessage3Factory,
   smpMessage4Factory
-} from "../../src/smp/factories";
+} from "../../src/smp/v4/factories";
 import { BaseSMPMessage } from "../../src/smp/msgs";
 
 describe("test `SMPStateMachine`", () => {

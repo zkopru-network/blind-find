@@ -1,22 +1,24 @@
-import { Scalar, Point, Short } from "../../src/smp/dataTypes";
+import { Short } from "../../src/smp/serialization";
 import {
-  BaseSMPMessage,
+  Scalar,
+  Point,
+  fromTLVToElements,
+  fromElementsToTLV,
   SMPMessage1Wire,
   SMPMessage2Wire,
   SMPMessage3Wire,
-  SMPMessage4Wire,
-  fromTLVToElements,
-  fromElementsToTLV,
-  TLV
-} from "../../src/smp/msgs";
+  SMPMessage4Wire
+} from "../../src/smp/v4/serialization";
+import { BaseSMPMessage } from "../../src/smp/msgs";
+import { TLV } from "../../src/smp/serialization";
 import {
   smpMessage1Factory,
   smpMessage2Factory,
   smpMessage3Factory,
   smpMessage4Factory
-} from "../../src/smp/factories";
+} from "../../src/smp/v4/factories";
 import { ValueError } from "../../src/smp/exceptions";
-import { BabyJubPoint } from "../../src/smp/babyJub";
+import { BabyJubPoint } from "../../src/smp/v4/babyJub";
 
 describe("TLV", () => {
   test("succeeds", () => {
@@ -54,7 +56,7 @@ describe("TLV", () => {
   });
 });
 
-describe("BaseSMPMessage", () => {
+describe("tlv and elements", () => {
   const t = new Short(1);
   const p = new Point([
     BigInt(

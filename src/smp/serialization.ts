@@ -3,9 +3,7 @@
  * Ref: https://github.com/otrv4/otrv4/blob/master/otrv4.md#data-types
  */
 
-import { babyJub } from "circomlib";
-import { BIG_ENDIAN, LITTLE_ENDIAN } from "./constants";
-import { ECPoint } from "./types";
+import { BIG_ENDIAN } from "./constants";
 import {
   concatUint8Array,
   bigIntToNumber,
@@ -167,42 +165,56 @@ class MPI implements BaseSerializable {
 }
 
 /**
- * Scalar (INT):
- *  32 byte unsigned value, little-endian
- *  NOTE: It's different from OTRv4 since we're using baby jubjub curve, where scalar size is at most 32
- *    bytes.
+ * `TLV` stands for "Type, Length, and Value", literally it's the wire format.
+ * A `TLV` record consist of the fields:
+ *  Type: `Short`
+ *    The type of this record. Records with unrecognized types should be ignored.
+ *  Length: `Short`
+ *    The length of the following field
+ *  Value: `Byte[]` with length `len`(where len is the value of the Length field)
+ *    Any pertinent data for the record type.
  */
-const Scalar = createFixedIntClass(32, LITTLE_ENDIAN);
-
-/**
- * Point (POINT):
- *  32 byte, little-edian
- *  NOTE: It's different from OTRv4 since we're using baby jubjub curve, where the field size is 32 bytes.
- */
-
-class Point extends BaseSerializable {
-  static size: number = 32;
-
-  constructor(readonly point: ECPoint) {
+class TLV extends BaseSerializable {
+  // No need to store `length` since it is implied in `value`.
+  constructor(readonly type: BaseFixedInt, readonly value: Uint8Array) {
     super();
   }
 
-  static deserialize(bytes: Uint8Array): Point {
-    if (bytes.length !== Point.size) {
-      throw new ValueError(`length of ${bytes} should be ${Point.size}`);
+  static deserialize(bytes: Uint8Array): TLV {
+    const typeSize = Short.size;
+    const lengthSize = Short.size;
+    const type = Short.deserialize(bytes.slice(0, typeSize));
+    const length = Short.deserialize(
+      bytes.slice(typeSize, typeSize + lengthSize)
+    );
+    const expectedTLVTotalSize = bigIntToNumber(
+      BigInt(typeSize) + BigInt(lengthSize) + BigInt(length.value)
+    );
+    if (bytes.length < expectedTLVTotalSize) {
+      throw new ValueError("`bytes` is not long enough");
     }
-    return new Point(babyJub.unpackPoint(bytes) as ECPoint);
+    const value = bytes.slice(typeSize + lengthSize, expectedTLVTotalSize);
+    return new TLV(type, value);
   }
 
   serialize(): Uint8Array {
-    const res = new Uint8Array(babyJub.packPoint(this.point) as Buffer);
-    if (res.length !== Point.size) {
-      throw new ValueError(
-        `length of \`res\` should be ${Point.size}: length=${res}`
-      );
-    }
-    return res;
+    const typeBytes = this.type.serialize();
+    const lengthBytes = new Short(this.value.length).serialize();
+    const valueBytes = this.value;
+    return concatUint8Array(
+      concatUint8Array(typeBytes, lengthBytes),
+      valueBytes
+    );
   }
 }
 
-export { BaseSerializable, BaseFixedInt, Byte, Short, Int, MPI, Scalar, Point };
+export {
+  BaseSerializable,
+  BaseFixedInt,
+  createFixedIntClass,
+  Byte,
+  Short,
+  Int,
+  MPI,
+  TLV
+};

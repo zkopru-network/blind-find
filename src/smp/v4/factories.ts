@@ -5,25 +5,22 @@
 import { q } from "./state";
 
 import { genPrivKey, genPubKey } from "maci-crypto";
-import { IGroup } from "./interfaces";
+import { IGroup } from "../interfaces";
 import { BabyJubPoint } from "./babyJub";
 
+import { TLV } from "../serialization";
+import { SMPMessage1, SMPMessage2, SMPMessage3, SMPMessage4 } from "../msgs";
 import {
-  TLV,
-  SMPMessage1,
-  SMPMessage2,
-  SMPMessage3,
-  SMPMessage4,
   SMPMessage4Wire,
   SMPMessage3Wire,
   SMPMessage2Wire,
   SMPMessage1Wire
-} from "./msgs";
+} from "./serialization";
 import {
   makeProofDiscreteLog,
   makeProofEqualDiscreteLogs,
   makeProofEqualDiscreteCoordinates
-} from "./proofs";
+} from "../proofs";
 import { getHashFunc } from "./state";
 
 function secretFactory(): BigInt {

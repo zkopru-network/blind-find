@@ -1,6 +1,6 @@
 import { babyJub } from "circomlib";
 
-import { IGroup } from "./interfaces";
+import { IGroup } from "../interfaces";
 import { ECPoint } from "./types";
 
 class BabyJubPoint implements IGroup {

@@ -7,10 +7,10 @@ import {
   verifyProofEqualDiscreteLogs
 } from "../../src/smp/proofs";
 
-import { q } from "../../src/smp/state";
-import { secretFactory, babyJubPointFactory } from "../../src/smp/factories";
-import { BabyJubPoint } from "../../src/smp/babyJub";
-import { hash } from "../../src/smp/factories";
+import { q } from "../../src/smp/v4/state";
+import { secretFactory, babyJubPointFactory } from "../../src/smp/v4/factories";
+import { BabyJubPoint } from "../../src/smp/v4/babyJub";
+import { hash } from "../../src/smp/v4/factories";
 
 const numTimesRetry = 100;
 

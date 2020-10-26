@@ -1,4 +1,4 @@
-import { smpHash } from "../../src/smp/hash";
+import { smpHash } from "../../src/smp/v4/hash";
 
 describe("smpHash", () => {
   const version1 = 1;
