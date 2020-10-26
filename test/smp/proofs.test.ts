@@ -9,16 +9,10 @@ import {
 
 import { q } from "../../src/smp/config";
 import { secretFactory, babyJubPointFactory } from "../../src/smp/factories";
-import { smpHash } from "../../src/smp/hash";
 import { BabyJubPoint } from "../../src/smp/babyJub";
-import { babyJubPointToScalar } from "../../src/smp/utils";
+import { hash } from "../../src/smp/factories";
 
-const version = 1;
 const numTimesRetry = 100;
-
-function hash(...args: BabyJubPoint[]): BigInt {
-  return smpHash(version, ...args.map(babyJubPointToScalar));
-}
 
 function factoryExclude<T>(
   toBeExcluded: T[],

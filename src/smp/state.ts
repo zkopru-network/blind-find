@@ -3,7 +3,7 @@
  */
 import BN from "bn.js";
 import { BabyJubPoint } from "./babyJub";
-import { IGroup } from "./interfaces";
+import { IGroup, ISMPState } from "./interfaces";
 import { sha256 } from "js-sha256";
 import { q, G } from "./config";
 import { smpHash } from "./hash";
@@ -32,26 +32,9 @@ import {
 
 import { SMPMessage1, SMPMessage2, SMPMessage3, SMPMessage4 } from "./msgs";
 
-import { TLV } from "./msgs";
+import { TypeTLVOrNull } from "./types";
 import { babyJubPointToScalar, bigIntMod, uint8ArrayToBigInt } from "./utils";
 import { genPrivKey } from "maci-crypto";
-
-type TypeTLVOrNull = TLV | null;
-
-interface ISMPState {
-  /**
-   * Transit the current state to the next state with the given `msg`.
-   * @param msg - A SMP Message of `TLV` format.
-   * @returns The next state, and a SMP Message to reply(if any).
-   */
-  transit(msg: TypeTLVOrNull): [ISMPState, TypeTLVOrNull];
-  /**
-   * Return the result of SMP protocol.
-   * @returns The result if this state has a result(i.e. the protocol is finished). Otherwise,
-   *  `null` is returned.
-   */
-  getResult(): boolean | null;
-}
 
 /**
  * Base class for SMP states. `BaseSMPState` contains configs and provides helper functions.
@@ -60,7 +43,7 @@ interface ISMPState {
 abstract class BaseSMPState implements ISMPState {
   // Public
   readonly q: BigInt;
-  readonly g1: BabyJubPoint;
+  readonly g1: IGroup;
 
   constructor(readonly x: BigInt) {
     this.q = q;
@@ -96,10 +79,7 @@ abstract class BaseSMPState implements ISMPState {
    * @param version - Used when generating the proof.
    * @param secretKey - Our private key.
    */
-  makeDHPubkey(
-    version: number,
-    secretKey: BigInt
-  ): [BabyJubPoint, ProofDiscreteLog] {
+  makeDHPubkey(version: number, secretKey: BigInt): [IGroup, ProofDiscreteLog] {
     const pubkey = this.g1.exponentiate(secretKey);
     const proof = makeProofDiscreteLog(
       this.getHashFunc(version),
@@ -116,7 +96,7 @@ abstract class BaseSMPState implements ISMPState {
    */
   verifyDHPubkey(
     version: number,
-    pubkey: BabyJubPoint,
+    pubkey: IGroup,
     proof: ProofDiscreteLog
   ): boolean {
     return verifyProofDiscreteLog(
@@ -133,7 +113,7 @@ abstract class BaseSMPState implements ISMPState {
    * @param g - Public key from the other.
    * @param secretKey - Our private key.
    */
-  makeDHSharedSecret(g: BabyJubPoint, secretKey: BigInt): BabyJubPoint {
+  makeDHSharedSecret(g: IGroup, secretKey: BigInt): IGroup {
     return g.exponentiate(secretKey);
   }
 
@@ -141,7 +121,7 @@ abstract class BaseSMPState implements ISMPState {
    * Check if a group element is valid for SMP protocol.
    * @param g - A group element used in SMP protocol.
    */
-  verifyGroup(g: BabyJubPoint): boolean {
+  verifyGroup(g: IGroup): boolean {
     return g.isValid();
   }
 
@@ -155,9 +135,9 @@ abstract class BaseSMPState implements ISMPState {
    */
   makePLQL(
     version: number,
-    g2: BabyJubPoint,
-    g3: BabyJubPoint
-  ): [BabyJubPoint, BabyJubPoint, ProofEqualDiscreteCoordinates] {
+    g2: IGroup,
+    g3: IGroup
+  ): [IGroup, IGroup, ProofEqualDiscreteCoordinates] {
     const randomValue = this.getRandomSecret();
     const pL = g3.exponentiate(randomValue);
     const qL = this.g1
@@ -189,10 +169,10 @@ abstract class BaseSMPState implements ISMPState {
    */
   verifyPRQRProof(
     version: number,
-    g2: BabyJubPoint,
-    g3: BabyJubPoint,
-    pR: BabyJubPoint,
-    qR: BabyJubPoint,
+    g2: IGroup,
+    g3: IGroup,
+    pR: IGroup,
+    qR: IGroup,
     proof: ProofEqualDiscreteCoordinates
   ): boolean {
     return verifyProofEqualDiscreteCoordinates(
@@ -217,9 +197,9 @@ abstract class BaseSMPState implements ISMPState {
   makeRL(
     version: number,
     s3: BigInt,
-    qa: BabyJubPoint,
-    qb: BabyJubPoint
-  ): [BabyJubPoint, ProofEqualDiscreteLogs] {
+    qa: IGroup,
+    qb: IGroup
+  ): [IGroup, ProofEqualDiscreteLogs] {
     const qaDivQb = qa.operate(qb.inverse());
     const rL = qaDivQb.exponentiate(s3);
     const raProof = makeProofEqualDiscreteLogs(
@@ -247,11 +227,11 @@ abstract class BaseSMPState implements ISMPState {
    */
   verifyRR(
     version: number,
-    g3R: BabyJubPoint,
-    rR: BabyJubPoint,
+    g3R: IGroup,
+    rR: IGroup,
     proof: ProofEqualDiscreteLogs,
-    qa: BabyJubPoint,
-    qb: BabyJubPoint
+    qa: IGroup,
+    qb: IGroup
   ): boolean {
     return verifyProofEqualDiscreteLogs(
       this.getHashFunc(version),
@@ -269,7 +249,7 @@ abstract class BaseSMPState implements ISMPState {
    * @param rR - Partial `R` from the remote. It is `Rb` in the spec if we are an initiator,
    *  otherwise, `Ra`.
    */
-  makeRab(s3: BigInt, rR: BabyJubPoint): BabyJubPoint {
+  makeRab(s3: BigInt, rR: IGroup): IGroup {
     return rR.exponentiate(s3);
   }
 }
@@ -350,8 +330,8 @@ class SMPState2 extends BaseSMPState {
     x: BigInt,
     readonly s2: BigInt,
     readonly s3: BigInt,
-    readonly g2L: BabyJubPoint,
-    readonly g3L: BabyJubPoint
+    readonly g2L: IGroup,
+    readonly g3L: IGroup
   ) {
     super(x);
   }
@@ -421,14 +401,14 @@ class SMPState3 extends BaseSMPState {
     x: BigInt,
     readonly s2: BigInt,
     readonly s3: BigInt,
-    readonly g2L: BabyJubPoint,
-    readonly g3L: BabyJubPoint,
-    readonly g2: BabyJubPoint,
-    readonly g3: BabyJubPoint,
-    readonly g2R: BabyJubPoint,
-    readonly g3R: BabyJubPoint,
-    readonly pL: BabyJubPoint,
-    readonly qL: BabyJubPoint
+    readonly g2L: IGroup,
+    readonly g3L: IGroup,
+    readonly g2: IGroup,
+    readonly g3: IGroup,
+    readonly g2R: IGroup,
+    readonly g3R: IGroup,
+    readonly pL: IGroup,
+    readonly qL: IGroup
   ) {
     super(x);
   }
@@ -474,17 +454,17 @@ class SMPState4 extends BaseSMPState {
     x: BigInt,
     readonly s2: BigInt,
     readonly s3: BigInt,
-    readonly g2L: BabyJubPoint,
-    readonly g3L: BabyJubPoint,
-    readonly g2R: BabyJubPoint,
-    readonly g3R: BabyJubPoint,
-    readonly g2: BabyJubPoint,
-    readonly g3: BabyJubPoint,
-    readonly pL: BabyJubPoint,
-    readonly qL: BabyJubPoint,
-    readonly pR: BabyJubPoint,
-    readonly qR: BabyJubPoint,
-    readonly rL: BabyJubPoint
+    readonly g2L: IGroup,
+    readonly g3L: IGroup,
+    readonly g2R: IGroup,
+    readonly g3R: IGroup,
+    readonly g2: IGroup,
+    readonly g3: IGroup,
+    readonly pL: IGroup,
+    readonly qL: IGroup,
+    readonly pR: IGroup,
+    readonly qR: IGroup,
+    readonly rL: IGroup
   ) {
     super(x);
   }
@@ -516,9 +496,9 @@ class SMPState4 extends BaseSMPState {
 class SMPStateFinished extends BaseSMPState {
   constructor(
     x: BigInt,
-    readonly pa: BabyJubPoint,
-    readonly pb: BabyJubPoint,
-    readonly rab: BabyJubPoint
+    readonly pa: IGroup,
+    readonly pb: IGroup,
+    readonly rab: IGroup
   ) {
     super(x);
   }

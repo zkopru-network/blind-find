@@ -16,6 +16,7 @@ import {
 
 import { concatUint8Array, bigIntToNumber } from "./utils";
 import { NotImplemented, ValueError } from "./exceptions";
+import { IGroup } from "./interfaces";
 
 /**
  * `TLV` stands for "Type, Length, and Value", literally it's the wire format.
@@ -66,9 +67,9 @@ class TLV extends BaseSerializable {
  * SMP Message TLVs (types 2-5) carry two possible types: `Scalar` and `Point`.
  */
 
-type SMPMessageElement = BigInt | BabyJubPoint;
+type SMPMessageElement = BigInt | IGroup;
 type SMPMessageElementList = SMPMessageElement[];
-type WireTypes = (typeof BigInt | typeof BabyJubPoint)[];
+type WireTypes = any[];
 
 abstract class BaseSMPMessage {
   static wireTypes: WireTypes;
@@ -157,9 +158,9 @@ class SMPMessage1 extends BaseSMPMessage {
   static tlvType = new Short(2);
 
   constructor(
-    readonly g2a: BabyJubPoint,
+    readonly g2a: IGroup,
     readonly g2aProof: ProofDiscreteLog,
-    readonly g3a: BabyJubPoint,
+    readonly g3a: IGroup,
     readonly g3aProof: ProofDiscreteLog
   ) {
     super();
@@ -222,12 +223,12 @@ class SMPMessage2 extends BaseSMPMessage {
   static tlvType = new Short(3);
 
   constructor(
-    readonly g2b: BabyJubPoint,
+    readonly g2b: IGroup,
     readonly g2bProof: ProofDiscreteLog,
-    readonly g3b: BabyJubPoint,
+    readonly g3b: IGroup,
     readonly g3bProof: ProofDiscreteLog,
-    readonly pb: BabyJubPoint,
-    readonly qb: BabyJubPoint,
+    readonly pb: IGroup,
+    readonly qb: IGroup,
     readonly pbqbProof: ProofEqualDiscreteCoordinates
   ) {
     super();
@@ -295,10 +296,10 @@ class SMPMessage3 extends BaseSMPMessage {
   static tlvType = new Short(4);
 
   constructor(
-    readonly pa: BabyJubPoint,
-    readonly qa: BabyJubPoint,
+    readonly pa: IGroup,
+    readonly qa: IGroup,
     readonly paqaProof: ProofEqualDiscreteCoordinates,
-    readonly ra: BabyJubPoint,
+    readonly ra: IGroup,
     readonly raProof: ProofEqualDiscreteLogs
   ) {
     super();
@@ -346,10 +347,7 @@ class SMPMessage4 extends BaseSMPMessage {
   static wireTypes = [BabyJubPoint, BigInt, BigInt];
   static tlvType = new Short(5);
 
-  constructor(
-    readonly rb: BabyJubPoint,
-    readonly rbProof: ProofEqualDiscreteLogs
-  ) {
+  constructor(readonly rb: IGroup, readonly rbProof: ProofEqualDiscreteLogs) {
     super();
   }
 

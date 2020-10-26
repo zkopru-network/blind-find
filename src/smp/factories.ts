@@ -109,6 +109,7 @@ function tlvFactory(): TLV {
 }
 
 export {
+  hash,
   secretFactory,
   babyJubPointFactory,
   tlvFactory,

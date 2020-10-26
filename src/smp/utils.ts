@@ -6,16 +6,6 @@ import { Point } from "./dataTypes";
 import { TEndian } from "./types";
 
 /**
- * Concatenate two `Uint8Array` into one.
- */
-export const concatUint8Array = (a: Uint8Array, b: Uint8Array): Uint8Array => {
-  let c = new Uint8Array(a.length + b.length);
-  c.set(a);
-  c.set(b, a.length);
-  return c;
-};
-
-/**
  * Modular operation for `BigInt`.
  * @param a Number to be reduced
  * @param modulus Modulus
@@ -62,6 +52,16 @@ export const bigIntToUint8Array = (
  */
 export const uint8ArrayToBigInt = (a: Uint8Array, endian: TEndian): BigInt => {
   return BigInt(new BN(a, undefined, endian).toString());
+};
+
+/**
+ * Concatenate two `Uint8Array` into one.
+ */
+export const concatUint8Array = (a: Uint8Array, b: Uint8Array): Uint8Array => {
+  let c = new Uint8Array(a.length + b.length);
+  c.set(a);
+  c.set(b, a.length);
+  return c;
 };
 
 export const babyJubPointToScalar = (a: BabyJubPoint): BigInt => {

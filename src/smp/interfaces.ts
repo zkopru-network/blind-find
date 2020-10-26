@@ -1,7 +1,12 @@
+import { TypeTLVOrNull } from "./types";
 /**
  * A general interface of a [group element](https://en.wikipedia.org/wiki/Group_(mathematics)).
  */
 interface IGroup {
+  /**
+   * The element is valid or not. This is not done in the constructor to avoid the costly computation.
+   */
+  isValid(): boolean;
   /**
    * The identity element in the group, i.e. for every element `a` in `IGroup`,
    * `a.operate(a.identity())` is equaled to `a`.
@@ -38,4 +43,19 @@ interface IGroup {
   equal(g: IGroup): boolean;
 }
 
-export { IGroup };
+interface ISMPState {
+  /**
+   * Transit the current state to the next state with the given `msg`.
+   * @param msg - A SMP Message of `TLV` format.
+   * @returns The next state, and a SMP Message to reply(if any).
+   */
+  transit(msg: TypeTLVOrNull): [ISMPState, TypeTLVOrNull];
+  /**
+   * Return the result of SMP protocol.
+   * @returns The result if this state has a result(i.e. the protocol is finished). Otherwise,
+   *  `null` is returned.
+   */
+  getResult(): boolean | null;
+}
+
+export { IGroup, ISMPState };
