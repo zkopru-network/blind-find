@@ -1,4 +1,5 @@
-import { TypeTLVOrNull } from "./types";
+import { SMPMessage1, SMPMessage2, SMPMessage3, SMPMessage4 } from "./msgs";
+import { THashFunc, TypeTLVOrNull } from "./types";
 /**
  * A general interface of a [group element](https://en.wikipedia.org/wiki/Group_(mathematics)).
  */
@@ -58,4 +59,17 @@ interface ISMPState {
   getResult(): boolean | null;
 }
 
-export { IGroup, ISMPState };
+interface ISMPConfig {
+  q: BigInt;
+  g1: IGroup;
+  getHashFunc(version: number): THashFunc;
+  getRandomSecret(): BigInt;
+  wireFormats: {
+    SMPMessage1: typeof SMPMessage1;
+    SMPMessage2: typeof SMPMessage2;
+    SMPMessage3: typeof SMPMessage3;
+    SMPMessage4: typeof SMPMessage4;
+  };
+}
+
+export { IGroup, ISMPState, ISMPConfig };

@@ -9,9 +9,8 @@
  */
 
 import { IGroup } from "./interfaces";
+import { THashFunc } from "./types";
 import { bigIntMod } from "./utils";
-
-type THashFunc = (...args: IGroup[]) => BigInt;
 
 /**
  * Proof of discrete log based on Schnorr’s protocol, which proves that we know `x`

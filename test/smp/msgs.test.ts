@@ -1,10 +1,12 @@
 import { Scalar, Point, Short } from "../../src/smp/dataTypes";
 import {
   BaseSMPMessage,
-  SMPMessage1,
-  SMPMessage2,
-  SMPMessage3,
-  SMPMessage4,
+  SMPMessage1Wire,
+  SMPMessage2Wire,
+  SMPMessage3Wire,
+  SMPMessage4Wire,
+  fromTLVToElements,
+  fromElementsToTLV,
   TLV
 } from "../../src/smp/msgs";
 import {
@@ -75,22 +77,31 @@ describe("BaseSMPMessage", () => {
     ...s.serialize()
   ]);
   const tlv = new TLV(t, bytes);
+  const wireFormats = [
+    BabyJubPoint,
+    BigInt,
+    BigInt,
+    BabyJubPoint,
+    BigInt,
+    BigInt
+  ];
 
   test("fromTLVToElements", () => {
-    const values = SMPMessage1.fromTLVToElements(t, tlv);
+    const values = fromTLVToElements(t, wireFormats, tlv);
     expect(values).toEqual(elements);
   });
 
   test("fromElementsToTLV", () => {
-    const tlv2 = SMPMessage1.fromElementsToTLV(t, elements);
+    const tlv2 = fromElementsToTLV(t, wireFormats, elements);
     expect(tlv2.type.value).toEqual(tlv.type.value);
     expect(tlv2.value).toEqual(tlv.value);
   });
 
   test("fromElementsToTLV(fromTLVToElements(tlv))", () => {
-    const tlv2 = SMPMessage1.fromElementsToTLV(
+    const tlv2 = fromElementsToTLV(
       t,
-      SMPMessage1.fromTLVToElements(t, tlv)
+      wireFormats,
+      fromTLVToElements(t, wireFormats, tlv)
     );
     expect(tlv2.type.value).toEqual(tlv.type.value);
     expect(tlv2.value).toEqual(tlv.value);
@@ -107,20 +118,20 @@ describe("SMPMessages", () => {
 
   test("SMPMessage1 succeeds", () => {
     const msg = smpMessage1Factory();
-    areSMPMessagesEqual(msg, SMPMessage1.fromTLV(msg.toTLV()));
+    areSMPMessagesEqual(msg, SMPMessage1Wire.fromTLV(msg.toTLV()));
   });
 
   test("SMPMessage2 succeeds", () => {
     const msg = smpMessage2Factory();
-    areSMPMessagesEqual(msg, SMPMessage2.fromTLV(msg.toTLV()));
+    areSMPMessagesEqual(msg, SMPMessage2Wire.fromTLV(msg.toTLV()));
   });
 
   test("SMPMessage3 succeeds", () => {
     const msg = smpMessage3Factory();
-    areSMPMessagesEqual(msg, SMPMessage3.fromTLV(msg.toTLV()));
+    areSMPMessagesEqual(msg, SMPMessage3Wire.fromTLV(msg.toTLV()));
   });
   test("SMPMessage4 succeeds", () => {
     const msg = smpMessage4Factory();
-    areSMPMessagesEqual(msg, SMPMessage4.fromTLV(msg.toTLV()));
+    areSMPMessagesEqual(msg, SMPMessage4Wire.fromTLV(msg.toTLV()));
   });
 });

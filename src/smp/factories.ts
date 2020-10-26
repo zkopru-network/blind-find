@@ -13,7 +13,11 @@ import {
   SMPMessage1,
   SMPMessage2,
   SMPMessage3,
-  SMPMessage4
+  SMPMessage4,
+  SMPMessage4Wire,
+  SMPMessage3Wire,
+  SMPMessage2Wire,
+  SMPMessage1Wire
 } from "./msgs";
 import {
   makeProofDiscreteLog,
@@ -47,7 +51,7 @@ function smpMessage1Factory(): SMPMessage1 {
   const g = babyJubPointFactory();
   const bn = secretFactory();
   const proofDiscreteLog = makeProofDiscreteLog(hash, g, bn, bn, q);
-  return new SMPMessage1(g, proofDiscreteLog, g, proofDiscreteLog);
+  return new SMPMessage1Wire(g, proofDiscreteLog, g, proofDiscreteLog);
 }
 
 function smpMessage2Factory(): SMPMessage2 {
@@ -66,7 +70,7 @@ function smpMessage2Factory(): SMPMessage2 {
     bn,
     q
   );
-  return new SMPMessage2(
+  return new SMPMessage2Wire(
     g,
     proofDiscreteLog,
     g,
@@ -93,7 +97,7 @@ function smpMessage3Factory(): SMPMessage3 {
     q
   );
   const proofEDL = makeProofEqualDiscreteLogs(hash, g, g, bn, bn, q);
-  return new SMPMessage3(g, g, proofEDC, g, proofEDL);
+  return new SMPMessage3Wire(g, g, proofEDC, g, proofEDL);
 }
 
 function smpMessage4Factory(): SMPMessage4 {
@@ -101,7 +105,7 @@ function smpMessage4Factory(): SMPMessage4 {
   const bn = secretFactory();
   const q = secretFactory();
   const proofEDL = makeProofEqualDiscreteLogs(hash, g, g, bn, bn, q);
-  return new SMPMessage4(g, proofEDL);
+  return new SMPMessage4Wire(g, proofEDL);
 }
 
 function tlvFactory(): TLV {
