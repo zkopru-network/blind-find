@@ -20,7 +20,7 @@
     "bn.js": "^5.1.3",
     "circomlib": "https://github.com/iden3/circomlib.git#01da5f90dbbefeed5d78cec3b87303244338b920",
     "js-sha256": "^0.9.0",
-    "maci-crypto": "^0.3.2"
+    "maci-crypto": "^0.3.8"
   },
   "devDependencies": {
     "@types/bn.js": "^4.11.6",
