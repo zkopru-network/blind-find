@@ -1,16 +1,11 @@
-import * as path from 'path';
+import * as path from "path";
 
-const circom = require('circom');
+const circom = require("circom");
 
-export const compileAndLoadCircuit = async (
-    circuitPath: string
-) => {
+export const compileAndLoadCircuit = async (circuitPath: string) => {
+  const circuit = await circom.tester(path.join(circuitPath));
 
-    const circuit = await circom.tester(
-        path.join(circuitPath),
-    );
+  await circuit.loadSymbols();
 
-    await circuit.loadSymbols();
-
-    return circuit;
-}
+  return circuit;
+};
