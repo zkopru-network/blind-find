@@ -1,4 +1,4 @@
-include "../../../src/circuits/circom/templates/hasherPoseidon.circom"
+include "../../../node_modules/maci-circuits/circom/hasherPoseidon.circom"
 
 component main = Hasher5();
 
