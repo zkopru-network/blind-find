@@ -7,13 +7,15 @@ import {
 } from "../../src/smp/proofs";
 
 import { q } from "../../src/smp/v4/state";
-import { secretFactory, babyJubPointFactory, hash } from "../../src/smp/v4/factories";
+import {
+  secretFactory,
+  babyJubPointFactory,
+  hash
+} from "../../src/smp/v4/factories";
 
 import { compileCircuit } from "./utils";
 
 jest.setTimeout(90000);
-
-const version = 1;
 
 describe("proof of discrete log", () => {
   test("should be verified in circuit", async () => {
