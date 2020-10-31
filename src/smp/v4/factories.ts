@@ -20,9 +20,10 @@ import {
   makeProofEqualDiscreteCoordinates
 } from "../proofs";
 import { TLV } from "../serialization";
+import { bigIntMod } from "../utils";
 
 function secretFactory(): BigInt {
-  return genPrivKey();
+  return bigIntMod(genPrivKey(), q);
 }
 
 function babyJubPointFactory(): BabyJubPoint {

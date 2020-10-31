@@ -78,7 +78,9 @@ class SMPStateMachine extends BaseSMPStateMachine {
         q: q,
         g1: new BabyJubPoint(G),
         getHashFunc: getHashFunc,
-        getRandomSecret: genPrivKey,
+        getRandomSecret: () => {
+          return bigIntMod(genPrivKey(), q);
+        },
         wireFormats: {
           SMPMessage1: SMPMessage1Wire,
           SMPMessage2: SMPMessage2Wire,

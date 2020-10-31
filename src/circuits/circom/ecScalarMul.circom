@@ -27,5 +27,3 @@ template EcScalarMul() {
   res[0] <== mulFix.out[0];
   res[1] <== mulFix.out[1];
 }
-
-component main = EcScalarMul();
