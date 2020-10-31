@@ -2,7 +2,7 @@
 
 This directory contains the code copied from [js-smp][js-smp]. It is modified to use [Baby Jubjub][baby-jubjub] curve with [Poseidon][poseidon], which work efficiently in zk-snark. To make this change easier, we follow [OTR version 4 spec][otr-spec-v4] instead of [OTR version 3 spec][otr-spec-v3] because v4 also uses ECC.
 
-Even though OTR version 4 is obeyed as much as possible, this SMP implementation is expected unable to talk with the other implementations which obey OTR v4 spec because we have the following changes: 
+Even though OTR version 4 is obeyed as much as possible, this SMP implementation is expected unable to talk with the other implementations which obey OTR v4 spec because we have the following changes:
 
 - Group
     - The original multiplicative group is replaced by the subgroup on Baby Jubjub points, instead of Ed448 points in version 4 spec.
@@ -12,7 +12,7 @@ Even though OTR version 4 is obeyed as much as possible, this SMP implementation
     - `Scalar` is 32 bytes instead of 57 bytes. 32 bytes is enough to contain a scalar field.
 - Hash function
     - SHA256 is replaced by Poseidon, instead of SHAKE-256 in version 4 spec.
-    - Arguments are transformed from `Point` to `Scalar` and directly passed to Poseidon respectively instead of being concatenated as a single argument. When transforming a `Point` to `Scalar`, the point is serialized to its binary representation and interpretted as a `Scalar` in little-endian order.
+    - Each parameter (except for `version`) of smp hash function is a `Point`. A `Point` is passed to Poseidon as two arguments, x and y.
 - Message
     - SMP Message 1: the field `Question (DATA)` is removed.
 

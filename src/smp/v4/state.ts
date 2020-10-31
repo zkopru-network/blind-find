@@ -9,7 +9,6 @@ import { genPrivKey } from "maci-crypto";
 import { BabyJubPoint } from "./babyJub";
 import { smpHash } from "./hash";
 import {
-  Point,
   SMPMessage1Wire,
   SMPMessage2Wire,
   SMPMessage3Wire,
@@ -27,21 +26,20 @@ import { ValueError } from "../exceptions";
 const q = babyJub.subOrder as BigInt;
 const G = babyJub.Base8 as ECPoint;
 
-function babyJubPointToScalar(a: BabyJubPoint): BigInt {
-  return bigIntMod(
-    BigInt(new BN(new Point(a.point).serialize()).toString()),
-    q
-  );
-}
-
 function getHashFunc(version: number): THashFunc {
   return (...args: IGroup[]): BigInt => {
-    return smpHash(
-      version,
-      ...args.map((g: IGroup) => {
-        return babyJubPointToScalar(g as BabyJubPoint);
-      })
-    );
+    const argsBigInts: BigInt[] = [];
+    // Because one point is hashed as scalar for convenience, we can at most have
+    // 2 arguments.
+    if (args.length > 2) {
+      throw new ValueError("too many arguments");
+    }
+    for (const arg of args) {
+      const argPoint = arg as BabyJubPoint;
+      argsBigInts.push(argPoint.point[0]);
+      argsBigInts.push(argPoint.point[1]);
+    }
+    return smpHash(version, ...argsBigInts);
   };
 }
 

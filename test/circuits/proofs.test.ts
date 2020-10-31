@@ -7,30 +7,13 @@ import {
 } from "../../src/smp/proofs";
 
 import { q } from "../../src/smp/v4/state";
-import { secretFactory, babyJubPointFactory } from "../../src/smp/v4/factories";
+import { secretFactory, babyJubPointFactory, hash } from "../../src/smp/v4/factories";
 
 import { compileCircuit } from "./utils";
-import { IGroup } from "../../src/smp/interfaces";
-import { smpHash } from "../../src/smp/v4/hash";
-import { BabyJubPoint } from "../../src/smp/v4/babyJub";
-import { ValueError } from "../../src/smp/exceptions";
 
 jest.setTimeout(90000);
 
 const version = 1;
-
-const hash = (...args: IGroup[]): BigInt => {
-  const argsBigInts: BigInt[] = [];
-  if (args.length >= 2) {
-    throw new ValueError("too many arguments");
-  }
-  for (const arg of args) {
-    const argPoint = arg as BabyJubPoint;
-    argsBigInts.push(argPoint.point[0]);
-    argsBigInts.push(argPoint.point[1]);
-  }
-  return smpHash(version, ...argsBigInts);
-};
 
 describe("proof of discrete log", () => {
   test("should be verified in circuit", async () => {
