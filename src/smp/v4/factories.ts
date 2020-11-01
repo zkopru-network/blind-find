@@ -1,10 +1,9 @@
 /**
  * Factory functions used for testing.
  */
-import { genPrivKey, genPubKey } from "maci-crypto";
 
 import { BabyJubPoint } from "./babyJub";
-import { q, getHashFunc } from "./state";
+import { q, getHashFunc, getRandomSecret, G } from "./state";
 import {
   SMPMessage4Wire,
   SMPMessage3Wire,
@@ -20,14 +19,13 @@ import {
   makeProofEqualDiscreteCoordinates
 } from "../proofs";
 import { TLV } from "../serialization";
-import { bigIntMod } from "../utils";
 
 function secretFactory(): BigInt {
-  return bigIntMod(genPrivKey(), q);
+  return getRandomSecret();
 }
 
 function babyJubPointFactory(): BabyJubPoint {
-  return new BabyJubPoint(genPubKey(secretFactory()));
+  return new BabyJubPoint(G).exponentiate(secretFactory());
 }
 
 function hash(...args: IGroup[]): BigInt {
@@ -45,7 +43,6 @@ function smpMessage1Factory(): SMPMessage1 {
 function smpMessage2Factory(): SMPMessage2 {
   const g = babyJubPointFactory();
   const bn = secretFactory();
-  const q = secretFactory();
   const proofDiscreteLog = makeProofDiscreteLog(hash, g, bn, bn, q);
   const proofEDC = makeProofEqualDiscreteCoordinates(
     hash,
@@ -72,7 +69,6 @@ function smpMessage2Factory(): SMPMessage2 {
 function smpMessage3Factory(): SMPMessage3 {
   const g = babyJubPointFactory();
   const bn = secretFactory();
-  const q = secretFactory();
   const proofEDC = makeProofEqualDiscreteCoordinates(
     hash,
     g,
@@ -91,7 +87,6 @@ function smpMessage3Factory(): SMPMessage3 {
 function smpMessage4Factory(): SMPMessage4 {
   const g = babyJubPointFactory();
   const bn = secretFactory();
-  const q = secretFactory();
   const proofEDL = makeProofEqualDiscreteLogs(hash, g, g, bn, bn, q);
   return new SMPMessage4Wire(g, proofEDL);
 }

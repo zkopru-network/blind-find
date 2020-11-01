@@ -43,6 +43,10 @@ function getHashFunc(version: number): THashFunc {
   };
 }
 
+function getRandomSecret(): BigInt {
+  return bigIntMod(genPrivKey(), q);
+}
+
 /**
  * Transform the secret from different types to the internal type `BigInt`. Multiple types are
  * accepted for the secret to make it convenient for users, but we use `BigInt` internally.
@@ -76,9 +80,7 @@ class SMPStateMachine extends BaseSMPStateMachine {
         q: q,
         g1: new BabyJubPoint(G),
         getHashFunc: getHashFunc,
-        getRandomSecret: () => {
-          return bigIntMod(genPrivKey(), q);
-        },
+        getRandomSecret: getRandomSecret,
         wireFormats: {
           SMPMessage1: SMPMessage1Wire,
           SMPMessage2: SMPMessage2Wire,
@@ -92,4 +94,4 @@ class SMPStateMachine extends BaseSMPStateMachine {
   // TODO: Add initiate, which makes `transit` get rid of `null`.
 }
 
-export { SMPStateMachine, getHashFunc, q, G };
+export { SMPStateMachine, getHashFunc, getRandomSecret, q, G };
