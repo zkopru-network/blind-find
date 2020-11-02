@@ -3,18 +3,23 @@ import { executeCircuit, getSignalByName } from "maci-circuits";
 
 import {
   makeProofDiscreteLog,
-  verifyProofDiscreteLog
+  verifyProofDiscreteLog,
+  makeProofEqualDiscreteCoordinates,
+  verifyProofEqualDiscreteCoordinates,
+  ProofDiscreteLog, ProofEqualDiscreteCoordinates
 } from "../../src/smp/proofs";
 
 import { q } from "../../src/smp/v4/state";
 import {
   secretFactory,
   hash,
-  babyJubBase8Factory
+  babyJubBase8Factory,
+  babyJubPointFactory
 } from "../../src/smp/v4/factories";
 
 import { compileCircuit } from "./utils";
 import { babyJubPointFactoryExclude } from "../utils";
+import { BabyJubPoint } from "../../src/smp/v4/babyJub";
 
 jest.setTimeout(90000);
 
@@ -22,7 +27,6 @@ const version = 1;
 
 describe("proof of discrete log", () => {
   test("should be verified in circuit", async () => {
-    // Succeeds
     const g = babyJubBase8Factory();
     const x = secretFactory();
     const y = g.exponentiate(x);
@@ -31,50 +35,100 @@ describe("proof of discrete log", () => {
     const gAnother = babyJubPointFactoryExclude([g, y]);
 
     expect(verifyProofDiscreteLog(hash, pf, g, y)).toBeTruthy();
+
     const circuit = await compileCircuit(
       "testProofOfDiscreteLogVerifier.circom"
     );
-    const circuitInputs = stringifyBigInts({
-      version: BigInt(version).toString(),
-      c: pf.c.toString(),
-      d: pf.d.toString(),
-      g: [g.point[0].toString(), g.point[1].toString()],
-      y: [y.point[0].toString(), y.point[1].toString()]
-    });
-    const witness = await executeCircuit(circuit, circuitInputs);
-    const validity = getSignalByName(circuit, witness, "main.valid").toString();
-    expect(validity).toEqual("1");
-
+    const verifyPfCircuit = async (pf: ProofDiscreteLog, g: BabyJubPoint, y: BabyJubPoint) => {
+        const args = stringifyBigInts({
+            version: BigInt(version).toString(),
+            c: pf.c.toString(),
+            d: pf.d.toString(),
+            g: [g.point[0].toString(), g.point[1].toString()],
+            y: [y.point[0].toString(), y.point[1].toString()]
+        });
+        const witness = await executeCircuit(circuit, args);
+        const res = getSignalByName(
+            circuit,
+            witness,
+            "main.valid"
+        ).toString();
+        return res === "1";
+    }
+    // Succeeds
+    expect(await verifyPfCircuit(pf, g, y)).toBeTruthy();
     // Fails: wrong g
-    const circuitInputsWrongG = stringifyBigInts({
-      version: BigInt(version).toString(),
-      c: pf.c.toString(),
-      d: pf.d.toString(),
-      g: [gAnother.point[0].toString(), gAnother.point[1].toString()],
-      y: [y.point[0].toString(), y.point[1].toString()]
-    });
-    const witnessWrongG = await executeCircuit(circuit, circuitInputsWrongG);
-    const validityWrongG = getSignalByName(
-      circuit,
-      witnessWrongG,
-      "main.valid"
-    ).toString();
-    expect(validityWrongG).toEqual("0");
-
+    expect(await verifyPfCircuit(pf, gAnother, y)).toBeFalsy();
     // Fails: wrong y
-    const circuitInputsWrongY = stringifyBigInts({
-      version: BigInt(version).toString(),
-      c: pf.c.toString(),
-      d: pf.d.toString(),
-      g: [g.point[0].toString(), g.point[1].toString()],
-      y: [gAnother.point[0].toString(), gAnother.point[1].toString()]
-    });
-    const witnessWrongY = await executeCircuit(circuit, circuitInputsWrongY);
-    const validityWrongY = getSignalByName(
-      circuit,
-      witnessWrongY,
-      "main.valid"
-    ).toString();
-    expect(validityWrongY).toEqual("0");
+    expect(await verifyPfCircuit(pf, g, gAnother)).toBeFalsy();
+  });
+});
+
+describe("proof of discrete log", () => {
+  test("should be verified in circuit", async () => {
+    const g0 = babyJubPointFactory();
+    const g1 = babyJubPointFactory();
+    const g2 = babyJubPointFactory();
+    const x0 = secretFactory();
+    const x1 = secretFactory();
+    const r0 = secretFactory();
+    const r1 = secretFactory();
+    const y0 = g0.exponentiate(x0);
+    const y1 = g1.exponentiate(x0).operate(g2.exponentiate(x1));
+    const gAnother = babyJubPointFactoryExclude([g0, g1, g2, y0, y1]);
+    const pf = makeProofEqualDiscreteCoordinates(
+      hash,
+      g0,
+      g1,
+      g2,
+      x0,
+      x1,
+      r0,
+      r1,
+      q
+    );
+    expect(
+        verifyProofEqualDiscreteCoordinates(hash, g0, g1, g2, y0, y1, pf)
+    ).toBeTruthy();
+
+    const circuit = await compileCircuit(
+        "testProofEqualDiscreteCoordinatesVerifier.circom"
+    );
+
+    const verifyPfCircuit = async (
+        pf: ProofEqualDiscreteCoordinates,
+        g0: BabyJubPoint,
+        g1: BabyJubPoint,
+        g2: BabyJubPoint,
+        y0: BabyJubPoint,
+        y1: BabyJubPoint) => {
+            const circuitInputs = stringifyBigInts({
+                version: BigInt(version).toString(),
+                c: pf.c.toString(),
+                d0: pf.d0.toString(),
+                d1: pf.d1.toString(),
+                g0: [g0.point[0].toString(), g0.point[1].toString()],
+                g1: [g1.point[0].toString(), g1.point[1].toString()],
+                g2: [g2.point[0].toString(), g2.point[1].toString()],
+                y0: [y0.point[0].toString(), y0.point[1].toString()],
+                y1: [y1.point[0].toString(), y1.point[1].toString()],
+              });
+            const witness = await executeCircuit(circuit, circuitInputs);
+            const res = getSignalByName(circuit, witness, "main.valid").toString();
+            return res === "1";
+    };
+
+    // Succeeds
+    expect(await verifyPfCircuit(pf, g0, g1, g2, y0, y1)).toBeTruthy();
+    // Wrong g0
+    expect(await verifyPfCircuit(pf, gAnother, g1, g2, y0, y1)).toBeFalsy();
+    // Wrong g1
+    expect(await verifyPfCircuit(pf, g0, gAnother, g2, y0, y1)).toBeFalsy();
+    // Wrong g2
+    expect(await verifyPfCircuit(pf, g0, g1, gAnother, y0, y1)).toBeFalsy();
+    // Wrong y0
+    expect(await verifyPfCircuit(pf, g0, g1, g2, gAnother, y1)).toBeFalsy();
+    // Wrong y1
+    expect(await verifyPfCircuit(pf, g0, g1, g2, y0, gAnother)).toBeFalsy();
   });
 });
