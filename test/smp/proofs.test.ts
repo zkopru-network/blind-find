@@ -9,42 +9,8 @@ import {
 
 import { q } from "../../src/smp/v4/state";
 import { secretFactory, babyJubPointFactory } from "../../src/smp/v4/factories";
-import { BabyJubPoint } from "../../src/smp/v4/babyJub";
 import { hash } from "../../src/smp/v4/factories";
-
-const numTimesRetry = 100;
-
-function factoryExclude<T>(
-  toBeExcluded: T[],
-  factory: () => T,
-  compareFunc: (a: T, b: T) => boolean
-): T {
-  for (let i = 0; i < numTimesRetry; i++) {
-    let res: T = factory();
-    // Naive workaround to avoid `no-loop-func` when using `Array.find`
-    let found = false;
-    for (const index in toBeExcluded) {
-      if (compareFunc(res, toBeExcluded[index])) {
-        found = true;
-      }
-    }
-    if (!found) {
-      return res;
-    }
-    res = factory();
-  }
-  throw new Error(`failed to create a value excluding ${toBeExcluded}`);
-}
-
-function babyJubPointFactoryExclude(
-  toBeExcluded: BabyJubPoint[]
-): BabyJubPoint {
-  return factoryExclude<BabyJubPoint>(
-    toBeExcluded,
-    babyJubPointFactory,
-    (a: BabyJubPoint, b: BabyJubPoint) => a.equal(b)
-  );
-}
+import { babyJubPointFactoryExclude } from "../utils";
 
 describe("ProofDiscreteLog", () => {
   const g = babyJubPointFactory();

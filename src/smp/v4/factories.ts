@@ -24,8 +24,12 @@ function secretFactory(): BigInt {
   return getRandomSecret();
 }
 
+function babyJubBase8Factory(): BabyJubPoint {
+  return new BabyJubPoint(G);
+}
+
 function babyJubPointFactory(): BabyJubPoint {
-  return new BabyJubPoint(G).exponentiate(secretFactory());
+  return babyJubBase8Factory().exponentiate(secretFactory());
 }
 
 function hash(...args: IGroup[]): BigInt {
@@ -98,6 +102,7 @@ function tlvFactory(): TLV {
 export {
   hash,
   secretFactory,
+  babyJubBase8Factory,
   babyJubPointFactory,
   tlvFactory,
   smpMessage1Factory,
