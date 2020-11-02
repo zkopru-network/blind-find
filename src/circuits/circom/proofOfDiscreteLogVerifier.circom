@@ -1,5 +1,4 @@
 include "../../../node_modules/circomlib/circuits/babyjub.circom";
-include "../../../node_modules/circomlib/circuits/comparators.circom";
 include "../../../node_modules/maci-circuits/circom/hasherPoseidon.circom";
 
 include "./ecScalarMul.circom";
@@ -13,12 +12,12 @@ template ProofOfDiscreteLogVerifier() {
     signal input y[2];
     signal output valid;
 
-    component yExpC = EcScalarMul();
+    component yExpC = EcScalarMul(254);
     yExpC.scalar <== c;
     yExpC.point[0] <== y[0];
     yExpC.point[1] <== y[1];
 
-    component gExpD = EcScalarMul();
+    component gExpD = EcScalarMul(254);
     gExpD.scalar <== d;
     gExpD.point[0] <== g[0];
     gExpD.point[1] <== g[1];

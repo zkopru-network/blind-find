@@ -1,3 +1,3 @@
-include "../../../src/circuits/circom/ecScalarMul.circom"
+include "../../../src/circuits/circom/ecScalarMul.circom";
 
-component main = EcScalarMul();
+component main = EcScalarMul(254);

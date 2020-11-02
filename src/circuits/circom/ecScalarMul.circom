@@ -3,24 +3,21 @@ include "../../../node_modules/circomlib/circuits/escalarmulany.circom";
 
 // Copied and modified from maci-circuits/ecdh.circom
 
-// TODO: Check if public key is on the point
-template EcScalarMul() {
-  // Note: private key
-  // Needs to be hashed, and then pruned before
-  // supplying it to the circuit
-  signal private input scalar;
+// TODO: Check if the point is in the subgroup.
+template EcScalarMul(nBits) {
+  signal input scalar;
   signal input point[2];
 
   signal output res[2];
 
-  component scalarBits = Num2Bits(253);
+  component scalarBits = Num2Bits(nBits);
   scalarBits.in <== scalar;
 
-  component mulFix = EscalarMulAny(253);
+  component mulFix = EscalarMulAny(nBits);
   mulFix.p[0] <== point[0];
   mulFix.p[1] <== point[1];
 
-  for (var i = 0; i < 253; i++) {
+  for (var i = 0; i < nBits; i++) {
     mulFix.e[i] <== scalarBits.out[i];
   }
 

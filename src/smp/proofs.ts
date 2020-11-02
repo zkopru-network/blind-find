@@ -47,7 +47,7 @@ function verifyProofDiscreteLog(
   hashFunc: THashFunc,
   proof: ProofDiscreteLog,
   g: IGroup,
-  y: IGroup
+  y: IGroup,
 ): boolean {
   return (
     proof.c ===

@@ -144,7 +144,7 @@ abstract class BaseSMPState implements ISMPState {
       this.getHashFunc(version),
       proof,
       this.g1,
-      pubkey
+      pubkey,
     );
   }
 
@@ -280,7 +280,7 @@ abstract class BaseSMPState implements ISMPState {
       qa.operate(qb.inverse()),
       g3R,
       rR,
-      proof
+      proof,
     );
   }
 

@@ -1,3 +1,3 @@
-include "../../../src/circuits/circom/proofOfDiscreteLogVerifier.circom"
+include "../../../src/circuits/circom/proofOfDiscreteLogVerifier.circom";
 
 component main = ProofOfDiscreteLogVerifier();
