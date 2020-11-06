@@ -14,6 +14,7 @@ import { BabyJubPoint } from "../../src/smp/v4/babyJub";
 import { G, q } from "../../src/smp/v4/state";
 import { bigIntMod } from "../../src/smp/utils";
 import { secretFactory } from "../../src/smp/v4/factories";
+import { babyJubPointFactoryExclude } from "../utils";
 
 jest.setTimeout(90000);
 
@@ -119,6 +120,30 @@ describe("point computation", () => {
     ).toString();
     expect(resCircuitX).toEqual(pointInverse.point[0].toString());
     expect(resCircuitY).toEqual(pointInverse.point[1].toString());
+  });
+});
+
+describe("point equal", () => {
+  test("result from circuit is the same as the output calculated outside", async () => {
+    const privkey = secretFactory();
+    const point = new BabyJubPoint(G).exponentiate(privkey);
+    const pointAnother = babyJubPointFactoryExclude([point]);
+    expect(point.equal(point)).toBeTruthy();
+    expect(point.equal(pointAnother)).toBeFalsy();
+    const circuit = await compileCircuit("testPointEqual.circom");
+
+    const verifyAEqualToB = async (a: BabyJubPoint, b: BabyJubPoint) => {
+      const circuitInputs = stringifyBigInts({
+        pointA: [a.point[0].toString(), a.point[1].toString()],
+        pointB: [b.point[0].toString(), b.point[1].toString()]
+      });
+      const witness = await executeCircuit(circuit, circuitInputs);
+      const res = getSignalByName(circuit, witness, "main.out").toString();
+      return res === "1";
+    };
+
+    expect(await verifyAEqualToB(point, point)).toBeTruthy();
+    expect(await verifyAEqualToB(point, pointAnother)).toBeFalsy();
   });
 });
 

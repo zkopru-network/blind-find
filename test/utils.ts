@@ -1,4 +1,4 @@
-import { babyJubPointFactory } from "../src/smp/v4/factories";
+import { babyJubPointFactory, secretFactory } from "../src/smp/v4/factories";
 import { BabyJubPoint } from "../src/smp/v4/babyJub";
 
 const NUM_RETRIES = 100;
@@ -37,6 +37,18 @@ export function babyJubPointFactoryExclude(
     toBeExcluded,
     babyJubPointFactory,
     (a: BabyJubPoint, b: BabyJubPoint) => a.equal(b),
+    numRetries
+  );
+}
+
+export function bigIntFactoryExclude(
+  toBeExcluded: BigInt[],
+  numRetries?: number
+): BigInt {
+  return factoryExclude<BigInt>(
+    toBeExcluded,
+    secretFactory,
+    (a: BigInt, b: BigInt) => a === b,
     numRetries
   );
 }

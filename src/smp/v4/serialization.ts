@@ -20,6 +20,11 @@ import {
   createFixedIntClass
 } from "../serialization";
 import { concatUint8Array } from "../utils";
+import {
+  ProofDiscreteLog,
+  ProofEqualDiscreteCoordinates,
+  ProofEqualDiscreteLogs
+} from "../proofs";
 
 /**
  * Scalar (INT):
@@ -131,6 +136,15 @@ class SMPMessage1Wire extends SMPMessage1 {
   ];
   static tlvType = new Short(2);
 
+  constructor(
+    readonly g2a: BabyJubPoint,
+    readonly g2aProof: ProofDiscreteLog,
+    readonly g3a: BabyJubPoint,
+    readonly g3aProof: ProofDiscreteLog
+  ) {
+    super(g2a, g2aProof, g3a, g3aProof);
+  }
+
   static fromTLV(tlv: TLV): SMPMessage1Wire {
     const elements = fromTLVToElements(this.tlvType, this.wireTypes, tlv);
     return new SMPMessage1Wire(
@@ -172,6 +186,18 @@ class SMPMessage2Wire extends SMPMessage2 {
     BigInt
   ];
   static tlvType = new Short(3);
+
+  constructor(
+    readonly g2b: BabyJubPoint,
+    readonly g2bProof: ProofDiscreteLog,
+    readonly g3b: BabyJubPoint,
+    readonly g3bProof: ProofDiscreteLog,
+    readonly pb: BabyJubPoint,
+    readonly qb: BabyJubPoint,
+    readonly pbqbProof: ProofEqualDiscreteCoordinates
+  ) {
+    super(g2b, g2bProof, g3b, g3bProof, pb, qb, pbqbProof);
+  }
 
   static fromTLV(tlv: TLV): SMPMessage2Wire {
     const elements = fromTLVToElements(this.tlvType, this.wireTypes, tlv);
@@ -224,6 +250,16 @@ class SMPMessage3Wire extends SMPMessage3 {
   ];
   static tlvType = new Short(4);
 
+  constructor(
+    readonly pa: BabyJubPoint,
+    readonly qa: BabyJubPoint,
+    readonly paqaProof: ProofEqualDiscreteCoordinates,
+    readonly ra: BabyJubPoint,
+    readonly raProof: ProofEqualDiscreteLogs
+  ) {
+    super(pa, qa, paqaProof, ra, raProof);
+  }
+
   static fromTLV(tlv: TLV): SMPMessage3Wire {
     const elements = fromTLVToElements(this.tlvType, this.wireTypes, tlv);
     return new SMPMessage3Wire(
@@ -260,6 +296,13 @@ class SMPMessage3Wire extends SMPMessage3 {
 class SMPMessage4Wire extends SMPMessage4 {
   static wireTypes = [BabyJubPoint, BigInt, BigInt];
   static tlvType = new Short(5);
+
+  constructor(
+    readonly rb: BabyJubPoint,
+    readonly rbProof: ProofEqualDiscreteLogs
+  ) {
+    super(rb, rbProof);
+  }
 
   static fromTLV(tlv: TLV): SMPMessage4Wire {
     const elements = fromTLVToElements(this.tlvType, this.wireTypes, tlv);
