@@ -641,4 +641,11 @@ abstract class BaseSMPStateMachine {
   }
 }
 
-export { BaseSMPStateMachine, SMPState1 };
+export {
+  BaseSMPStateMachine,
+  SMPState1,
+  SMPState2,
+  SMPState3,
+  SMPState4,
+  SMPStateFinished
+};
