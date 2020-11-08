@@ -36,7 +36,7 @@ describe("proof of smp", () => {
 
   test("", async () => {
     const t0 = performance.now();
-    const circuit = await compileCircuit("testProofOFSMP.circom");
+    const circuit = await compileCircuit("testProofOfSMP.circom");
     const t1 = performance.now();
     const tCompile = t1 - t0;
 
