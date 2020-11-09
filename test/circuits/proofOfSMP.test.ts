@@ -25,6 +25,7 @@ describe("proof of smp", () => {
   const msg3TLV = hub.transit(msg2TLV);
   alice.transit(msg3TLV);
   expect(alice.isFinished()).toBeTruthy();
+  expect(alice.getResult()).toBeTruthy();
   expect(hub.isFinished()).toBeFalsy();
 
   if (msg1TLV === null || msg2TLV === null || msg3TLV === null) {
@@ -99,7 +100,7 @@ describe("proof of smp", () => {
     const t4 = performance.now();
     const tRunInvalidMsg2 = t4 - t3;
 
-    // // Fails if msg3 is malformed.
+    // Fails if msg3 is malformed.
     const msg3Invalid = SMPMessage3Wire.fromTLV(msg3TLV);
     msg3Invalid.paqaProof.d1 = bigIntFactoryExclude([msg3Invalid.paqaProof.d1]);
     await expect(verifyProofOfSMP(msg1, msg2, msg3Invalid)).rejects.toThrow();

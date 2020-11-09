@@ -36,7 +36,7 @@ template ProofOfSMP() {
     signal input paqaProofD0;
     signal input paqaProofD1;
 
-    // // msg 3
+    // msg 3
     signal input ph[2];
     signal input qh[2];
     signal input phqhProofC;
