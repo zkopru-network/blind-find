@@ -146,31 +146,3 @@ describe("point equal", () => {
     expect(await verifyAEqualToB(point, pointAnother)).toBeFalsy();
   });
 });
-
-describe("Scalar verification", () => {
-  test("point inverse should work in circuit", async () => {
-    const privkey = bigIntMod(secretFactory(), q);
-
-    const circuit = await compileCircuit("testScalarVerifier.circom");
-
-    // valid
-    const circuitInputs = stringifyBigInts({
-      in: privkey.toString()
-    });
-    const witness = await executeCircuit(circuit, circuitInputs);
-    const res = getSignalByName(circuit, witness, "main.valid").toString();
-    expect(res).toEqual("0");
-
-    // invalid
-    const circuitInvalidInputs = stringifyBigInts({
-      in: q.toString()
-    });
-    const invalidWitness = await executeCircuit(circuit, circuitInvalidInputs);
-    const resFailed = getSignalByName(
-      circuit,
-      invalidWitness,
-      "main.valid"
-    ).toString();
-    expect(resFailed).toEqual("1");
-  });
-});
