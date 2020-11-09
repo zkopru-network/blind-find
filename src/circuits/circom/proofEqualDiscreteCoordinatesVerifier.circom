@@ -2,7 +2,7 @@ include "../../../node_modules/circomlib/circuits/babyjub.circom";
 include "../../../node_modules/circomlib/circuits/comparators.circom";
 include "../../../node_modules/maci-circuits/circom/hasherPoseidon.circom";
 
-include "./ecScalarMul.circom";
+include "./pointComputation.circom";
 include "./pointComputation.circom";
 
 template ProofEqualDiscreteCoordinatesVerifier() {
@@ -18,13 +18,13 @@ template ProofEqualDiscreteCoordinatesVerifier() {
     signal output valid;
 
     // g0.exp(d0)
-    component g0ExpD0 = EcScalarMul(254);
+    component g0ExpD0 = BabyMulScalar(254);
     g0ExpD0.scalar <== d0;
     g0ExpD0.point[0] <== g0[0];
     g0ExpD0.point[1] <== g0[1];
 
     // y0.exp(c)
-    component y0ExpC = EcScalarMul(254);
+    component y0ExpC = BabyMulScalar(254);
     y0ExpC.scalar <== c;
     y0ExpC.point[0] <== y0[0];
     y0ExpC.point[1] <== y0[1];
@@ -37,19 +37,19 @@ template ProofEqualDiscreteCoordinatesVerifier() {
     first.y2 <== y0ExpC.out[1];
 
     // g1.exp(d0)
-    component g1ExpD0 = EcScalarMul(254);
+    component g1ExpD0 = BabyMulScalar(254);
     g1ExpD0.scalar <== d0;
     g1ExpD0.point[0] <== g1[0];
     g1ExpD0.point[1] <== g1[1];
 
     // g2.exp(d1)
-    component g2ExpD1 = EcScalarMul(254);
+    component g2ExpD1 = BabyMulScalar(254);
     g2ExpD1.scalar <== d1;
     g2ExpD1.point[0] <== g2[0];
     g2ExpD1.point[1] <== g2[1];
 
     // y1.exp(c)
-    component y1ExpC = EcScalarMul(254);
+    component y1ExpC = BabyMulScalar(254);
     y1ExpC.scalar <== c;
     y1ExpC.point[0] <== y1[0];
     y1ExpC.point[1] <== y1[1];

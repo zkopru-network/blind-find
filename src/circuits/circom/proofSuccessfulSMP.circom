@@ -1,4 +1,4 @@
-include "./ecScalarMul.circom";
+include "./pointComputation.circom";
 include "./pointComputation.circom"
 include "./pointEqual.circom";
 
@@ -19,7 +19,7 @@ template ProofSuccessfulSMP() {
     signal output valid;
 
     // left = (Rh * a3)
-    component left = EcScalarMul(254);
+    component left = BabyMulScalar(254);
     left.scalar <== a3;
     left.point[0] <== rh[0];
     left.point[1] <== rh[1];

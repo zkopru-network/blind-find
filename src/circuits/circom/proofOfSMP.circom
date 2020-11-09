@@ -1,6 +1,6 @@
 include "../../../node_modules/circomlib/circuits/gates.circom";
 
-include "./ecScalarMul.circom";
+include "./pointComputation.circom";
 include "./pointComputation.circom"
 include "./pointEqual.circom";
 include "./proofOfDiscreteLogVerifier.circom";
@@ -56,7 +56,7 @@ template ProofOfSMP() {
     /* msg 1 */
 
     // Ensure `g ** a2 == g2a` and `g ** a3 == g3a`
-    component g2hCalc = EcScalarMul(254);
+    component g2hCalc = BabyMulScalar(254);
     g2hCalc.scalar <== h2;
     g2hCalc.point[0] <== BASE8[0];
     g2hCalc.point[1] <== BASE8[1];
@@ -67,7 +67,7 @@ template ProofOfSMP() {
     g2hCorrect.pointB[1] <== g2hCalc.out[1];
     g2hCorrect.out === 1;
 
-    component g3hCalc = EcScalarMul(254);
+    component g3hCalc = BabyMulScalar(254);
     g3hCalc.scalar <== h3;
     g3hCalc.point[0] <== BASE8[0];
     g3hCalc.point[1] <== BASE8[1];
@@ -128,11 +128,11 @@ template ProofOfSMP() {
     g3aProofDL.valid === 1;
 
     // Calculate `g2` and `g3`.
-    component g2 = EcScalarMul(254);
+    component g2 = BabyMulScalar(254);
     g2.scalar <== h2;
     g2.point[0] <== g2a[0];
     g2.point[1] <== g2a[1];
-    component g3 = EcScalarMul(254);
+    component g3 = BabyMulScalar(254);
     g3.scalar <== h3;
     g3.point[0] <== g3a[0];
     g3.point[1] <== g3a[1];

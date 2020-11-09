@@ -4,7 +4,7 @@ include "../../../node_modules/circomlib/circuits/escalarmulany.circom";
 // Copied and modified from maci-circuits/ecdh.circom
 
 // TODO: Check if the point is in the subgroup.
-template EcScalarMul(nBits) {
+template BabyMulScalar(nBits) {
   signal input scalar;
   signal input point[2];
 

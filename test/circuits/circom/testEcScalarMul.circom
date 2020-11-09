@@ -1,3 +1,3 @@
-include "../../../src/circuits/circom/ecScalarMul.circom";
+include "../../../src/circuits/circom/pointComputation.circom";
 
-component main = EcScalarMul(254);
+component main = BabyMulScalar(254);
