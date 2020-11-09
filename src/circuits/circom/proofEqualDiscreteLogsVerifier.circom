@@ -1,8 +1,7 @@
 include "../../../node_modules/circomlib/circuits/babyjub.circom";
 include "../../../node_modules/maci-circuits/circom/hasherPoseidon.circom";
 
-include "./pointComputation.circom";
-include "./pointComputation.circom";
+include "./pointOperations.circom";
 
 template ProofEqualDiscreteLogsVerifier() {
     signal input version;

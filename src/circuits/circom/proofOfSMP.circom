@@ -1,8 +1,6 @@
 include "../../../node_modules/circomlib/circuits/gates.circom";
 
-include "./pointComputation.circom";
-include "./pointComputation.circom"
-include "./pointEqual.circom";
+include "./pointOperations.circom";
 include "./proofOfDiscreteLogVerifier.circom";
 include "./proofEqualDiscreteCoordinatesVerifier.circom";
 include "./proofEqualDiscreteLogsVerifier.circom"
@@ -60,7 +58,7 @@ template ProofOfSMP() {
     g2hCalc.scalar <== h2;
     g2hCalc.point[0] <== BASE8[0];
     g2hCalc.point[1] <== BASE8[1];
-    component g2hCorrect = PointEqual();
+    component g2hCorrect = IsPointEqual();
     g2hCorrect.pointA[0] <== g2h[0];
     g2hCorrect.pointA[1] <== g2h[1];
     g2hCorrect.pointB[0] <== g2hCalc.out[0];
@@ -71,7 +69,7 @@ template ProofOfSMP() {
     g3hCalc.scalar <== h3;
     g3hCalc.point[0] <== BASE8[0];
     g3hCalc.point[1] <== BASE8[1];
-    component g3hCorrect = PointEqual();
+    component g3hCorrect = IsPointEqual();
     g3hCorrect.pointA[0] <== g3h[0];
     g3hCorrect.pointA[1] <== g3h[1];
     g3hCorrect.pointB[0] <== g3hCalc.out[0];

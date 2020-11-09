@@ -74,7 +74,7 @@ describe("point computation", () => {
     const res = point.exponentiate(scalar);
     expect(res.isValid()).toBeTruthy();
 
-    const circuit = await compileCircuit("testEcScalarMul.circom");
+    const circuit = await compileCircuit("testBabyMulScalar.circom");
 
     // FIXME: format scalar with `formatPrivKeyForBabyJub`
     const circuitInputs = stringifyBigInts({

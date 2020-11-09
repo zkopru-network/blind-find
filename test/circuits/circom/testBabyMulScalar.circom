@@ -1,3 +1,3 @@
 include "../../../src/circuits/circom/pointOperations.circom";
 
-component main = IsPointEqual();
+component main = BabyMulScalar(254);

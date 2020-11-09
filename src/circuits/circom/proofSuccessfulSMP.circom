@@ -1,7 +1,4 @@
-include "./pointComputation.circom";
-include "./pointComputation.circom"
-include "./pointEqual.circom";
-
+include "./pointOperations.circom";
 
 // Created by A after H runs SMP with A where H is the initiator.
 template ProofSuccessfulSMP() {
@@ -36,7 +33,7 @@ template ProofSuccessfulSMP() {
     right.y2 <== paInverse.out[1];
 
     // Check `left == right`, i.e. `(Rh * a3) == (Ph - Pa)`.
-    component leftEqualRight = PointEqual();
+    component leftEqualRight = IsPointEqual();
     leftEqualRight.pointA[0] <== left.out[0];
     leftEqualRight.pointA[1] <== left.out[1];
     leftEqualRight.pointB[0] <== right.xout;

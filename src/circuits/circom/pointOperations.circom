@@ -3,7 +3,7 @@ include "../../../node_modules/circomlib/circuits/comparators.circom";
 include "../../../node_modules/circomlib/circuits/escalarmulany.circom";
 include "../../../node_modules/circomlib/circuits/gates.circom";
 
-template PointEqual() {
+template IsPointEqual() {
     signal input pointA[2];
     signal input pointB[2];
     signal output out;
