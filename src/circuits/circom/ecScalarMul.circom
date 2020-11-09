@@ -8,7 +8,7 @@ template EcScalarMul(nBits) {
   signal input scalar;
   signal input point[2];
 
-  signal output res[2];
+  signal output out[2];
 
   component scalarBits = Num2Bits(nBits);
   scalarBits.in <== scalar;
@@ -21,6 +21,6 @@ template EcScalarMul(nBits) {
     mulFix.e[i] <== scalarBits.out[i];
   }
 
-  res[0] <== mulFix.out[0];
-  res[1] <== mulFix.out[1];
+  out[0] <== mulFix.out[0];
+  out[1] <== mulFix.out[1];
 }

@@ -28,10 +28,10 @@ template ProofEqualDiscreteLogsVerifier() {
 
     // first = g0ExpD.op(y0ExpC)
     component first = BabyAdd();
-    first.x1 <== g0ExpD.res[0];
-    first.y1 <== g0ExpD.res[1];
-    first.x2 <== y0ExpC.res[0];
-    first.y2 <== y0ExpC.res[1];
+    first.x1 <== g0ExpD.out[0];
+    first.y1 <== g0ExpD.out[1];
+    first.x2 <== y0ExpC.out[0];
+    first.y2 <== y0ExpC.out[1];
 
     // g1.exp(d)
     component g1ExpD = EcScalarMul(254);
@@ -47,10 +47,10 @@ template ProofEqualDiscreteLogsVerifier() {
 
     // Second: g1ExpD.op(y1ExpC)
     component second = BabyAdd();
-    second.x1 <== g1ExpD.res[0];
-    second.y1 <== g1ExpD.res[1];
-    second.x2 <== y1ExpC.res[0];
-    second.y2 <== y1ExpC.res[1];
+    second.x1 <== g1ExpD.out[0];
+    second.y1 <== g1ExpD.out[1];
+    second.x2 <== y1ExpC.out[0];
+    second.y2 <== y1ExpC.out[1];
 
     component hasher = Hasher5();
     hasher.in[0] <== version;

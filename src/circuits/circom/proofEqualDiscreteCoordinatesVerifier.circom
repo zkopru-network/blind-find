@@ -31,10 +31,10 @@ template ProofEqualDiscreteCoordinatesVerifier() {
 
     // first = g0ExpD0.op(y0ExpC)
     component first = BabyAdd();
-    first.x1 <== g0ExpD0.res[0];
-    first.y1 <== g0ExpD0.res[1];
-    first.x2 <== y0ExpC.res[0];
-    first.y2 <== y0ExpC.res[1];
+    first.x1 <== g0ExpD0.out[0];
+    first.y1 <== g0ExpD0.out[1];
+    first.x2 <== y0ExpC.out[0];
+    first.y2 <== y0ExpC.out[1];
 
     // g1.exp(d0)
     component g1ExpD0 = EcScalarMul(254);
@@ -56,15 +56,15 @@ template ProofEqualDiscreteCoordinatesVerifier() {
 
     // Second: (g1ExpD0.op(g2ExpD1)).op(y1ExpC)
     component temp = BabyAdd();
-    temp.x1 <== g1ExpD0.res[0];
-    temp.y1 <== g1ExpD0.res[1];
-    temp.x2 <== g2ExpD1.res[0];
-    temp.y2 <== g2ExpD1.res[1];
+    temp.x1 <== g1ExpD0.out[0];
+    temp.y1 <== g1ExpD0.out[1];
+    temp.x2 <== g2ExpD1.out[0];
+    temp.y2 <== g2ExpD1.out[1];
     component second = BabyAdd();
     second.x1 <== temp.xout;
     second.y1 <== temp.yout;
-    second.x2 <== y1ExpC.res[0];
-    second.y2 <== y1ExpC.res[1];
+    second.x2 <== y1ExpC.out[0];
+    second.y2 <== y1ExpC.out[1];
 
     component hasher = Hasher5();
     hasher.in[0] <== version;

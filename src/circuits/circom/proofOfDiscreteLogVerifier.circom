@@ -23,10 +23,10 @@ template ProofOfDiscreteLogVerifier() {
     gExpD.point[1] <== g[1];
 
     component op = BabyAdd();
-    op.x1 <== yExpC.res[0];
-    op.y1 <== yExpC.res[1];
-    op.x2 <== gExpD.res[0];
-    op.y2 <== gExpD.res[1];
+    op.x1 <== yExpC.out[0];
+    op.y1 <== yExpC.out[1];
+    op.x2 <== gExpD.out[0];
+    op.y2 <== gExpD.out[1];
 
     component hasher = Hasher5();
     hasher.in[0] <== version;

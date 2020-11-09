@@ -63,8 +63,8 @@ template ProofOfSMP() {
     component g2hCorrect = PointEqual();
     g2hCorrect.pointA[0] <== g2h[0];
     g2hCorrect.pointA[1] <== g2h[1];
-    g2hCorrect.pointB[0] <== g2hCalc.res[0];
-    g2hCorrect.pointB[1] <== g2hCalc.res[1];
+    g2hCorrect.pointB[0] <== g2hCalc.out[0];
+    g2hCorrect.pointB[1] <== g2hCalc.out[1];
     g2hCorrect.out === 1;
 
     component g3hCalc = EcScalarMul(254);
@@ -74,8 +74,8 @@ template ProofOfSMP() {
     component g3hCorrect = PointEqual();
     g3hCorrect.pointA[0] <== g3h[0];
     g3hCorrect.pointA[1] <== g3h[1];
-    g3hCorrect.pointB[0] <== g3hCalc.res[0];
-    g3hCorrect.pointB[1] <== g3hCalc.res[1];
+    g3hCorrect.pointB[0] <== g3hCalc.out[0];
+    g3hCorrect.pointB[1] <== g3hCalc.out[1];
     g3hCorrect.out === 1;
 
     // Ensure the Proof of Discrete Logs of `g2h` and `g3h` are correct.
@@ -143,12 +143,12 @@ template ProofOfSMP() {
     paqaProofVerifier.c <== paqaProofC;
     paqaProofVerifier.d0 <== paqaProofD0;
     paqaProofVerifier.d1 <== paqaProofD1;
-    paqaProofVerifier.g0[0] <== g3.res[0];
-    paqaProofVerifier.g0[1] <== g3.res[1];
+    paqaProofVerifier.g0[0] <== g3.out[0];
+    paqaProofVerifier.g0[1] <== g3.out[1];
     paqaProofVerifier.g1[0] <== BASE8[0];
     paqaProofVerifier.g1[1] <== BASE8[1];
-    paqaProofVerifier.g2[0] <== g2.res[0];
-    paqaProofVerifier.g2[1] <== g2.res[1];
+    paqaProofVerifier.g2[0] <== g2.out[0];
+    paqaProofVerifier.g2[1] <== g2.out[1];
     paqaProofVerifier.y0[0] <== pa[0];
     paqaProofVerifier.y0[1] <== pa[1];
     paqaProofVerifier.y1[0] <== qa[0];
@@ -168,12 +168,12 @@ template ProofOfSMP() {
     phqhProofVerifier.c <== phqhProofC;
     phqhProofVerifier.d0 <== phqhProofD0;
     phqhProofVerifier.d1 <== phqhProofD1;
-    phqhProofVerifier.g0[0] <== g3.res[0];
-    phqhProofVerifier.g0[1] <== g3.res[1];
+    phqhProofVerifier.g0[0] <== g3.out[0];
+    phqhProofVerifier.g0[1] <== g3.out[1];
     phqhProofVerifier.g1[0] <== BASE8[0];
     phqhProofVerifier.g1[1] <== BASE8[1];
-    phqhProofVerifier.g2[0] <== g2.res[0];
-    phqhProofVerifier.g2[1] <== g2.res[1];
+    phqhProofVerifier.g2[0] <== g2.out[0];
+    phqhProofVerifier.g2[1] <== g2.out[1];
     phqhProofVerifier.y0[0] <== ph[0];
     phqhProofVerifier.y0[1] <== ph[1];
     phqhProofVerifier.y1[0] <== qh[0];
@@ -187,8 +187,8 @@ template ProofOfSMP() {
     component qhOverQa = BabyAdd();
     qhOverQa.x1 <== qh[0];
     qhOverQa.y1 <== qh[1];
-    qhOverQa.x2 <== qaInverse.pointInverse[0];
-    qhOverQa.y2 <== qaInverse.pointInverse[1];
+    qhOverQa.x2 <== qaInverse.out[0];
+    qhOverQa.y2 <== qaInverse.out[1];
 
     // Verify Rh
     component rhProofVerifier = ProofEqualDiscreteLogsVerifier();

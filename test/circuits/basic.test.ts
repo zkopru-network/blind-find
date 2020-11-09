@@ -85,12 +85,12 @@ describe("point computation", () => {
     const resCircuitX = getSignalByName(
       circuit,
       witness,
-      "main.res[0]"
+      "main.out[0]"
     ).toString();
     const resCircuitY = getSignalByName(
       circuit,
       witness,
-      "main.res[1]"
+      "main.out[1]"
     ).toString();
     expect(resCircuitX).toEqual(res.point[0].toString());
     expect(resCircuitY).toEqual(res.point[1].toString());
@@ -100,7 +100,7 @@ describe("point computation", () => {
     const privkey = secretFactory();
     const pubkey = genPubKey(privkey);
     const point = new BabyJubPoint(pubkey);
-    const pointInverse = point.inverse();
+    const out = point.inverse();
 
     const circuit = await compileCircuit("testBabyJubInverse.circom");
 
@@ -111,15 +111,15 @@ describe("point computation", () => {
     const resCircuitX = getSignalByName(
       circuit,
       witness,
-      "main.pointInverse[0]"
+      "main.out[0]"
     ).toString();
     const resCircuitY = getSignalByName(
       circuit,
       witness,
-      "main.pointInverse[1]"
+      "main.out[1]"
     ).toString();
-    expect(resCircuitX).toEqual(pointInverse.point[0].toString());
-    expect(resCircuitY).toEqual(pointInverse.point[1].toString());
+    expect(resCircuitX).toEqual(out.point[0].toString());
+    expect(resCircuitY).toEqual(out.point[1].toString());
   });
 });
 
