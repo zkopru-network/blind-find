@@ -1,18 +1,11 @@
-import {
-  stringifyBigInts,
-  sign,
-  hash5,
-  verifySignature,
-  genPubKey
-} from "maci-crypto";
+import { stringifyBigInts, genPubKey } from "maci-crypto";
 import { executeCircuit, getSignalByName } from "maci-circuits";
 
 import { compileCircuit } from "./utils";
 
 import { smpHash } from "../../src/smp/v4/hash";
 import { BabyJubPoint } from "../../src/smp/v4/babyJub";
-import { G, q } from "../../src/smp/v4/state";
-import { bigIntMod } from "../../src/smp/utils";
+import { G } from "../../src/smp/v4/state";
 import { secretFactory } from "../../src/smp/v4/factories";
 import { babyJubPointFactoryExclude } from "../utils";
 
@@ -36,35 +29,6 @@ describe("smpHash", () => {
   });
 });
 
-describe("babyJub signature", () => {
-  test("result from circuit is the same as the output calculated outside", async () => {
-    const privkey = secretFactory();
-    const pubkey = genPubKey(privkey);
-    const data = hash5([
-      secretFactory(),
-      secretFactory(),
-      secretFactory(),
-      secretFactory(),
-      secretFactory()
-    ]);
-    const sig = sign(privkey, data);
-    expect(verifySignature(data, sig, pubkey)).toBeTruthy();
-
-    const circuit = await compileCircuit("verifySignature.circom");
-    const circuitInputs = stringifyBigInts({
-      Ax: stringifyBigInts(pubkey[0]),
-      Ay: stringifyBigInts(pubkey[1]),
-      R8x: stringifyBigInts(sig.R8[0]),
-      R8y: stringifyBigInts(sig.R8[1]),
-      S: stringifyBigInts(sig.S),
-      M: stringifyBigInts(data)
-    });
-    const witness = await executeCircuit(circuit, circuitInputs);
-    const isValid = getSignalByName(circuit, witness, "main.valid").toString();
-    expect(isValid).toEqual("1");
-  });
-});
-
 describe("point computation", () => {
   test("result from circuit is the same as the output calculated outside", async () => {
     const privkey = secretFactory();
@@ -76,7 +40,6 @@ describe("point computation", () => {
 
     const circuit = await compileCircuit("testBabyMulScalar.circom");
 
-    // FIXME: format scalar with `formatPrivKeyForBabyJub`
     const circuitInputs = stringifyBigInts({
       scalar: scalar.toString(),
       point: [point.point[0].toString(), point.point[1].toString()]

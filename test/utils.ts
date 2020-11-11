@@ -1,5 +1,6 @@
 import { babyJubPointFactory, secretFactory } from "../src/smp/v4/factories";
 import { BabyJubPoint } from "../src/smp/v4/babyJub";
+import { genPrivKey } from "maci-crypto";
 
 const NUM_RETRIES = 100;
 
@@ -48,6 +49,18 @@ export function bigIntFactoryExclude(
   return factoryExclude<BigInt>(
     toBeExcluded,
     secretFactory,
+    (a: BigInt, b: BigInt) => a === b,
+    numRetries
+  );
+}
+
+export function privkeyFactoryExclude(
+  toBeExcluded: BigInt[],
+  numRetries?: number
+): BigInt {
+  return factoryExclude<BigInt>(
+    toBeExcluded,
+    genPrivKey,
     (a: BigInt, b: BigInt) => a === b,
     numRetries
   );

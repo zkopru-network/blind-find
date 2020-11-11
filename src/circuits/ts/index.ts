@@ -10,7 +10,6 @@ export const compileAndLoadCircuit = async (circuitPath: string) => {
   return circuit;
 };
 
-
 // TODO:
 //  - Create/Verify Proof SMP
 //  - Create/Verify Proof Successful SMP
