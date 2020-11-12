@@ -1,4 +1,4 @@
-import { stringifyBigInts, genPubKey } from "maci-crypto";
+import { stringifyBigInts, genPubKey, genKeypair } from "maci-crypto";
 import { executeCircuit, getSignalByName } from "maci-circuits";
 
 import { compileCircuit } from "./utils";
@@ -8,6 +8,7 @@ import { BabyJubPoint } from "../../src/smp/v4/babyJub";
 import { G } from "../../src/smp/v4/state";
 import { secretFactory } from "../../src/smp/v4/factories";
 import { babyJubPointFactoryExclude } from "../utils";
+import { hubRegistryTreeFactory } from "../../src/factories";
 
 jest.setTimeout(90000);
 
@@ -107,5 +108,36 @@ describe("point equal", () => {
 
     expect(await verifyAEqualToB(point, point)).toBeTruthy();
     expect(await verifyAEqualToB(point, pointAnother)).toBeFalsy();
+  });
+});
+
+describe("merkle proof", () => {
+  const levels = 4;
+
+  test("merkle proof should be verified successfully in the circuit", async () => {
+    const admin = genKeypair();
+    const hubs = [genKeypair(), genKeypair(), genKeypair()];
+    const tree = hubRegistryTreeFactory(hubs, levels, admin);
+
+    const circuit = await compileCircuit("testMerkleProof.circom");
+
+    const verifyMerkleProof = async (i: number) => {
+      const root = tree.tree.root;
+      const proof = tree.tree.genMerklePath(i);
+      const circuitInputs = {
+        leaf: tree.leaves[i].hash(),
+        path_elements: proof.pathElements,
+        path_index: proof.indices,
+        root
+      };
+      const witness = await executeCircuit(circuit, circuitInputs);
+      const circuitRoot = getSignalByName(
+        circuit,
+        witness,
+        "main.root"
+      ).toString();
+      return circuitRoot === root.toString();
+    };
+    expect(await verifyMerkleProof(0)).toBeTruthy();
   });
 });

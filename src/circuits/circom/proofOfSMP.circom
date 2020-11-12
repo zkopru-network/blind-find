@@ -1,4 +1,6 @@
 include "../../../node_modules/circomlib/circuits/gates.circom";
+include "../../../node_modules/maci-circuits/circom/hasherPoseidon.circom";
+include "../../../node_modules/maci-circuits/circom/verify_signature.circom";
 
 include "./pointOperations.circom";
 include "./proofOfDiscreteLogVerifier.circom";
@@ -6,10 +8,98 @@ include "./proofEqualDiscreteCoordinatesVerifier.circom";
 include "./proofEqualDiscreteLogsVerifier.circom"
 
 
+template CounterSigHash() {
+    signal input sigR8[2];
+    signal input sigS;
+    signal output out;
+
+    component hasher = Hasher5();
+    hasher.in[0] <== sigR8[0];
+    hasher.in[1] <== sigR8[1];
+    hasher.in[2] <== sigS;
+    hasher.in[3] <== 0;
+    hasher.in[4] <== 0;
+
+    out <== hasher.hash;
+}
+
+template JoinMsgHash() {
+    signal input userPubkey[2];
+    signal input hubPubkey[2];
+    signal output out;
+
+    component hasher = Hasher5();
+    hasher.in[0] <== 11174262654018418496616668956048135415153724061932452053335097373686592240616;
+    hasher.in[1] <== userPubkey[0];
+    hasher.in[2] <== userPubkey[1];
+    hasher.in[3] <== hubPubkey[0];
+    hasher.in[4] <== hubPubkey[1];
+
+    out <== hasher.hash;
+}
+
+template JoinMsgSigVerifier() {
+    signal input userPubkey[2];
+    signal input userSigR8[2];
+    signal input userSigS;
+    signal input hubPubkey[2];
+    signal input hubSigR8[2];
+    signal input hubSigS;
+
+    signal output valid;
+
+    // user signature
+    component hashedData = JoinMsgHash();
+    hashedData.userPubkey[0] <== userPubkey[0];
+    hashedData.userPubkey[1] <== userPubkey[1];
+    hashedData.hubPubkey[0] <== hubPubkey[0];
+    hashedData.hubPubkey[1] <== hubPubkey[1];
+    component userSigVerifier = EdDSAPoseidonVerifier_patched();
+    userSigVerifier.Ax <== userPubkey[0];
+    userSigVerifier.Ay <== userPubkey[1];
+    userSigVerifier.R8x <== userSigR8[0];
+    userSigVerifier.R8y <== userSigR8[1];
+    userSigVerifier.S <== userSigS;
+    userSigVerifier.M <== hashedData.out;
+
+    // hub signature
+    component counterSigHash = CounterSigHash();
+    counterSigHash.sigR8[0] <== userSigR8[0];
+    counterSigHash.sigR8[1] <== userSigR8[1];
+    counterSigHash.sigS <== userSigS;
+    component hubSigVerifier = EdDSAPoseidonVerifier_patched();
+    hubSigVerifier.Ax <== hubPubkey[0];
+    hubSigVerifier.Ay <== hubPubkey[1];
+    hubSigVerifier.R8x <== hubSigR8[0];
+    hubSigVerifier.R8y <== hubSigR8[1];
+    hubSigVerifier.S <== hubSigS;
+    hubSigVerifier.M <== counterSigHash.out;
+
+    component res = AND();
+    res.a <== userSigVerifier.valid;
+    res.b <== hubSigVerifier.valid;
+
+    valid <== res.out;
+}
+
 // Created by H after H runs SMP with A where H is the initiator.
 template ProofOfSMP() {
+    // Must need hub's pubkey and c's pubkey
+    // signal private input pubkeyH[2];
+    // signal private input pubkeyC[2];
+
+    // signal private input
+
+//     signal private input merklePathH[levels];
+//     signal input leaf;
+
+//   signal private input path_elements[levels][1];
+//   signal private input path_index[levels];
+
+//   signal input root;
+//     signal input merkleRootHub
+
     // TODO: Add check for points
-    // TODO: input h's secrets or g2/g3?
     signal private input h2;
     signal private input h3;
 

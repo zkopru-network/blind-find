@@ -5,7 +5,6 @@ import { compileCircuit } from "./utils";
 import {
   verifySignedMsg,
   getJoinHubMsgHashedData,
-  prefixRegisterNewHub,
   getCounterSignHashedData,
   signMsg
 } from "../../src";
@@ -13,25 +12,34 @@ import { bigIntFactoryExclude } from "../utils";
 
 jest.setTimeout(90000);
 
-describe("babyJub signatures", () => {
+describe("join msg signatures", () => {
   let circuit;
 
   beforeAll(async () => {
-    circuit = await compileCircuit("verifySignature.circom");
+    circuit = await compileCircuit("testJoinMsgSigVerifier.circom");
   });
 
   const verifySigInCircuit = async (
-    data: BigInt,
-    sig: Signature,
-    pubkey: PubKey
+    userPubkey: PubKey,
+    userSig: Signature,
+    hubPubkey: PubKey,
+    sigHub: Signature
   ) => {
+    /**
+     * signal input userPubkey[2];
+     * signal input userSigR8[2];
+     * signal input userSigS;
+     * signal input hubPubkey[2];
+     * signal input hubSigR8[2];
+     * signal input hubSigS;
+     */
     const circuitInputs = stringifyBigInts({
-      Ax: stringifyBigInts(pubkey[0]),
-      Ay: stringifyBigInts(pubkey[1]),
-      R8x: stringifyBigInts(sig.R8[0]),
-      R8y: stringifyBigInts(sig.R8[1]),
-      S: stringifyBigInts(sig.S),
-      M: stringifyBigInts(data)
+      userPubkey: [userPubkey[0].toString(), userPubkey[1].toString()],
+      userSigR8: [userSig.R8[0].toString(), userSig.R8[1].toString()],
+      userSigS: userSig.S.toString(),
+      hubPubkey: [hubPubkey[0].toString(), hubPubkey[1].toString()],
+      hubSigR8: [sigHub.R8[0].toString(), sigHub.R8[1].toString()],
+      hubSigS: sigHub.S.toString()
     });
     const witness = await executeCircuit(circuit, circuitInputs);
     const isValid = getSignalByName(circuit, witness, "main.valid").toString();
@@ -43,13 +51,18 @@ describe("babyJub signatures", () => {
     const userA = genKeypair();
     const joinMsg = getJoinHubMsgHashedData(userA.pubKey, hub.pubKey);
     const sigA = signMsg(userA.privKey, joinMsg);
+    /* Counter signed join-hub msg */
+    const counterSignedhashedData = getCounterSignHashedData(sigA);
+    const sigHub = signMsg(hub.privKey, counterSignedhashedData);
     expect(verifySignedMsg(joinMsg, sigA, userA.pubKey)).toBeTruthy();
 
     // In circuits
 
     /* join-hub msg */
     // Succeeds
-    expect(await verifySigInCircuit(joinMsg, sigA, userA.pubKey)).toBeTruthy();
+    expect(
+      await verifySigInCircuit(userA.pubKey, sigA, hub.pubKey, sigHub)
+    ).toBeTruthy();
 
     // Fails
 
@@ -61,111 +74,69 @@ describe("babyJub signatures", () => {
       sigA.S,
       ...userA.pubKey
     ]);
-    // Wrong msg
+    // Wrong `sigA.R8`
     expect(
       await verifySigInCircuit(
-        joinMsg,
-        { R8: [sigA.R8[0], anotherElement], S: sigA.S },
-        userA.pubKey
-      )
-    ).toBeFalsy();
-    // Wrong `sig.R8`
-    expect(
-      await verifySigInCircuit(
-        joinMsg,
+        userA.pubKey,
         { R8: [anotherElement, sigA.R8[1]], S: sigA.S },
-        userA.pubKey
+        hub.pubKey,
+        sigHub
       )
     ).toBeFalsy();
     expect(
       await verifySigInCircuit(
-        joinMsg,
-        { R8: sigA.R8, S: anotherElement },
-        userA.pubKey
-      )
-    ).toBeFalsy();
-    // Wrong `sig.S`
-    expect(
-      await verifySigInCircuit(
-        joinMsg,
+        userA.pubKey,
         { R8: [sigA.R8[0], anotherElement], S: sigA.S },
-        userA.pubKey
+        hub.pubKey,
+        sigHub
       )
     ).toBeFalsy();
-    // Wrong `pubkey`
-    expect(
-      await verifySigInCircuit(joinMsg, sigA, [anotherElement, anotherElement])
-    ).toBeFalsy();
-
-    /* Counter signed join-hub msg */
-    const counterSignedhashedData = getCounterSignHashedData(sigA);
-    const sigCounterSigned = signMsg(hub.privKey, counterSignedhashedData);
+    // Wrong `sigA.S`
     expect(
       await verifySigInCircuit(
-        counterSignedhashedData,
-        sigCounterSigned,
-        hub.pubKey
+        userA.pubKey,
+        { R8: [sigA.R8[0], sigA.R8[0]], S: anotherElement },
+        hub.pubKey,
+        sigHub
       )
-    ).toBeTruthy();
-
-    /* new-hub msg */
-
-    const admin = genKeypair();
-    const sigHub = signMsg(hub.privKey, prefixRegisterNewHub);
-    // Succeeds
-    expect(
-      await verifySigInCircuit(prefixRegisterNewHub, sigHub, hub.pubKey)
-    ).toBeTruthy();
-
-    // Fails
-
-    // Wrong msg
-    expect(
-      await verifySigInCircuit(anotherElement, sigHub, hub.pubKey)
     ).toBeFalsy();
-    // Wrong `sig.R8`
+    // Wrong `userPubkey`
     expect(
       await verifySigInCircuit(
-        prefixRegisterNewHub,
-        { R8: [sigHub.R8[0], anotherElement], S: sigHub.S },
-        hub.pubKey
+        [anotherElement, anotherElement],
+        { R8: [sigA.R8[0], sigA.R8[0]], S: sigA.S },
+        hub.pubKey,
+        sigHub
       )
     ).toBeFalsy();
+    // Wrong `hubPubkey`
     expect(
       await verifySigInCircuit(
-        prefixRegisterNewHub,
-        { R8: [anotherElement, sigHub.R8[1]], S: sigHub.S },
-        hub.pubKey
+        userA.pubKey,
+        { R8: [sigA.R8[0], sigA.R8[0]], S: sigA.S },
+        [anotherElement, anotherElement],
+        sigHub
       )
     ).toBeFalsy();
-    // Wrong `sig.S`
+    // Wrong `sigHub.R8`
     expect(
-      await verifySigInCircuit(
-        prefixRegisterNewHub,
-        { R8: sigHub.R8, S: anotherElement },
-        hub.pubKey
-      )
+      await verifySigInCircuit(userA.pubKey, sigA, hub.pubKey, {
+        R8: [anotherElement, sigHub.R8[1]],
+        S: sigHub.S
+      })
     ).toBeFalsy();
-    // Wrong `pubkey`
     expect(
-      await verifySigInCircuit(prefixRegisterNewHub, sigHub, [
-        anotherElement,
-        anotherElement
-      ])
+      await verifySigInCircuit(userA.pubKey, sigA, hub.pubKey, {
+        R8: [sigHub.R8[0], anotherElement],
+        S: sigHub.S
+      })
     ).toBeFalsy();
-
-    /* Counter signed new-hub msg */
-    const counterSignedNewHubMsg = getCounterSignHashedData(sigHub);
-    const sigCounterSignedNewHubMsg = signMsg(
-      admin.privKey,
-      counterSignedNewHubMsg
-    );
+    // Wrong `sigHub.S`
     expect(
-      await verifySigInCircuit(
-        counterSignedNewHubMsg,
-        sigCounterSignedNewHubMsg,
-        admin.pubKey
-      )
-    ).toBeTruthy();
+      await verifySigInCircuit(userA.pubKey, sigA, hub.pubKey, {
+        R8: [sigHub.R8[0], sigHub.R8[0]],
+        S: anotherElement
+      })
+    ).toBeFalsy();
   });
 });
