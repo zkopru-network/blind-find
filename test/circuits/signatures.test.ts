@@ -6,7 +6,8 @@ import {
   verifySignedMsg,
   getJoinHubMsgHashedData,
   getCounterSignHashedData,
-  signMsg
+  signMsg,
+  prefixRegisterNewHub
 } from "../../src";
 import { bigIntFactoryExclude } from "../utils";
 
@@ -138,5 +139,59 @@ describe("join msg signatures", () => {
         S: anotherElement
       })
     ).toBeFalsy();
+  });
+});
+
+describe("new hub signatures", () => {
+  let circuit;
+
+  beforeAll(async () => {
+    circuit = await compileCircuit("testHubRegistryVerifier.circom");
+  });
+
+  const verifySigInCircuit = async (
+    pubkeyHub: PubKey,
+    sigHub: Signature,
+    pubkeyAdmin: PubKey,
+    sigAdmin: Signature
+  ) => {
+    /**
+            signal input pubkeyHub[2];
+            signal input sigHubR8[2];
+            signal input sigHubS;
+            // Assume every one knows the pubkey of admin
+            signal input pubkeyAdmin[2];
+            signal input sigAdminR8[2];
+            signal input sigAdminS;
+         */
+    const circuitInputs = stringifyBigInts({
+      pubkeyHub: [pubkeyHub[0].toString(), pubkeyHub[1].toString()],
+      sigHubR8: [sigHub.R8[0].toString(), sigHub.R8[1].toString()],
+      sigHubS: sigHub.S.toString(),
+      pubkeyAdmin: [pubkeyAdmin[0].toString(), pubkeyAdmin[1].toString()],
+      sigAdminR8: [sigAdmin.R8[0].toString(), sigAdmin.R8[1].toString()],
+      sigAdminS: sigAdmin.S.toString()
+    });
+    const witness = await executeCircuit(circuit, circuitInputs);
+    const isValid = getSignalByName(circuit, witness, "main.valid").toString();
+    return isValid === "1";
+  };
+
+  test("verifySignedMsg", async () => {
+    const admin = genKeypair();
+    const hub = genKeypair();
+    const sigHub = signMsg(hub.privKey, prefixRegisterNewHub);
+    /* Counter signed join-hub msg */
+    const counterSignedhashedData = getCounterSignHashedData(sigHub);
+    const sigAdmin = signMsg(admin.privKey, counterSignedhashedData);
+    expect(
+      verifySignedMsg(prefixRegisterNewHub, sigHub, hub.pubKey)
+    ).toBeTruthy();
+
+    /* join-hub msg */
+    // Succeeds
+    expect(
+      await verifySigInCircuit(hub.pubKey, sigHub, admin.pubKey, sigAdmin)
+    ).toBeTruthy();
   });
 });

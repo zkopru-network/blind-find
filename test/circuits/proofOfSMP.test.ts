@@ -1,5 +1,5 @@
 import { performance } from "perf_hooks";
-import { stringifyBigInts } from "maci-crypto";
+import { genKeypair, stringifyBigInts } from "maci-crypto";
 import { executeCircuit, getSignalByName } from "maci-circuits";
 
 import { compileCircuit } from "./utils";
@@ -11,6 +11,11 @@ import {
   SMPMessage3Wire
 } from "../../src/smp/v4/serialization";
 import { SMPState1 } from "../../src/smp/state";
+import {
+  getCounterSignHashedData,
+  getJoinHubMsgHashedData,
+  signMsg
+} from "../../src";
 
 jest.setTimeout(90000);
 
@@ -40,6 +45,14 @@ describe("proof of smp", () => {
     const circuit = await compileCircuit("testProofOfSMP.circom");
     const t1 = performance.now();
     const tCompile = t1 - t0;
+    const keypairC = genKeypair();
+    const keypairH = genKeypair();
+    const joinHubMsg = getJoinHubMsgHashedData(
+      keypairC.pubKey,
+      keypairH.pubKey
+    );
+    const sigC = signMsg(keypairC.privKey, joinHubMsg);
+    const sigH = signMsg(keypairH.privKey, getCounterSignHashedData(sigC));
 
     const verifyProofOfSMP = async (
       msg1: SMPMessage1Wire,
@@ -47,6 +60,12 @@ describe("proof of smp", () => {
       msg3: SMPMessage3Wire
     ) => {
       const args = stringifyBigInts({
+        pubkeyC: [keypairC.pubKey[0].toString(), keypairC.pubKey[1].toString()],
+        sigCR8: [sigC.R8[0].toString(), sigC.R8[1].toString()],
+        sigCS: sigC.S.toString(),
+        pubkeyH: [keypairH.pubKey[0].toString(), keypairH.pubKey[1].toString()],
+        sigHR8: [sigH.R8[0].toString(), sigH.R8[1].toString()],
+        sigHS: sigH.S.toString(),
         h2: h2.toString(),
         h3: h3.toString(),
         g2h: [msg1.g2a.point[0].toString(), msg1.g2a.point[1].toString()],

@@ -23,6 +23,45 @@ template CounterSigHash() {
     out <== hasher.hash;
 }
 
+template CounterSignedSigsVerifier() {
+    signal input hashedData;
+    signal input pubkey[2];
+    signal input sigR8[2];
+    signal input sigS;
+    signal input counterSignedPubkey[2];
+    signal input counterSignedSigR8[2];
+    signal input counterSignedSigS;
+
+    signal output valid;
+
+    component sigVerifier = EdDSAPoseidonVerifier_patched();
+    sigVerifier.Ax <== pubkey[0];
+    sigVerifier.Ay <== pubkey[1];
+    sigVerifier.R8x <== sigR8[0];
+    sigVerifier.R8y <== sigR8[1];
+    sigVerifier.S <== sigS;
+    sigVerifier.M <== hashedData;
+
+    component counterSigHash = CounterSigHash();
+    counterSigHash.sigR8[0] <== sigR8[0];
+    counterSigHash.sigR8[1] <== sigR8[1];
+    counterSigHash.sigS <== sigS;
+
+    component counterSignedSigVerifier = EdDSAPoseidonVerifier_patched();
+    counterSignedSigVerifier.Ax <== counterSignedPubkey[0];
+    counterSignedSigVerifier.Ay <== counterSignedPubkey[1];
+    counterSignedSigVerifier.R8x <== counterSignedSigR8[0];
+    counterSignedSigVerifier.R8y <== counterSignedSigR8[1];
+    counterSignedSigVerifier.S <== counterSignedSigS;
+    counterSignedSigVerifier.M <== counterSigHash.out;
+
+    component res = AND();
+    res.a <== sigVerifier.valid;
+    res.b <== counterSignedSigVerifier.valid;
+
+    valid <== res.out;
+}
+
 template JoinMsgHash() {
     signal input userPubkey[2];
     signal input hubPubkey[2];
@@ -38,6 +77,8 @@ template JoinMsgHash() {
     out <== hasher.hash;
 }
 
+// TODO: Add template for New Hub Sig Verifier.
+
 template JoinMsgSigVerifier() {
     signal input userPubkey[2];
     signal input userSigR8[2];
@@ -48,45 +89,67 @@ template JoinMsgSigVerifier() {
 
     signal output valid;
 
-    // user signature
     component hashedData = JoinMsgHash();
     hashedData.userPubkey[0] <== userPubkey[0];
     hashedData.userPubkey[1] <== userPubkey[1];
     hashedData.hubPubkey[0] <== hubPubkey[0];
     hashedData.hubPubkey[1] <== hubPubkey[1];
-    component userSigVerifier = EdDSAPoseidonVerifier_patched();
-    userSigVerifier.Ax <== userPubkey[0];
-    userSigVerifier.Ay <== userPubkey[1];
-    userSigVerifier.R8x <== userSigR8[0];
-    userSigVerifier.R8y <== userSigR8[1];
-    userSigVerifier.S <== userSigS;
-    userSigVerifier.M <== hashedData.out;
 
-    // hub signature
-    component counterSigHash = CounterSigHash();
-    counterSigHash.sigR8[0] <== userSigR8[0];
-    counterSigHash.sigR8[1] <== userSigR8[1];
-    counterSigHash.sigS <== userSigS;
-    component hubSigVerifier = EdDSAPoseidonVerifier_patched();
-    hubSigVerifier.Ax <== hubPubkey[0];
-    hubSigVerifier.Ay <== hubPubkey[1];
-    hubSigVerifier.R8x <== hubSigR8[0];
-    hubSigVerifier.R8y <== hubSigR8[1];
-    hubSigVerifier.S <== hubSigS;
-    hubSigVerifier.M <== counterSigHash.out;
+    component verifier = CounterSignedSigsVerifier();
+    verifier.hashedData <== hashedData.out;
+    verifier.pubkey[0] <== userPubkey[0];
+    verifier.pubkey[1] <== userPubkey[1];
+    verifier.sigR8[0] <== userSigR8[0];
+    verifier.sigR8[1] <== userSigR8[1];
+    verifier.sigS <== userSigS;
+    verifier.counterSignedPubkey[0] <== hubPubkey[0];
+    verifier.counterSignedPubkey[1] <== hubPubkey[1];
+    verifier.counterSignedSigR8[0] <== hubSigR8[0];
+    verifier.counterSignedSigR8[1] <== hubSigR8[1];
+    verifier.counterSignedSigS <== hubSigS;
 
-    component res = AND();
-    res.a <== userSigVerifier.valid;
-    res.b <== hubSigVerifier.valid;
+    valid <== verifier.valid;
+}
 
-    valid <== res.out;
+template HubRegistryVerifier() {
+    // TODO: Add merkle proof
+    signal input pubkeyHub[2];
+    signal input sigHubR8[2];
+    signal input sigHubS;
+    // Assume every one knows the pubkey of admin
+    signal input pubkeyAdmin[2];
+    signal input sigAdminR8[2];
+    signal input sigAdminS;
+
+    signal output valid;
+
+    component verifier = CounterSignedSigsVerifier();
+    // `prefixRegisterNewHub`
+    verifier.hashedData <== 1122637059787783884121270614611449342946993875255423905974201070879309325140;
+    verifier.pubkey[0] <== pubkeyHub[0];
+    verifier.pubkey[1] <== pubkeyHub[1];
+    verifier.sigR8[0] <== sigHubR8[0];
+    verifier.sigR8[1] <== sigHubR8[1];
+    verifier.sigS <== sigHubS;
+    verifier.counterSignedPubkey[0] <== pubkeyAdmin[0];
+    verifier.counterSignedPubkey[1] <== pubkeyAdmin[1];
+    verifier.counterSignedSigR8[0] <== sigAdminR8[0];
+    verifier.counterSignedSigR8[1] <== sigAdminR8[1];
+    verifier.counterSignedSigS <== sigAdminS;
+
+    valid <== verifier.valid;
 }
 
 // Created by H after H runs SMP with A where H is the initiator.
 template ProofOfSMP() {
+    // TODO: Add merkle proof
     // Must need hub's pubkey and c's pubkey
-    // signal private input pubkeyH[2];
-    // signal private input pubkeyC[2];
+    signal private input pubkeyC[2];
+    signal private input sigCR8[2];
+    signal private input sigCS;
+    signal private input pubkeyH[2];
+    signal private input sigHR8[2];
+    signal private input sigHS;
 
     // signal private input
 
@@ -140,6 +203,20 @@ template ProofOfSMP() {
         5299619240641551281634865583518297030282874472190772894086521144482721001553,
         16950150798460657717958625567821834550301663161624707787222815936182638968203
     ];
+
+    /* join-hub signatures */
+    component joinSigsVerifier = JoinMsgSigVerifier();
+    joinSigsVerifier.userPubkey[0] <== pubkeyC[0];
+    joinSigsVerifier.userPubkey[1] <== pubkeyC[1];
+    joinSigsVerifier.userSigR8[0] <== sigCR8[0];
+    joinSigsVerifier.userSigR8[1] <== sigCR8[1];
+    joinSigsVerifier.userSigS <== sigCS;
+    joinSigsVerifier.hubPubkey[0] <== pubkeyH[0];
+    joinSigsVerifier.hubPubkey[1] <== pubkeyH[1];
+    joinSigsVerifier.hubSigR8[0] <== sigHR8[0];
+    joinSigsVerifier.hubSigR8[1] <== sigHR8[1];
+    joinSigsVerifier.hubSigS <== sigHS;
+    joinSigsVerifier.valid === 1;
 
     /* msg 1 */
 
