@@ -6,10 +6,10 @@ import {
   verifySignedMsg,
   getJoinHubMsgHashedData,
   getCounterSignHashedData,
-  signMsg,
-  prefixRegisterNewHub
+  signMsg
 } from "../../src";
 import { bigIntFactoryExclude } from "../utils";
+import { hubRegistryTreeFactory } from "../../src/factories";
 
 jest.setTimeout(90000);
 
@@ -26,14 +26,6 @@ describe("join msg signatures", () => {
     hubPubkey: PubKey,
     sigHub: Signature
   ) => {
-    /**
-     * signal input userPubkey[2];
-     * signal input userSigR8[2];
-     * signal input userSigS;
-     * signal input hubPubkey[2];
-     * signal input hubSigR8[2];
-     * signal input hubSigS;
-     */
     const circuitInputs = stringifyBigInts({
       userPubkey: [userPubkey[0].toString(), userPubkey[1].toString()],
       userSigR8: [userSig.R8[0].toString(), userSig.R8[1].toString()],
@@ -142,56 +134,65 @@ describe("join msg signatures", () => {
   });
 });
 
-describe("new hub signatures", () => {
+describe("HubRegistry", () => {
   let circuit;
 
   beforeAll(async () => {
     circuit = await compileCircuit("testHubRegistryVerifier.circom");
   });
 
-  const verifySigInCircuit = async (
-    pubkeyHub: PubKey,
-    sigHub: Signature,
-    pubkeyAdmin: PubKey,
-    sigAdmin: Signature
-  ) => {
-    /**
-            signal input pubkeyHub[2];
-            signal input sigHubR8[2];
-            signal input sigHubS;
-            // Assume every one knows the pubkey of admin
-            signal input pubkeyAdmin[2];
-            signal input sigAdminR8[2];
-            signal input sigAdminS;
-         */
-    const circuitInputs = stringifyBigInts({
-      pubkeyHub: [pubkeyHub[0].toString(), pubkeyHub[1].toString()],
-      sigHubR8: [sigHub.R8[0].toString(), sigHub.R8[1].toString()],
-      sigHubS: sigHub.S.toString(),
-      pubkeyAdmin: [pubkeyAdmin[0].toString(), pubkeyAdmin[1].toString()],
-      sigAdminR8: [sigAdmin.R8[0].toString(), sigAdmin.R8[1].toString()],
-      sigAdminS: sigAdmin.S.toString()
-    });
-    const witness = await executeCircuit(circuit, circuitInputs);
-    const isValid = getSignalByName(circuit, witness, "main.valid").toString();
-    return isValid === "1";
-  };
-
   test("verifySignedMsg", async () => {
     const admin = genKeypair();
-    const hub = genKeypair();
-    const sigHub = signMsg(hub.privKey, prefixRegisterNewHub);
-    /* Counter signed join-hub msg */
-    const counterSignedhashedData = getCounterSignHashedData(sigHub);
-    const sigAdmin = signMsg(admin.privKey, counterSignedhashedData);
-    expect(
-      verifySignedMsg(prefixRegisterNewHub, sigHub, hub.pubKey)
-    ).toBeTruthy();
+    const hubs = [genKeypair(), genKeypair(), genKeypair()];
+    const treeLevels = 4;
+    const tree = hubRegistryTreeFactory(hubs, treeLevels, admin);
 
-    /* join-hub msg */
+    const verify = async (leafIndex: number) => {
+      const root = tree.tree.root;
+      const proof = tree.tree.genMerklePath(leafIndex);
+      const registry = tree.leaves[leafIndex];
+      if (!registry.verify()) {
+        throw new Error(`registry is invalid: leafIndex=${leafIndex}`);
+      }
+      if (
+        registry.adminPubkey === undefined ||
+        registry.adminSig === undefined
+      ) {
+        throw new Error(`registry is not counter-signed: registry=${registry}`);
+      }
+      const circuitInputs = {
+        pubkeyHub: [
+          registry.pubkey[0].toString(),
+          registry.pubkey[1].toString()
+        ],
+        sigHubR8: [
+          registry.sig.R8[0].toString(),
+          registry.sig.R8[1].toString()
+        ],
+        sigHubS: registry.sig.S.toString(),
+        merklePathElements: proof.pathElements,
+        merklePathIndices: proof.indices,
+        merkleRoot: root,
+        pubkeyAdmin: [
+          registry.adminPubkey[0].toString(),
+          registry.adminPubkey[1].toString()
+        ],
+        sigAdminR8: [
+          registry.adminSig.R8[0].toString(),
+          registry.adminSig.R8[1].toString()
+        ],
+        sigAdminS: registry.adminSig.S.toString()
+      };
+      const witness = await executeCircuit(circuit, circuitInputs);
+      const isValid = getSignalByName(
+        circuit,
+        witness,
+        "main.valid"
+      ).toString();
+      return isValid === "1";
+    };
+
     // Succeeds
-    expect(
-      await verifySigInCircuit(hub.pubKey, sigHub, admin.pubKey, sigAdmin)
-    ).toBeTruthy();
+    expect(await verify(1)).toBeTruthy();
   });
 });

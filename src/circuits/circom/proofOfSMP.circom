@@ -1,3 +1,4 @@
+include "../../../node_modules/maci-circuits/circom/trees/incrementalMerkleTree.circom";
 include "../../../node_modules/circomlib/circuits/gates.circom";
 include "../../../node_modules/maci-circuits/circom/hasherPoseidon.circom";
 include "../../../node_modules/maci-circuits/circom/verify_signature.circom";
@@ -111,8 +112,7 @@ template JoinMsgSigVerifier() {
     valid <== verifier.valid;
 }
 
-template HubRegistryVerifier() {
-    // TODO: Add merkle proof
+template HubRegistryVerifier(levels) {
     signal input pubkeyHub[2];
     signal input sigHubR8[2];
     signal input sigHubS;
@@ -121,8 +121,14 @@ template HubRegistryVerifier() {
     signal input sigAdminR8[2];
     signal input sigAdminS;
 
+    // Merkle proof of the hub's registry
+    signal input merklePathElements[levels][1];
+    signal input merklePathIndices[levels];
+    signal input merkleRoot;
+
     signal output valid;
 
+    // Verify signatures
     component verifier = CounterSignedSigsVerifier();
     // `prefixRegisterNewHub`
     verifier.hashedData <== 1122637059787783884121270614611449342946993875255423905974201070879309325140;
@@ -137,34 +143,57 @@ template HubRegistryVerifier() {
     verifier.counterSignedSigR8[1] <== sigAdminR8[1];
     verifier.counterSignedSigS <== sigAdminS;
 
+    // Verify that the hub entry matches its merkle proof
+    component hasher = Hasher11();
+    hasher.in[0] <== sigHubR8[0];
+    hasher.in[1] <== sigHubR8[1];
+    hasher.in[2] <== sigHubS;
+    hasher.in[3] <== pubkeyHub[0];
+    hasher.in[4] <== pubkeyHub[1];
+    hasher.in[5] <== sigAdminR8[0];
+    hasher.in[6] <== sigAdminR8[1];
+    hasher.in[7] <== sigAdminS;
+    hasher.in[8] <== pubkeyAdmin[0];
+    hasher.in[9] <== pubkeyAdmin[1];
+    hasher.in[10] <== 0;
+
+    component leafVerifier = LeafExists(levels);
+    leafVerifier.leaf <== hasher.hash;
+    leafVerifier.root <== merkleRoot;
+    for (var i = 0; i < levels; i++) {
+        leafVerifier.path_index[i] <== merklePathIndices[i];
+        leafVerifier.path_elements[i][0] <== merklePathElements[i][0];
+    }
+
     valid <== verifier.valid;
 }
 
 // Created by H after H runs SMP with A where H is the initiator.
-template ProofOfSMP() {
-    // TODO: Add merkle proof
+template ProofOfSMP(levels) {
+    /* Private */
     // Must need hub's pubkey and c's pubkey
     signal private input pubkeyC[2];
     signal private input sigCR8[2];
     signal private input sigCS;
-    signal private input pubkeyH[2];
-    signal private input sigHR8[2];
-    signal private input sigHS;
+    signal private input pubkeyHub[2];
+    signal private input sigJoinMsgHubR8[2];
+    signal private input sigJoinMsgHubS;
 
-    // signal private input
-
-//     signal private input merklePathH[levels];
-//     signal input leaf;
-
-//   signal private input path_elements[levels][1];
-//   signal private input path_index[levels];
-
-//   signal input root;
-//     signal input merkleRootHub
+    // Merkle proof for hub's registry.
+    signal private input merklePathElements[levels][1];
+    signal private input merklePathIndices[levels];
+    signal private input sigHubRegistryR8[2];
+    signal private input sigHubRegistryS;
+    signal private input sigAdminR8[2];
+    signal private input sigAdminS;
 
     // TODO: Add check for points
     signal private input h2;
     signal private input h3;
+
+    /* Public */
+    signal input pubkeyAdmin[2];
+    signal input merkleRoot;
 
     // msg 1
     signal input g2h[2];
@@ -211,12 +240,32 @@ template ProofOfSMP() {
     joinSigsVerifier.userSigR8[0] <== sigCR8[0];
     joinSigsVerifier.userSigR8[1] <== sigCR8[1];
     joinSigsVerifier.userSigS <== sigCS;
-    joinSigsVerifier.hubPubkey[0] <== pubkeyH[0];
-    joinSigsVerifier.hubPubkey[1] <== pubkeyH[1];
-    joinSigsVerifier.hubSigR8[0] <== sigHR8[0];
-    joinSigsVerifier.hubSigR8[1] <== sigHR8[1];
-    joinSigsVerifier.hubSigS <== sigHS;
+    joinSigsVerifier.hubPubkey[0] <== pubkeyHub[0];
+    joinSigsVerifier.hubPubkey[1] <== pubkeyHub[1];
+    joinSigsVerifier.hubSigR8[0] <== sigJoinMsgHubR8[0];
+    joinSigsVerifier.hubSigR8[1] <== sigJoinMsgHubR8[1];
+    joinSigsVerifier.hubSigS <== sigJoinMsgHubS;
     joinSigsVerifier.valid === 1;
+
+    /* merkle proof */
+    // HubRegistryVerifier
+    component hubRegistryVerifier = HubRegistryVerifier(levels);
+    hubRegistryVerifier.merkleRoot <== merkleRoot;
+    hubRegistryVerifier.pubkeyHub[0] <== pubkeyHub[0];
+    hubRegistryVerifier.pubkeyHub[1] <== pubkeyHub[1];
+    hubRegistryVerifier.sigHubR8[0] <== sigHubRegistryR8[0];
+    hubRegistryVerifier.sigHubR8[1] <== sigHubRegistryR8[1];
+    hubRegistryVerifier.sigHubS <== sigHubRegistryS;
+    hubRegistryVerifier.pubkeyAdmin[0] <== pubkeyAdmin[0];
+    hubRegistryVerifier.pubkeyAdmin[1] <== pubkeyAdmin[1];
+    hubRegistryVerifier.sigAdminR8[0] <== sigAdminR8[0];
+    hubRegistryVerifier.sigAdminR8[1] <== sigAdminR8[1];
+    hubRegistryVerifier.sigAdminS <== sigAdminS;
+    for (var i = 0; i < levels; i++) {
+        hubRegistryVerifier.merklePathIndices[i] <== merklePathIndices[i];
+        hubRegistryVerifier.merklePathElements[i][0] <== merklePathElements[i][0];
+    }
+    hubRegistryVerifier.valid === 1;
 
     /* msg 1 */
 

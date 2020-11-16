@@ -1,3 +1,3 @@
 include "../../../src/circuits/circom/proofOfSMP.circom";
 
-component main = ProofOfSMP();
+component main = ProofOfSMP(4);

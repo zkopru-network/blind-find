@@ -41,7 +41,7 @@ export const hubRegistryTreeFactory = (
     );
   }
   for (let i = 0; i < hubs.length; i++) {
-    const registry = hubRegistryFactory(adminKeypair);
+    const registry = hubRegistryFactory(adminKeypair, hubs[i]);
     tree.insert(registry);
   }
   return tree;

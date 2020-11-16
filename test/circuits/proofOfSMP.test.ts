@@ -16,6 +16,7 @@ import {
   getJoinHubMsgHashedData,
   signMsg
 } from "../../src";
+import { hubRegistryTreeFactory } from "../../src/factories";
 
 jest.setTimeout(90000);
 
@@ -41,31 +42,90 @@ describe("proof of smp", () => {
   const msg3 = SMPMessage3Wire.fromTLV(msg3TLV);
 
   test("", async () => {
+    const hubIndex = 3;
+    const levels = 4;
+    const hubs = [
+      genKeypair(),
+      genKeypair(),
+      genKeypair(),
+      genKeypair(),
+      genKeypair()
+    ];
+    const admin = genKeypair();
+    const keypairC = genKeypair();
+    const keypairHub = hubs[hubIndex];
+    const joinHubMsg = getJoinHubMsgHashedData(
+      keypairC.pubKey,
+      keypairHub.pubKey
+    );
+    const sigJoinMsgC = signMsg(keypairC.privKey, joinHubMsg);
+    const sigJoinMsgHub = signMsg(
+      keypairHub.privKey,
+      getCounterSignHashedData(sigJoinMsgC)
+    );
+    const tree = hubRegistryTreeFactory(hubs, levels, admin);
+    const hubRegistry = tree.leaves[hubIndex];
+    const root = tree.tree.root;
+    const proof = tree.tree.genMerklePath(hubIndex);
+
     const t0 = performance.now();
     const circuit = await compileCircuit("testProofOfSMP.circom");
     const t1 = performance.now();
     const tCompile = t1 - t0;
-    const keypairC = genKeypair();
-    const keypairH = genKeypair();
-    const joinHubMsg = getJoinHubMsgHashedData(
-      keypairC.pubKey,
-      keypairH.pubKey
-    );
-    const sigC = signMsg(keypairC.privKey, joinHubMsg);
-    const sigH = signMsg(keypairH.privKey, getCounterSignHashedData(sigC));
-
     const verifyProofOfSMP = async (
       msg1: SMPMessage1Wire,
       msg2: SMPMessage2Wire,
       msg3: SMPMessage3Wire
     ) => {
+      /**
+       * signal input pubkeyAdmin[2];
+       * signal input merkleRoot;
+       * signal private input merklePathElements[levels][1];
+       * signal private input merklePathIndices[levels];
+       * signal private input sigAdminR8[2];
+       * signal private input sigAdminS;
+       */
+      if (!hubRegistry.verify()) {
+        throw new Error(`registry is invalid: hubIndex=${hubIndex}`);
+      }
+      if (
+        hubRegistry.adminPubkey === undefined ||
+        hubRegistry.adminSig === undefined
+      ) {
+        throw new Error(
+          `registry is not counter-signed: hubRegistry=${hubRegistry}`
+        );
+      }
       const args = stringifyBigInts({
+        merklePathElements: proof.pathElements,
+        merklePathIndices: proof.indices,
+        merkleRoot: root,
+        sigHubRegistryR8: [
+          hubRegistry.sig.R8[0].toString(),
+          hubRegistry.sig.R8[1].toString()
+        ],
+        sigHubRegistryS: hubRegistry.sig.S.toString(),
+        sigAdminR8: [
+          hubRegistry.adminSig.R8[0].toString(),
+          hubRegistry.adminSig.R8[1].toString()
+        ],
+        sigAdminS: hubRegistry.adminSig.S.toString(),
+        pubkeyAdmin: [
+          hubRegistry.adminPubkey[0].toString(),
+          hubRegistry.adminPubkey[1].toString()
+        ],
         pubkeyC: [keypairC.pubKey[0].toString(), keypairC.pubKey[1].toString()],
-        sigCR8: [sigC.R8[0].toString(), sigC.R8[1].toString()],
-        sigCS: sigC.S.toString(),
-        pubkeyH: [keypairH.pubKey[0].toString(), keypairH.pubKey[1].toString()],
-        sigHR8: [sigH.R8[0].toString(), sigH.R8[1].toString()],
-        sigHS: sigH.S.toString(),
+        sigCR8: [sigJoinMsgC.R8[0].toString(), sigJoinMsgC.R8[1].toString()],
+        sigCS: sigJoinMsgC.S.toString(),
+        pubkeyHub: [
+          keypairHub.pubKey[0].toString(),
+          keypairHub.pubKey[1].toString()
+        ],
+        sigJoinMsgHubR8: [
+          sigJoinMsgHub.R8[0].toString(),
+          sigJoinMsgHub.R8[1].toString()
+        ],
+        sigJoinMsgHubS: sigJoinMsgHub.S.toString(),
         h2: h2.toString(),
         h3: h3.toString(),
         g2h: [msg1.g2a.point[0].toString(), msg1.g2a.point[1].toString()],
