@@ -23,5 +23,7 @@ jobs:
         node-version: ${{ matrix.node-version }}
     - run: npm ci
     - run: npm run lint
+    - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    - run: cargo install zkutil --version 0.3.2 && zkutil --help
     - run: npm run build_proofs
     - run: npm test
