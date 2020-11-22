@@ -65,3 +65,7 @@ export function privkeyFactoryExclude(
     numRetries
   );
 }
+
+export const deepcopyRawObj = (obj: any) => {
+  return JSON.parse(JSON.stringify(obj));
+};

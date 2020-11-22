@@ -3,7 +3,7 @@ include "./pointOperations.circom";
 // Created by A after H runs SMP with A where H is the initiator.
 template ProofSuccessfulSMP() {
     // TODO: Check if points are on the currect subgroup.
-    // TODO: Add pubkey check
+    // TODO: Add pubkey check and signature for A on rh
     signal private input a3;
 
     // msg 2
