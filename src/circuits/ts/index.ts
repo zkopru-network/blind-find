@@ -7,6 +7,7 @@ import {
     stringifyBigInts,
     unstringifyBigInts,
 } from 'maci-crypto';
+import { ValueError } from '../../smp/exceptions';
 
 const zkutilPath = "~/.cargo/bin/zkutil";
 
@@ -18,28 +19,41 @@ export const compileAndLoadCircuit = async (circuitPath: string) => {
   return circuit;
 };
 
-// TODO:
-//  - Create/Verify Proof SMP
-//  - Create/Verify Proof Successful SMP
-//  - Create/Verify Proof Indirection connections
-
+const circomFilePostfix = ".circom";
+const circomDir = `${__dirname}/../circom`;
 const buildDir = `${__dirname}/../../../build`;
 const snarkjsCLI = path.join(__dirname, '../../../node_modules/snarkjs/build/cli.cjs');
+const proofOfSMPCircom = 'proofOfSMP';
+const proofSuccessfulSMPCircom = 'proofSuccessfulSMP';
 
 
-const genQvtProofAndPublicSignals = (
+const getCircuitName = (circomFile: string): string => {
+  if (circomFile.slice(circomFile.length - circomFilePostfix.length) !== circomFilePostfix) {
+    throw new ValueError(`circom file must have postifx ${circomFilePostfix}: circomFile=${circomFile}`);
+  }
+  const basename = circomFile.substring(circomFile.lastIndexOf('/') + 1);
+  return basename.slice(0, basename.length - circomFilePostfix.length);
+}
+
+/**
+ * Find the circuit file under `src/circuits/circom/`. Compile it and generate the proof with `inputs`.
+ * @param circomFile
+ * @param inputs
+ * @param circuit
+ */
+const genProof = (
+  circomFile: string,
   inputs: any,
   circuit?: any,
 ) => {
-
-  const circuitName = 't';
-  const circuitPath = `${circuitName}.circom`;
+  const circuitName = getCircuitName(circomFile);
+  const circomFullPath = path.join(circomDir, circomFile);
   const circuitR1csPath = `${circuitName}.r1cs`;
   const wasmPath  = `${circuitName}.wasm`;
   const paramsPath  = `${circuitName}.params`;
   return genProofAndPublicSignals(
       inputs,
-      circuitPath,
+      circomFullPath,
       circuitR1csPath,
       wasmPath,
       paramsPath,
@@ -47,7 +61,7 @@ const genQvtProofAndPublicSignals = (
   )
 }
 
-export const genProofAndPublicSignals = async (
+const genProofAndPublicSignals = async (
   inputs: any,
   circuitFilename: string,
   circuitR1csFilename: string,
@@ -101,36 +115,33 @@ export const genProofAndPublicSignals = async (
 }
 
 
-export const verifyQvtProof = (
+const verifyProof = (
+  circomFile: string,
   proof: any,
   publicSignals: any,
 ) => {
-  const date = Date.now().toString()
-  const circuitName = 't';
+  const date = Date.now().toString();
+  const circuitName = getCircuitName(circomFile);
   const paramsFilename = `${circuitName}.params`;
   const proofFilename = `${date}.${circuitName}.proof.json`;
   const publicSignalsFilename = `${date}.${circuitName}.publicSignals.json`;
-  console.log('1');
-  // TODO: refactor
   fs.writeFileSync(
       path.join(buildDir, proofFilename),
       JSON.stringify(
           stringifyBigInts(proof)
       )
   )
-  console.log('2');
   fs.writeFileSync(
       path.join(buildDir, publicSignalsFilename),
       JSON.stringify(
           stringifyBigInts(publicSignals)
       )
   )
-  console.log('3');
 
-  return verifyProof(paramsFilename, proofFilename, publicSignalsFilename)
+  return verifyProofInFiles(paramsFilename, proofFilename, publicSignalsFilename)
 }
 
-export const verifyProof = async (
+const verifyProofInFiles = async (
   paramsFilename: string,
   proofFilename: string,
   publicSignalsFilename: string,
@@ -138,27 +149,14 @@ export const verifyProof = async (
   const paramsPath = path.join(buildDir, paramsFilename)
   const proofPath = path.join(buildDir, proofFilename)
   const publicSignalsPath = path.join(buildDir, publicSignalsFilename)
-  console.log('4');
   const verifyCmd = `${zkutilPath} verify -p ${paramsPath} -r ${proofPath} -i ${publicSignalsPath}`
   console.log(`verifyCmd = "${verifyCmd}"`);
   const output = shell.exec(verifyCmd).stdout.trim()
 
-  console.log('6');
   shell.rm('-f', proofPath)
   shell.rm('-f', publicSignalsPath)
 
   return output === 'Proof is correct'
 }
 
-const main = async () => {
-  const args = stringifyBigInts({
-    a: "3",
-    b: "7",
-    c: "21",
-  });
-  const { proof, publicSignals, witness, circuit } = await genQvtProofAndPublicSignals(args);
-  const res = await verifyQvtProof(proof, publicSignals);
-  console.log(res);
-}
-
-main();
+export { genProof, verifyProof };

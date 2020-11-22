@@ -1,4 +1,7 @@
-# TODO: Ensure $1 is `xxx.circom`
+#!/bin/bash
+# Usage: compile circom code
+# Example: ./buildScript.sh xxx.circom
+
 dir=`dirname $0`
 build_dir="$dir/build"
 mkdir -p $build_dir
