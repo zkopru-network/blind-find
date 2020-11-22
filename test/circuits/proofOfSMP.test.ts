@@ -4,7 +4,7 @@ import { compileCircuit } from "./utils";
 import { bigIntFactoryExclude, deepcopyRawObj } from "../utils";
 import { proofOfSMPArgsFactory } from "../../src/factories";
 
-jest.setTimeout(90000);
+jest.setTimeout(300000);
 
 describe("proof of smp", () => {
   test("", async () => {
