@@ -15,6 +15,7 @@ import {
   SMPMessage3Wire
 } from "../../smp/v4/serialization";
 import { HubRegistry } from "../..";
+import { BabyJubPoint } from "../../smp/v4/babyJub";
 const circom = require("circom");
 
 const zkutilPath = "~/.cargo/bin/zkutil";
@@ -35,8 +36,9 @@ const snarkjsCLI = path.join(
   "../../../node_modules/snarkjs/build/cli.cjs"
 );
 const proofOfSMPPath = "instance/proofOfSMP.circom";
+const proofSuccessfulSMPPath = "instance/proofSuccessfulSMP.circom";
 
-type proofOfSMPInput = {
+type ProofOfSMPInput = {
   h2: BigInt;
   h3: BigInt;
   msg1: SMPMessage1Wire;
@@ -51,12 +53,19 @@ type proofOfSMPInput = {
   sigJoinMsgHub: Signature;
 };
 
-const genProofOfSMP = async (inputs: proofOfSMPInput) => {
+type ProofSuccessfulSMPInput = {
+  a3: BigInt;
+  pa: BabyJubPoint;
+  ph: BabyJubPoint;
+  rh: BabyJubPoint;
+};
+
+const genProofOfSMP = async (inputs: ProofOfSMPInput) => {
   const args = proofOfSMPInputsToCircuitArgs(inputs);
   return await genProof(proofOfSMPPath, args);
 };
 
-export const proofOfSMPInputsToCircuitArgs = (inputs: proofOfSMPInput) => {
+const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
   if (!inputs.hubRegistry.verify()) {
     throw new ValueError("registry is invalid");
   }
@@ -158,6 +167,28 @@ export const proofOfSMPInputsToCircuitArgs = (inputs: proofOfSMPInput) => {
 
 const verifyProofOfSMP = async (proof: any, publicSignals: any) => {
   return await verifyProof(proofOfSMPPath, proof, publicSignals);
+};
+
+const proofSuccessfulSMPInputsToCircuitArgs = (
+  inputs: ProofSuccessfulSMPInput
+) => {
+  return stringifyBigInts({
+    a3: inputs.a3.toString(),
+    pa: [inputs.pa.point[0].toString(), inputs.pa.point[1].toString()],
+    ph: [inputs.ph.point[0].toString(), inputs.ph.point[1].toString()],
+    rh: [inputs.rh.point[0].toString(), inputs.rh.point[1].toString()]
+  });
+};
+
+const genProofSuccessfulSMP = async (inputs: ProofSuccessfulSMPInput) => {
+  return await genProof(
+    proofSuccessfulSMPPath,
+    proofSuccessfulSMPInputsToCircuitArgs(inputs)
+  );
+};
+
+const verifyProofSuccessfulSMP = async (proof: any, publicSignals: any) => {
+  return await verifyProof(proofSuccessfulSMPPath, proof, publicSignals);
 };
 
 const getCircuitName = (circomFile: string): string => {
@@ -299,5 +330,9 @@ export {
   verifyProof,
   genProofOfSMP,
   verifyProofOfSMP,
-  proofOfSMPInput
+  proofOfSMPInputsToCircuitArgs,
+  genProofSuccessfulSMP,
+  proofSuccessfulSMPInputsToCircuitArgs,
+  verifyProofSuccessfulSMP,
+  ProofOfSMPInput
 };

@@ -1,12 +1,12 @@
 import {
-  genProof,
   genProofOfSMP,
-  verifyProof,
-  verifyProofOfSMP
+  genProofSuccessfulSMP,
+  verifyProofOfSMP,
+  verifyProofSuccessfulSMP
 } from "../../src/circuits/ts";
 import {
   proofOfSMPInputsFactory,
-  proofSuccessfulSMPArgsFactory
+  proofSuccessfulSMPInputsFactory
 } from "../../src/factories";
 import { bigIntFactoryExclude } from "../utils";
 
@@ -27,18 +27,16 @@ describe("Test `genProof` and `verifyProof`", () => {
   });
 
   test("proofSuccessfulSMP succeeds", async () => {
-    const s = proofSuccessfulSMPArgsFactory();
-    const circuitName = "instance/proofSuccessfulSMP.circom";
-    const { proof, publicSignals } = await genProof(circuitName, s.args);
-    console.log("args = ", s.args);
-    const res = await verifyProof(circuitName, proof, publicSignals);
+    const s = proofSuccessfulSMPInputsFactory();
+    const { proof, publicSignals } = await genProofSuccessfulSMP(s);
+    const res = await verifyProofSuccessfulSMP(proof, publicSignals);
     expect(res).toBeTruthy();
     console.log("publicSignals = ", publicSignals);
     // Invalid public
     const invalidPublicSignals = [...publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
     await expect(
-      verifyProof(circuitName, proof, invalidPublicSignals)
+      verifyProofSuccessfulSMP(proof, invalidPublicSignals)
     ).rejects.toThrow();
   });
 });

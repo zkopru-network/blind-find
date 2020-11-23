@@ -1,4 +1,4 @@
-import { genKeypair, Keypair, stringifyBigInts } from "maci-crypto";
+import { genKeypair, Keypair } from "maci-crypto";
 import {
   getCounterSignHashedData,
   getJoinHubMsgHashedData,
@@ -151,17 +151,11 @@ export const proofOfSMPInputsFactory = (levels: number = 32) => {
   };
 };
 
-export const proofSuccessfulSMPArgsFactory = () => {
+export const proofSuccessfulSMPInputsFactory = () => {
   const { msg1, msg2, msg3, h2, h3, a2, a3 } = successfulSMPMessagesFactory();
 
   const pa = msg2.pb;
   const ph = msg3.pa;
   const rh = msg3.ra;
-  const args = stringifyBigInts({
-    a3: a3.toString(),
-    pa: [pa.point[0].toString(), pa.point[1].toString()],
-    ph: [ph.point[0].toString(), ph.point[1].toString()],
-    rh: [rh.point[0].toString(), rh.point[1].toString()]
-  });
-  return { args, msg1, msg2, msg3, h2, h3, a2, a3 };
+  return { pa, ph, rh, msg1, msg2, msg3, h2, h3, a2, a3 };
 };
