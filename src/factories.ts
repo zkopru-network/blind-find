@@ -153,9 +153,6 @@ export const proofOfSMPInputsFactory = (levels: number = 32) => {
 
 export const proofSuccessfulSMPInputsFactory = () => {
   const { msg1, msg2, msg3, h2, h3, a2, a3 } = successfulSMPMessagesFactory();
-  console.log(
-    `msg1=${msg1}, msg2=${msg2}, msg3=${msg3}, ${h2}, ${h3}, ${a2}, ${a3}`
-  );
 
   const pa = msg2.pb;
   const ph = msg3.pa;

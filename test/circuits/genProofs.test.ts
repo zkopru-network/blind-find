@@ -38,7 +38,6 @@ describe("Test `genProof` and `verifyProof`", () => {
   test("proofSuccessfulSMP succeeds", async () => {
     const res = await verifyProofSuccessfulSMP(proofSuccessfulSMP);
     expect(res).toBeTruthy();
-    console.log("publicSignals = ", proofSuccessfulSMP.publicSignals);
     // Invalid public
     const invalidPublicSignals = [...proofSuccessfulSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);

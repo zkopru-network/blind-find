@@ -266,7 +266,7 @@ const genProofAndPublicSignals = async (
   const witnessCmd = `${snarkjsCmd} wc ${circuitWasmPath} ${inputJsonPath} ${witnessPath}`;
 
   shell.config.fatal = true;
-  console.log(`witnessCmd="${witnessCmd}"`);
+  // console.log(`witnessCmd="${witnessCmd}"`);
   shell.exec(witnessCmd);
 
   const witnessJsonCmd = `${snarkjsCmd} wej ${witnessPath} ${witnessJsonPath}`;
@@ -326,7 +326,7 @@ const verifyProofInFiles = async (
   const proofPath = path.join(buildDir, proofFilename);
   const publicSignalsPath = path.join(buildDir, publicSignalsFilename);
   const verifyCmd = `${zkutilPath} verify -p ${paramsPath} -r ${proofPath} -i ${publicSignalsPath}`;
-  console.log(`verifyCmd = "${verifyCmd}"`);
+  // console.log(`verifyCmd = "${verifyCmd}"`);
   const output = shell.exec(verifyCmd).stdout.trim();
 
   shell.rm("-f", proofPath);
