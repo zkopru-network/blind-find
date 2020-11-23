@@ -58,6 +58,8 @@ type ProofSuccessfulSMPInput = {
   pa: BabyJubPoint;
   ph: BabyJubPoint;
   rh: BabyJubPoint;
+  pubkeyA: PubKey;
+  sigRh: Signature;
 };
 
 type Proof = { proof: any; publicSignals: any };
@@ -178,7 +180,10 @@ const proofSuccessfulSMPInputsToCircuitArgs = (
     a3: inputs.a3.toString(),
     pa: [inputs.pa.point[0].toString(), inputs.pa.point[1].toString()],
     ph: [inputs.ph.point[0].toString(), inputs.ph.point[1].toString()],
-    rh: [inputs.rh.point[0].toString(), inputs.rh.point[1].toString()]
+    rh: [inputs.rh.point[0].toString(), inputs.rh.point[1].toString()],
+    pubkeyA: [inputs.pubkeyA[0].toString(), inputs.pubkeyA[1].toString()],
+    sigRhR8: [inputs.sigRh.R8[0].toString(), inputs.sigRh.R8[1].toString()],
+    sigRhS: inputs.sigRh.S.toString()
   });
 };
 
@@ -331,6 +336,7 @@ const parseProofOfSMPPublicSignals = (publicSignals: BigInt[]) => {
       `length of publicSignals is not correct: publicSignals=${publicSignals}`
     );
   }
+  // Ignore the first `1n`.
   const pubkeyC = publicSignals.slice(1, 3);
   const pubkeyAdmin = publicSignals.slice(3, 5);
   const merkleRoot = publicSignals[5];
@@ -348,16 +354,18 @@ const parseProofOfSMPPublicSignals = (publicSignals: BigInt[]) => {
 };
 
 const parseProofSuccessfulSMPPublicSignals = (publicSignals: BigInt[]) => {
-  if (publicSignals.length !== 7) {
+  if (publicSignals.length !== 9) {
     throw new ValueError(
       `length of publicSignals is not correct: publicSignals=${publicSignals}`
     );
   }
   // Ignore the first `1n`.
-  const pa = new BabyJubPoint(publicSignals.slice(1, 3));
-  const ph = new BabyJubPoint(publicSignals.slice(3, 5));
-  const rh = new BabyJubPoint(publicSignals.slice(5, 7));
+  const pubkeyA = publicSignals.slice(1, 3);
+  const pa = new BabyJubPoint(publicSignals.slice(3, 5));
+  const ph = new BabyJubPoint(publicSignals.slice(5, 7));
+  const rh = new BabyJubPoint(publicSignals.slice(7, 9));
   return {
+    pubkeyA,
     pa,
     ph,
     rh

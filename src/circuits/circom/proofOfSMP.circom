@@ -78,8 +78,6 @@ template JoinMsgHash() {
     out <== hasher.hash;
 }
 
-// TODO: Add template for New Hub Sig Verifier.
-
 template JoinMsgSigVerifier() {
     signal input userPubkey[2];
     signal input userSigR8[2];

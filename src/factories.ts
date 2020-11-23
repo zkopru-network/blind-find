@@ -1,4 +1,4 @@
-import { genKeypair, Keypair } from "maci-crypto";
+import { genKeypair, hash5, Keypair } from "maci-crypto";
 import {
   getCounterSignHashedData,
   getJoinHubMsgHashedData,
@@ -153,19 +153,41 @@ export const proofOfSMPInputsFactory = (levels: number = 32) => {
 
 export const proofSuccessfulSMPInputsFactory = () => {
   const { msg1, msg2, msg3, h2, h3, a2, a3 } = successfulSMPMessagesFactory();
+  console.log(
+    `msg1=${msg1}, msg2=${msg2}, msg3=${msg3}, ${h2}, ${h3}, ${a2}, ${a3}`
+  );
 
   const pa = msg2.pb;
   const ph = msg3.pa;
   const rh = msg3.ra;
-  return { pa, ph, rh, msg1, msg2, msg3, h2, h3, a2, a3 };
+  const keypairA = genKeypair();
+  const pubkeyA = keypairA.pubKey;
+  const signingHash = hash5([
+    rh.point[0],
+    rh.point[1],
+    BigInt(0),
+    BigInt(0),
+    BigInt(0)
+  ]);
+  const sigRh = signMsg(keypairA.privKey, signingHash);
+  return { pa, ph, rh, msg1, msg2, msg3, h2, h3, a2, a3, pubkeyA, sigRh };
 };
 
 export const proofIndirectConnectionInputsFactory = (levels: number = 32) => {
   let inputs = proofOfSMPInputsFactory(levels);
+  const pa = inputs.msg2.pb;
+  const ph = inputs.msg3.pa;
+  const rh = inputs.msg3.ra;
+  const keypairA = genKeypair();
+  const pubkeyA = keypairA.pubKey;
+  const sigRh = signMsg(
+    keypairA.privKey,
+    hash5([rh.point[0], rh.point[1], BigInt(0), BigInt(0), BigInt(0)])
+  );
   return {
-    pa: inputs.msg2.pb,
-    ph: inputs.msg3.pa,
-    rh: inputs.msg3.ra,
+    pa: pa,
+    ph: ph,
+    rh: rh,
     msg1: inputs.msg1,
     msg2: inputs.msg2,
     msg3: inputs.msg3,
@@ -179,6 +201,8 @@ export const proofIndirectConnectionInputsFactory = (levels: number = 32) => {
     pubkeyC: inputs.pubkeyC,
     pubkeyHub: inputs.pubkeyHub,
     sigJoinMsgC: inputs.sigJoinMsgC,
-    sigJoinMsgHub: inputs.sigJoinMsgHub
+    sigJoinMsgHub: inputs.sigJoinMsgHub,
+    pubkeyA: pubkeyA,
+    sigRh: sigRh
   };
 };

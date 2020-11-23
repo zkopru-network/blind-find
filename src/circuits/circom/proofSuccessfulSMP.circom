@@ -1,11 +1,16 @@
+include "../../../node_modules/maci-circuits/circom/hasherPoseidon.circom";
+include "../../../node_modules/maci-circuits/circom/verify_signature.circom";
+
 include "./pointOperations.circom";
 
 // Created by A after H runs SMP with A where H is the initiator.
 template ProofSuccessfulSMP() {
     // TODO: Check if points are on the currect subgroup.
-    // TODO: Add pubkey check and signature for A on rh
     signal private input a3;
+    signal private input sigRhR8[2];
+    signal private input sigRhS;
 
+    signal input pubkeyA[2];
     // msg 2
     signal input pa[2];
     // msg 3
@@ -13,6 +18,22 @@ template ProofSuccessfulSMP() {
     signal input rh[2];
 
     signal output valid;
+
+    component hasher = Hasher5();
+    hasher.in[0] <== rh[0];
+    hasher.in[1] <== rh[1];
+    hasher.in[2] <== 0;
+    hasher.in[3] <== 0;
+    hasher.in[4] <== 0;
+
+    component sigVerifier = EdDSAPoseidonVerifier_patched();
+    sigVerifier.Ax <== pubkeyA[0];
+    sigVerifier.Ay <== pubkeyA[1];
+    sigVerifier.R8x <== sigRhR8[0];
+    sigVerifier.R8y <== sigRhR8[1];
+    sigVerifier.S <== sigRhS;
+    sigVerifier.M <== hasher.hash;
+    sigVerifier.valid === 1;
 
     // left = (Rh * a3)
     component left = BabyMulScalar(254);
