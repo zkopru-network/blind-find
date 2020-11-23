@@ -2,41 +2,55 @@ import {
   genProofOfSMP,
   genProofSuccessfulSMP,
   verifyProofOfSMP,
-  verifyProofSuccessfulSMP
+  verifyProofSuccessfulSMP,
+  verifyProofIndirectConnection,
+  Proof
 } from "../../src/circuits/ts";
-import {
-  proofOfSMPInputsFactory,
-  proofSuccessfulSMPInputsFactory
-} from "../../src/factories";
+import { proofIndirectConnectionInputsFactory } from "../../src/factories";
 import { bigIntFactoryExclude } from "../utils";
 
 jest.setTimeout(300000);
 
 describe("Test `genProof` and `verifyProof`", () => {
+  const inputs = proofIndirectConnectionInputsFactory(32);
+  let proofOfSMP: Proof;
+  let proofSuccessfulSMP: Proof;
+
+  beforeAll(async () => {
+    proofOfSMP = await genProofOfSMP(inputs);
+    proofSuccessfulSMP = await genProofSuccessfulSMP(inputs);
+  });
+
   test("proofOfSMP succeeds", async () => {
-    const s = proofOfSMPInputsFactory(32);
-    const { proof, publicSignals } = await genProofOfSMP(s);
-    const res = await verifyProofOfSMP(proof, publicSignals);
+    const res = await verifyProofOfSMP(
+      proofOfSMP.proof,
+      proofOfSMP.publicSignals
+    );
     expect(res).toBeTruthy();
     // Invalid public
-    const invalidPublicSignals = [...publicSignals];
+    const invalidPublicSignals = [...proofOfSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
     await expect(
-      verifyProofOfSMP(proof, invalidPublicSignals)
+      verifyProofOfSMP(proofOfSMP.proof, invalidPublicSignals)
     ).rejects.toThrow();
   });
 
   test("proofSuccessfulSMP succeeds", async () => {
-    const s = proofSuccessfulSMPInputsFactory();
-    const { proof, publicSignals } = await genProofSuccessfulSMP(s);
-    const res = await verifyProofSuccessfulSMP(proof, publicSignals);
+    const res = await verifyProofSuccessfulSMP(
+      proofSuccessfulSMP.proof,
+      proofSuccessfulSMP.publicSignals
+    );
     expect(res).toBeTruthy();
-    console.log("publicSignals = ", publicSignals);
+    console.log("publicSignals = ", proofSuccessfulSMP.publicSignals);
     // Invalid public
-    const invalidPublicSignals = [...publicSignals];
+    const invalidPublicSignals = [...proofSuccessfulSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
     await expect(
-      verifyProofSuccessfulSMP(proof, invalidPublicSignals)
+      verifyProofSuccessfulSMP(proofSuccessfulSMP.proof, invalidPublicSignals)
     ).rejects.toThrow();
+  });
+
+  test("proof indirect connection (proofOfSMP and proofSuccessfulSMP)", async () => {
+    await verifyProofIndirectConnection(proofOfSMP, proofSuccessfulSMP);
   });
 });

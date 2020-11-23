@@ -323,7 +323,77 @@ const verifyProofInFiles = async (
   return output === "Proof is correct";
 };
 
-// TODO: Verify both proofs altogether?
+type Proof = { proof: any; publicSignals: any };
+
+const parseProofOfSMPPublicSignals = (publicSignals: BigInt[]) => {
+  if (publicSignals.length !== 40) {
+    throw new ValueError(
+      `length of publicSignals is not correct: publicSignals=${publicSignals}`
+    );
+  }
+  const pubkeyC = publicSignals.slice(1, 3);
+  const pubkeyAdmin = publicSignals.slice(3, 5);
+  const merkleRoot = publicSignals[5];
+  const pa = new BabyJubPoint(publicSignals.slice(22, 24));
+  const ph = new BabyJubPoint(publicSignals.slice(29, 31));
+  const rh = new BabyJubPoint(publicSignals.slice(36, 38));
+  return {
+    pubkeyC,
+    pubkeyAdmin,
+    merkleRoot,
+    pa,
+    ph,
+    rh
+  };
+};
+
+const parseProofSuccessfulSMPPublicSignals = (publicSignals: BigInt[]) => {
+  if (publicSignals.length !== 7) {
+    throw new ValueError(
+      `length of publicSignals is not correct: publicSignals=${publicSignals}`
+    );
+  }
+  // Ignore the first `1n`.
+  const pa = new BabyJubPoint(publicSignals.slice(1, 3));
+  const ph = new BabyJubPoint(publicSignals.slice(3, 5));
+  const rh = new BabyJubPoint(publicSignals.slice(5, 7));
+  return {
+    pa,
+    ph,
+    rh
+  };
+};
+
+const verifyProofIndirectConnection = async (
+  proofOfSMP: Proof,
+  proofSuccessfulSMP: Proof
+) => {
+  if (!(await verifyProofOfSMP(proofOfSMP.proof, proofOfSMP.publicSignals))) {
+    return false;
+  }
+  const resProofOfSMP = parseProofOfSMPPublicSignals(proofOfSMP.publicSignals);
+  if (
+    !(await verifyProofSuccessfulSMP(
+      proofSuccessfulSMP.proof,
+      proofSuccessfulSMP.publicSignals
+    ))
+  ) {
+    return false;
+  }
+  const resProofSuccessfulSMP = parseProofSuccessfulSMPPublicSignals(
+    proofSuccessfulSMP.publicSignals
+  );
+  if (!resProofOfSMP.pa.equal(resProofSuccessfulSMP.pa)) {
+    return false;
+  }
+  if (!resProofOfSMP.ph.equal(resProofSuccessfulSMP.ph)) {
+    return false;
+  }
+  if (!resProofOfSMP.rh.equal(resProofSuccessfulSMP.rh)) {
+    return false;
+  }
+  return true;
+};
 
 export {
   genProof,
@@ -334,5 +404,7 @@ export {
   genProofSuccessfulSMP,
   proofSuccessfulSMPInputsToCircuitArgs,
   verifyProofSuccessfulSMP,
-  ProofOfSMPInput
+  verifyProofIndirectConnection,
+  ProofOfSMPInput,
+  Proof
 };

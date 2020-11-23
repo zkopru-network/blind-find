@@ -171,8 +171,6 @@ template HubRegistryVerifier(levels) {
 // Created by H after H runs SMP with A where H is the initiator.
 template ProofOfSMP(levels) {
     /* Private */
-    // Must need hub's pubkey and c's pubkey
-    signal private input pubkeyC[2];
     signal private input sigCR8[2];
     signal private input sigCS;
     signal private input pubkeyHub[2];
@@ -192,8 +190,11 @@ template ProofOfSMP(levels) {
     signal private input h3;
 
     /* Public */
+
+    signal input pubkeyC[2];
     signal input pubkeyAdmin[2];
     signal input merkleRoot;
+    // 6 = 5 + 1
 
     // msg 1
     signal input g2h[2];
@@ -202,6 +203,7 @@ template ProofOfSMP(levels) {
     signal input g3h[2];
     signal input g3hProofC;
     signal input g3hProofD;
+    // 14 = 6 + 8
 
     // msg 2
     signal input g2a[2];
@@ -210,21 +212,23 @@ template ProofOfSMP(levels) {
     signal input g3a[2];
     signal input g3aProofC;
     signal input g3aProofD;
-    signal input pa[2];
+    signal input pa[2];  // 22, 23
     signal input qa[2];
     signal input paqaProofC;
     signal input paqaProofD0;
     signal input paqaProofD1;
+    // 29 = 14 + 15
 
     // msg 3
-    signal input ph[2];
+    signal input ph[2];  // 29, 30
     signal input qh[2];
     signal input phqhProofC;
     signal input phqhProofD0;
     signal input phqhProofD1;
-    signal input rh[2];
+    signal input rh[2];  // 36, 37
     signal input rhProofC;
     signal input rhProofD;
+    // 40 = 29 + 11
 
     signal output valid;
 

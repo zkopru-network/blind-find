@@ -159,3 +159,26 @@ export const proofSuccessfulSMPInputsFactory = () => {
   const rh = msg3.ra;
   return { pa, ph, rh, msg1, msg2, msg3, h2, h3, a2, a3 };
 };
+
+export const proofIndirectConnectionInputsFactory = (levels: number = 32) => {
+  let inputs = proofOfSMPInputsFactory(levels);
+  return {
+    pa: inputs.msg2.pb,
+    ph: inputs.msg3.pa,
+    rh: inputs.msg3.ra,
+    msg1: inputs.msg1,
+    msg2: inputs.msg2,
+    msg3: inputs.msg3,
+    h2: inputs.h2,
+    h3: inputs.h3,
+    a2: inputs.a2,
+    a3: inputs.a3,
+    root: inputs.root,
+    proof: inputs.proof,
+    hubRegistry: inputs.hubRegistry,
+    pubkeyC: inputs.pubkeyC,
+    pubkeyHub: inputs.pubkeyHub,
+    sigJoinMsgC: inputs.sigJoinMsgC,
+    sigJoinMsgHub: inputs.sigJoinMsgHub
+  };
+};
