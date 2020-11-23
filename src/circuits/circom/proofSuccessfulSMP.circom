@@ -12,7 +12,6 @@ template ProofSuccessfulSMP() {
     signal input ph[2];
     signal input rh[2];
 
-    // signal output ll;
     signal output valid;
 
     // left = (Rh * a3)
@@ -20,7 +19,6 @@ template ProofSuccessfulSMP() {
     left.scalar <== a3;
     left.point[0] <== rh[0];
     left.point[1] <== rh[1];
-    // ll <== left.out[0];
 
     // right = (Ph - Pa)
     component paInverse = BabyInverse();

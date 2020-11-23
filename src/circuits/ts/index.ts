@@ -2,8 +2,19 @@ import * as fs from "fs";
 import * as path from "path";
 import * as shell from "shelljs";
 
-import { stringifyBigInts, unstringifyBigInts } from "maci-crypto";
+import {
+  PubKey,
+  Signature,
+  stringifyBigInts,
+  unstringifyBigInts
+} from "maci-crypto";
 import { ValueError } from "../../smp/exceptions";
+import {
+  SMPMessage1Wire,
+  SMPMessage2Wire,
+  SMPMessage3Wire
+} from "../../smp/v4/serialization";
+import { HubRegistry } from "../..";
 const circom = require("circom");
 
 const zkutilPath = "~/.cargo/bin/zkutil";
@@ -23,6 +34,131 @@ const snarkjsCLI = path.join(
   __dirname,
   "../../../node_modules/snarkjs/build/cli.cjs"
 );
+const proofOfSMPPath = "instance/proofOfSMP.circom";
+
+type proofOfSMPInput = {
+  h2: BigInt;
+  h3: BigInt;
+  msg1: SMPMessage1Wire;
+  msg2: SMPMessage2Wire;
+  msg3: SMPMessage3Wire;
+  root: BigInt;
+  proof: any; // FIXME: use any because this interface is not exposed by maci-crypto.
+  hubRegistry: HubRegistry;
+  pubkeyC: PubKey;
+  pubkeyHub: PubKey;
+  sigJoinMsgC: Signature;
+  sigJoinMsgHub: Signature;
+};
+
+const genProofOfSMP = async (inputs: proofOfSMPInput) => {
+  const args = proofOfSMPInputsToCircuitArgs(inputs);
+  return await genProof(proofOfSMPPath, args);
+};
+
+export const proofOfSMPInputsToCircuitArgs = (inputs: proofOfSMPInput) => {
+  if (!inputs.hubRegistry.verify()) {
+    throw new ValueError("registry is invalid");
+  }
+  if (
+    inputs.hubRegistry.adminPubkey === undefined ||
+    inputs.hubRegistry.adminSig === undefined
+  ) {
+    throw new ValueError(
+      `registry is not counter-signed: hubRegistry=${inputs.hubRegistry}`
+    );
+  }
+  const args = stringifyBigInts({
+    merklePathElements: inputs.proof.pathElements,
+    merklePathIndices: inputs.proof.indices,
+    merkleRoot: inputs.root,
+    sigHubRegistryR8: [
+      inputs.hubRegistry.sig.R8[0].toString(),
+      inputs.hubRegistry.sig.R8[1].toString()
+    ],
+    sigHubRegistryS: inputs.hubRegistry.sig.S.toString(),
+    sigAdminR8: [
+      inputs.hubRegistry.adminSig.R8[0].toString(),
+      inputs.hubRegistry.adminSig.R8[1].toString()
+    ],
+    sigAdminS: inputs.hubRegistry.adminSig.S.toString(),
+    pubkeyAdmin: [
+      inputs.hubRegistry.adminPubkey[0].toString(),
+      inputs.hubRegistry.adminPubkey[1].toString()
+    ],
+    pubkeyC: [inputs.pubkeyC[0].toString(), inputs.pubkeyC[1].toString()],
+    sigCR8: [
+      inputs.sigJoinMsgC.R8[0].toString(),
+      inputs.sigJoinMsgC.R8[1].toString()
+    ],
+    sigCS: inputs.sigJoinMsgC.S.toString(),
+    pubkeyHub: [inputs.pubkeyHub[0].toString(), inputs.pubkeyHub[1].toString()],
+    sigJoinMsgHubR8: [
+      inputs.sigJoinMsgHub.R8[0].toString(),
+      inputs.sigJoinMsgHub.R8[1].toString()
+    ],
+    sigJoinMsgHubS: inputs.sigJoinMsgHub.S.toString(),
+    h2: inputs.h2.toString(),
+    h3: inputs.h3.toString(),
+    g2h: [
+      inputs.msg1.g2a.point[0].toString(),
+      inputs.msg1.g2a.point[1].toString()
+    ],
+    g2hProofC: inputs.msg1.g2aProof.c.toString(),
+    g2hProofD: inputs.msg1.g2aProof.d.toString(),
+    g3h: [
+      inputs.msg1.g3a.point[0].toString(),
+      inputs.msg1.g3a.point[1].toString()
+    ],
+    g3hProofC: inputs.msg1.g3aProof.c.toString(),
+    g3hProofD: inputs.msg1.g3aProof.d.toString(),
+    g2a: [
+      inputs.msg2.g2b.point[0].toString(),
+      inputs.msg2.g2b.point[1].toString()
+    ],
+    g2aProofC: inputs.msg2.g2bProof.c.toString(),
+    g2aProofD: inputs.msg2.g2bProof.d.toString(),
+    g3a: [
+      inputs.msg2.g3b.point[0].toString(),
+      inputs.msg2.g3b.point[1].toString()
+    ],
+    g3aProofC: inputs.msg2.g3bProof.c.toString(),
+    g3aProofD: inputs.msg2.g3bProof.d.toString(),
+    pa: [
+      inputs.msg2.pb.point[0].toString(),
+      inputs.msg2.pb.point[1].toString()
+    ],
+    qa: [
+      inputs.msg2.qb.point[0].toString(),
+      inputs.msg2.qb.point[1].toString()
+    ],
+    paqaProofC: inputs.msg2.pbqbProof.c.toString(),
+    paqaProofD0: inputs.msg2.pbqbProof.d0.toString(),
+    paqaProofD1: inputs.msg2.pbqbProof.d1.toString(),
+    ph: [
+      inputs.msg3.pa.point[0].toString(),
+      inputs.msg3.pa.point[1].toString()
+    ],
+    qh: [
+      inputs.msg3.qa.point[0].toString(),
+      inputs.msg3.qa.point[1].toString()
+    ],
+    phqhProofC: inputs.msg3.paqaProof.c.toString(),
+    phqhProofD0: inputs.msg3.paqaProof.d0.toString(),
+    phqhProofD1: inputs.msg3.paqaProof.d1.toString(),
+    rh: [
+      inputs.msg3.ra.point[0].toString(),
+      inputs.msg3.ra.point[1].toString()
+    ],
+    rhProofC: inputs.msg3.raProof.c.toString(),
+    rhProofD: inputs.msg3.raProof.d.toString()
+  });
+  return args;
+};
+
+const verifyProofOfSMP = async (proof: any, publicSignals: any) => {
+  return await verifyProof(proofOfSMPPath, proof, publicSignals);
+};
 
 const getCircuitName = (circomFile: string): string => {
   if (
@@ -158,4 +294,10 @@ const verifyProofInFiles = async (
 
 // TODO: Verify both proofs altogether?
 
-export { genProof, verifyProof };
+export {
+  genProof,
+  verifyProof,
+  genProofOfSMP,
+  verifyProofOfSMP,
+  proofOfSMPInput
+};

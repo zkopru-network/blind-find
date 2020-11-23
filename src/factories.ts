@@ -95,7 +95,7 @@ export const successfulSMPMessagesFactory = () => {
   return sueccessfulSMPMessages;
 };
 
-export const proofOfSMPArgsFactory = (levels: number = 32) => {
+export const proofOfSMPInputsFactory = (levels: number = 32) => {
   const { msg1, msg2, msg3, h2, h3, a2, a3 } = successfulSMPMessagesFactory();
   const hubIndex = 3;
   const hubs = [
@@ -133,65 +133,22 @@ export const proofOfSMPArgsFactory = (levels: number = 32) => {
       `registry is not counter-signed: hubRegistry=${hubRegistry}`
     );
   }
-  const args = stringifyBigInts({
-    merklePathElements: proof.pathElements,
-    merklePathIndices: proof.indices,
-    merkleRoot: root,
-    sigHubRegistryR8: [
-      hubRegistry.sig.R8[0].toString(),
-      hubRegistry.sig.R8[1].toString()
-    ],
-    sigHubRegistryS: hubRegistry.sig.S.toString(),
-    sigAdminR8: [
-      hubRegistry.adminSig.R8[0].toString(),
-      hubRegistry.adminSig.R8[1].toString()
-    ],
-    sigAdminS: hubRegistry.adminSig.S.toString(),
-    pubkeyAdmin: [
-      hubRegistry.adminPubkey[0].toString(),
-      hubRegistry.adminPubkey[1].toString()
-    ],
-    pubkeyC: [keypairC.pubKey[0].toString(), keypairC.pubKey[1].toString()],
-    sigCR8: [sigJoinMsgC.R8[0].toString(), sigJoinMsgC.R8[1].toString()],
-    sigCS: sigJoinMsgC.S.toString(),
-    pubkeyHub: [
-      keypairHub.pubKey[0].toString(),
-      keypairHub.pubKey[1].toString()
-    ],
-    sigJoinMsgHubR8: [
-      sigJoinMsgHub.R8[0].toString(),
-      sigJoinMsgHub.R8[1].toString()
-    ],
-    sigJoinMsgHubS: sigJoinMsgHub.S.toString(),
-    h2: h2.toString(),
-    h3: h3.toString(),
-    g2h: [msg1.g2a.point[0].toString(), msg1.g2a.point[1].toString()],
-    g2hProofC: msg1.g2aProof.c.toString(),
-    g2hProofD: msg1.g2aProof.d.toString(),
-    g3h: [msg1.g3a.point[0].toString(), msg1.g3a.point[1].toString()],
-    g3hProofC: msg1.g3aProof.c.toString(),
-    g3hProofD: msg1.g3aProof.d.toString(),
-    g2a: [msg2.g2b.point[0].toString(), msg2.g2b.point[1].toString()],
-    g2aProofC: msg2.g2bProof.c.toString(),
-    g2aProofD: msg2.g2bProof.d.toString(),
-    g3a: [msg2.g3b.point[0].toString(), msg2.g3b.point[1].toString()],
-    g3aProofC: msg2.g3bProof.c.toString(),
-    g3aProofD: msg2.g3bProof.d.toString(),
-    pa: [msg2.pb.point[0].toString(), msg2.pb.point[1].toString()],
-    qa: [msg2.qb.point[0].toString(), msg2.qb.point[1].toString()],
-    paqaProofC: msg2.pbqbProof.c.toString(),
-    paqaProofD0: msg2.pbqbProof.d0.toString(),
-    paqaProofD1: msg2.pbqbProof.d1.toString(),
-    ph: [msg3.pa.point[0].toString(), msg3.pa.point[1].toString()],
-    qh: [msg3.qa.point[0].toString(), msg3.qa.point[1].toString()],
-    phqhProofC: msg3.paqaProof.c.toString(),
-    phqhProofD0: msg3.paqaProof.d0.toString(),
-    phqhProofD1: msg3.paqaProof.d1.toString(),
-    rh: [msg3.ra.point[0].toString(), msg3.ra.point[1].toString()],
-    rhProofC: msg3.raProof.c.toString(),
-    rhProofD: msg3.raProof.d.toString()
-  });
-  return { args, msg1, msg2, msg3, h2, h3, a2, a3 };
+  return {
+    root,
+    proof: proof as any,
+    hubRegistry,
+    pubkeyC: keypairC.pubKey,
+    pubkeyHub: keypairHub.pubKey,
+    sigJoinMsgC,
+    sigJoinMsgHub,
+    msg1,
+    msg2,
+    msg3,
+    h2,
+    h3,
+    a2,
+    a3
+  };
 };
 
 export const proofSuccessfulSMPArgsFactory = () => {
