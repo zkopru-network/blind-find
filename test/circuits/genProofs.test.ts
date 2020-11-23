@@ -22,31 +22,31 @@ describe("Test `genProof` and `verifyProof`", () => {
   });
 
   test("proofOfSMP succeeds", async () => {
-    const res = await verifyProofOfSMP(
-      proofOfSMP.proof,
-      proofOfSMP.publicSignals
-    );
+    const res = await verifyProofOfSMP(proofOfSMP);
     expect(res).toBeTruthy();
     // Invalid public
     const invalidPublicSignals = [...proofOfSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
     await expect(
-      verifyProofOfSMP(proofOfSMP.proof, invalidPublicSignals)
+      verifyProofOfSMP({
+        proof: proofOfSMP.proof,
+        publicSignals: invalidPublicSignals
+      })
     ).rejects.toThrow();
   });
 
   test("proofSuccessfulSMP succeeds", async () => {
-    const res = await verifyProofSuccessfulSMP(
-      proofSuccessfulSMP.proof,
-      proofSuccessfulSMP.publicSignals
-    );
+    const res = await verifyProofSuccessfulSMP(proofSuccessfulSMP);
     expect(res).toBeTruthy();
     console.log("publicSignals = ", proofSuccessfulSMP.publicSignals);
     // Invalid public
     const invalidPublicSignals = [...proofSuccessfulSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
     await expect(
-      verifyProofSuccessfulSMP(proofSuccessfulSMP.proof, invalidPublicSignals)
+      verifyProofSuccessfulSMP({
+        proof: proofSuccessfulSMP.proof,
+        publicSignals: invalidPublicSignals
+      })
     ).rejects.toThrow();
   });
 

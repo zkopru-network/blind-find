@@ -60,6 +60,8 @@ type ProofSuccessfulSMPInput = {
   rh: BabyJubPoint;
 };
 
+type Proof = { proof: any; publicSignals: any };
+
 const genProofOfSMP = async (inputs: ProofOfSMPInput) => {
   const args = proofOfSMPInputsToCircuitArgs(inputs);
   return await genProof(proofOfSMPPath, args);
@@ -165,8 +167,8 @@ const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
   return args;
 };
 
-const verifyProofOfSMP = async (proof: any, publicSignals: any) => {
-  return await verifyProof(proofOfSMPPath, proof, publicSignals);
+const verifyProofOfSMP = async (proof: Proof) => {
+  return await verifyProof(proofOfSMPPath, proof);
 };
 
 const proofSuccessfulSMPInputsToCircuitArgs = (
@@ -187,8 +189,8 @@ const genProofSuccessfulSMP = async (inputs: ProofSuccessfulSMPInput) => {
   );
 };
 
-const verifyProofSuccessfulSMP = async (proof: any, publicSignals: any) => {
-  return await verifyProof(proofSuccessfulSMPPath, proof, publicSignals);
+const verifyProofSuccessfulSMP = async (proof: Proof) => {
+  return await verifyProof(proofSuccessfulSMPPath, proof);
 };
 
 const getCircuitName = (circomFile: string): string => {
@@ -283,7 +285,7 @@ const genProofAndPublicSignals = async (
   return { proof, publicSignals, witness, circuit };
 };
 
-const verifyProof = (circomFile: string, proof: any, publicSignals: any) => {
+const verifyProof = (circomFile: string, proof: Proof) => {
   const date = Date.now().toString();
   const circuitName = getCircuitName(circomFile);
   const paramsFilename = `${circuitName}.params`;
@@ -291,11 +293,11 @@ const verifyProof = (circomFile: string, proof: any, publicSignals: any) => {
   const publicSignalsFilename = `${date}.${circuitName}.publicSignals.json`;
   fs.writeFileSync(
     path.join(buildDir, proofFilename),
-    JSON.stringify(stringifyBigInts(proof))
+    JSON.stringify(stringifyBigInts(proof.proof))
   );
   fs.writeFileSync(
     path.join(buildDir, publicSignalsFilename),
-    JSON.stringify(stringifyBigInts(publicSignals))
+    JSON.stringify(stringifyBigInts(proof.publicSignals))
   );
 
   return verifyProofInFiles(
@@ -322,8 +324,6 @@ const verifyProofInFiles = async (
 
   return output === "Proof is correct";
 };
-
-type Proof = { proof: any; publicSignals: any };
 
 const parseProofOfSMPPublicSignals = (publicSignals: BigInt[]) => {
   if (publicSignals.length !== 40) {
@@ -368,16 +368,11 @@ const verifyProofIndirectConnection = async (
   proofOfSMP: Proof,
   proofSuccessfulSMP: Proof
 ) => {
-  if (!(await verifyProofOfSMP(proofOfSMP.proof, proofOfSMP.publicSignals))) {
+  if (!(await verifyProofOfSMP(proofOfSMP))) {
     return false;
   }
   const resProofOfSMP = parseProofOfSMPPublicSignals(proofOfSMP.publicSignals);
-  if (
-    !(await verifyProofSuccessfulSMP(
-      proofSuccessfulSMP.proof,
-      proofSuccessfulSMP.publicSignals
-    ))
-  ) {
+  if (!(await verifyProofSuccessfulSMP(proofSuccessfulSMP))) {
     return false;
   }
   const resProofSuccessfulSMP = parseProofSuccessfulSMPPublicSignals(
@@ -396,8 +391,6 @@ const verifyProofIndirectConnection = async (
 };
 
 export {
-  genProof,
-  verifyProof,
   genProofOfSMP,
   verifyProofOfSMP,
   proofOfSMPInputsToCircuitArgs,
@@ -405,6 +398,5 @@ export {
   proofSuccessfulSMPInputsToCircuitArgs,
   verifyProofSuccessfulSMP,
   verifyProofIndirectConnection,
-  ProofOfSMPInput,
   Proof
 };
