@@ -5,7 +5,7 @@ import {
 } from "../../src/factories";
 import { bigIntFactoryExclude } from "../utils";
 
-jest.setTimeout(100000);
+jest.setTimeout(300000);
 
 describe("Test `genProof` and `verifyProof`", () => {
   test("proofOfSMP succeeds", async () => {
