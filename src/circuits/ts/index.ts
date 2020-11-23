@@ -28,6 +28,11 @@ export const compileAndLoadCircuit = async (circuitPath: string) => {
   return circuit;
 };
 
+/**
+ * Ref
+ *  - maci-circuit: https://github.com/appliedzkp/maci/blob/e5e3c2f9f5f0d6b130b1c4b0ee41e6042c0cbcc0/circuits/ts/index.ts#L161
+ */
+
 const circomFilePostfix = ".circom";
 const circomDir = `${__dirname}/../circom`;
 const buildDir = `${__dirname}/../../../build`;
