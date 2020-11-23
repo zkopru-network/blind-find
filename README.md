@@ -30,6 +30,8 @@ Build circuits before running tests.
 npm run build_circuits
 ```
 
+Run all tests.
+
 ```bash
 npm run test
 ```
