@@ -25,5 +25,5 @@ jobs:
     - run: npm run lint
     - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     - run: cargo install zkutil --version 0.3.2 && zkutil --help
-    - run: npm run build_proofs
+    - run: npm run build_circuits
     - run: npm test
