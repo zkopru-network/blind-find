@@ -139,6 +139,7 @@ export const proofOfSMPInputsFactory = (levels: number = 32) => {
     hubRegistry,
     pubkeyC: keypairC.pubKey,
     pubkeyHub: keypairHub.pubKey,
+    pubkeyAdmin: admin.pubKey,
     sigJoinMsgC,
     sigJoinMsgHub,
     msg1,
@@ -199,6 +200,7 @@ export const proofIndirectConnectionInputsFactory = (levels: number = 32) => {
     pubkeyHub: inputs.pubkeyHub,
     sigJoinMsgC: inputs.sigJoinMsgC,
     sigJoinMsgHub: inputs.sigJoinMsgHub,
+    pubkeyAdmin: inputs.pubkeyAdmin,
     pubkeyA: pubkeyA,
     sigRh: sigRh
   };

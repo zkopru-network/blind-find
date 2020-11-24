@@ -7,7 +7,8 @@ import {
   Proof
 } from "../../src/circuits/ts";
 import { proofIndirectConnectionInputsFactory } from "../../src/factories";
-import { bigIntFactoryExclude } from "../utils";
+import { babyJubPointFactory } from "../../src/smp/v4/factories";
+import { bigIntFactoryExclude, factoryExclude } from "../utils";
 
 jest.setTimeout(300000);
 
@@ -38,6 +39,7 @@ describe("Test `genProof` and `verifyProof`", () => {
   test("proofSuccessfulSMP succeeds", async () => {
     const res = await verifyProofSuccessfulSMP(proofSuccessfulSMP);
     expect(res).toBeTruthy();
+
     // Invalid public
     const invalidPublicSignals = [...proofSuccessfulSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
@@ -50,6 +52,49 @@ describe("Test `genProof` and `verifyProof`", () => {
   });
 
   test("proof indirect connection (proofOfSMP and proofSuccessfulSMP)", async () => {
-    await verifyProofIndirectConnection(proofOfSMP, proofSuccessfulSMP);
+    const res = await verifyProofIndirectConnection(
+      inputs.pubkeyA,
+      inputs.pubkeyC,
+      inputs.pubkeyAdmin,
+      proofOfSMP,
+      proofSuccessfulSMP
+    );
+    expect(res).toBeTruthy();
+
+    // Fails when invalid public keys are passed.
+    const anotherPubkey = factoryExclude(
+      [inputs.pubkeyA, inputs.pubkeyC, inputs.pubkeyAdmin],
+      () => {
+        return babyJubPointFactory().point;
+      },
+      (a, b) => a === b
+    );
+    expect(
+      await verifyProofIndirectConnection(
+        anotherPubkey,
+        inputs.pubkeyC,
+        inputs.pubkeyAdmin,
+        proofOfSMP,
+        proofSuccessfulSMP
+      )
+    ).toBeFalsy();
+    expect(
+      await verifyProofIndirectConnection(
+        inputs.pubkeyA,
+        anotherPubkey,
+        inputs.pubkeyAdmin,
+        proofOfSMP,
+        proofSuccessfulSMP
+      )
+    ).toBeFalsy();
+    expect(
+      await verifyProofIndirectConnection(
+        inputs.pubkeyA,
+        inputs.pubkeyC,
+        anotherPubkey,
+        proofOfSMP,
+        proofSuccessfulSMP
+      )
+    ).toBeFalsy();
   });
 });

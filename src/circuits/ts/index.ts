@@ -335,7 +335,14 @@ const parseProofSuccessfulSMPPublicSignals = (publicSignals: BigInt[]) => {
   };
 };
 
+const isPubkeySame = (a: PubKey, b: PubKey) => {
+  return a.length === b.length && a[0] === b[0] && a[1] === b[1];
+};
+
 const verifyProofIndirectConnection = async (
+  pubkeyA: PubKey,
+  pubkeyC: PubKey,
+  pubkeyAdmin: PubKey,
   proofOfSMP: Proof,
   proofSuccessfulSMP: Proof
 ) => {
@@ -349,6 +356,21 @@ const verifyProofIndirectConnection = async (
   const resProofSuccessfulSMP = parseProofSuccessfulSMPPublicSignals(
     proofSuccessfulSMP.publicSignals
   );
+  /**
+   * Check pubkeys in `proofOfSMP` and `proofSuccessfulSMP`.
+   */
+  if (!isPubkeySame(resProofSuccessfulSMP.pubkeyA, pubkeyA)) {
+    return false;
+  }
+  if (!isPubkeySame(resProofOfSMP.pubkeyC, pubkeyC)) {
+    return false;
+  }
+  if (!isPubkeySame(resProofOfSMP.pubkeyAdmin, pubkeyAdmin)) {
+    return false;
+  }
+  /**
+   * Confirm the smp messages in `proofOfSMP` match the ones in `proofSuccessfulSMP`.
+   */
   if (!resProofOfSMP.pa.equal(resProofSuccessfulSMP.pa)) {
     return false;
   }
