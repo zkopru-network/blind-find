@@ -90,86 +90,44 @@ const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
     merklePathElements: inputs.proof.pathElements,
     merklePathIndices: inputs.proof.indices,
     merkleRoot: inputs.root,
-    sigHubRegistryR8: [
-      inputs.hubRegistry.sig.R8[0].toString(),
-      inputs.hubRegistry.sig.R8[1].toString()
-    ],
-    sigHubRegistryS: inputs.hubRegistry.sig.S.toString(),
-    sigAdminR8: [
-      inputs.hubRegistry.adminSig.R8[0].toString(),
-      inputs.hubRegistry.adminSig.R8[1].toString()
-    ],
-    sigAdminS: inputs.hubRegistry.adminSig.S.toString(),
-    pubkeyAdmin: [
-      inputs.hubRegistry.adminPubkey[0].toString(),
-      inputs.hubRegistry.adminPubkey[1].toString()
-    ],
-    pubkeyC: [inputs.pubkeyC[0].toString(), inputs.pubkeyC[1].toString()],
-    sigCR8: [
-      inputs.sigJoinMsgC.R8[0].toString(),
-      inputs.sigJoinMsgC.R8[1].toString()
-    ],
-    sigCS: inputs.sigJoinMsgC.S.toString(),
-    pubkeyHub: [inputs.pubkeyHub[0].toString(), inputs.pubkeyHub[1].toString()],
-    sigJoinMsgHubR8: [
-      inputs.sigJoinMsgHub.R8[0].toString(),
-      inputs.sigJoinMsgHub.R8[1].toString()
-    ],
-    sigJoinMsgHubS: inputs.sigJoinMsgHub.S.toString(),
-    h2: inputs.h2.toString(),
-    h3: inputs.h3.toString(),
-    g2h: [
-      inputs.msg1.g2a.point[0].toString(),
-      inputs.msg1.g2a.point[1].toString()
-    ],
-    g2hProofC: inputs.msg1.g2aProof.c.toString(),
-    g2hProofD: inputs.msg1.g2aProof.d.toString(),
-    g3h: [
-      inputs.msg1.g3a.point[0].toString(),
-      inputs.msg1.g3a.point[1].toString()
-    ],
-    g3hProofC: inputs.msg1.g3aProof.c.toString(),
-    g3hProofD: inputs.msg1.g3aProof.d.toString(),
-    g2a: [
-      inputs.msg2.g2b.point[0].toString(),
-      inputs.msg2.g2b.point[1].toString()
-    ],
-    g2aProofC: inputs.msg2.g2bProof.c.toString(),
-    g2aProofD: inputs.msg2.g2bProof.d.toString(),
-    g3a: [
-      inputs.msg2.g3b.point[0].toString(),
-      inputs.msg2.g3b.point[1].toString()
-    ],
-    g3aProofC: inputs.msg2.g3bProof.c.toString(),
-    g3aProofD: inputs.msg2.g3bProof.d.toString(),
-    pa: [
-      inputs.msg2.pb.point[0].toString(),
-      inputs.msg2.pb.point[1].toString()
-    ],
-    qa: [
-      inputs.msg2.qb.point[0].toString(),
-      inputs.msg2.qb.point[1].toString()
-    ],
-    paqaProofC: inputs.msg2.pbqbProof.c.toString(),
-    paqaProofD0: inputs.msg2.pbqbProof.d0.toString(),
-    paqaProofD1: inputs.msg2.pbqbProof.d1.toString(),
-    ph: [
-      inputs.msg3.pa.point[0].toString(),
-      inputs.msg3.pa.point[1].toString()
-    ],
-    qh: [
-      inputs.msg3.qa.point[0].toString(),
-      inputs.msg3.qa.point[1].toString()
-    ],
-    phqhProofC: inputs.msg3.paqaProof.c.toString(),
-    phqhProofD0: inputs.msg3.paqaProof.d0.toString(),
-    phqhProofD1: inputs.msg3.paqaProof.d1.toString(),
-    rh: [
-      inputs.msg3.ra.point[0].toString(),
-      inputs.msg3.ra.point[1].toString()
-    ],
-    rhProofC: inputs.msg3.raProof.c.toString(),
-    rhProofD: inputs.msg3.raProof.d.toString()
+    sigHubRegistryR8: inputs.hubRegistry.sig.R8,
+    sigHubRegistryS: inputs.hubRegistry.sig.S,
+    sigAdminR8: inputs.hubRegistry.adminSig.R8,
+    sigAdminS: inputs.hubRegistry.adminSig.S,
+    pubkeyAdmin: inputs.hubRegistry.adminPubkey,
+    pubkeyC: inputs.pubkeyC,
+    sigCR8: inputs.sigJoinMsgC.R8,
+    sigCS: inputs.sigJoinMsgC.S,
+    pubkeyHub: inputs.pubkeyHub,
+    sigJoinMsgHubR8: inputs.sigJoinMsgHub.R8,
+    sigJoinMsgHubS: inputs.sigJoinMsgHub.S,
+    h2: inputs.h2,
+    h3: inputs.h3,
+    g2h: inputs.msg1.g2a.point,
+    g2hProofC: inputs.msg1.g2aProof.c,
+    g2hProofD: inputs.msg1.g2aProof.d,
+    g3h: inputs.msg1.g3a.point,
+    g3hProofC: inputs.msg1.g3aProof.c,
+    g3hProofD: inputs.msg1.g3aProof.d,
+    g2a: inputs.msg2.g2b.point,
+    g2aProofC: inputs.msg2.g2bProof.c,
+    g2aProofD: inputs.msg2.g2bProof.d,
+    g3a: inputs.msg2.g3b.point,
+    g3aProofC: inputs.msg2.g3bProof.c,
+    g3aProofD: inputs.msg2.g3bProof.d,
+    pa: inputs.msg2.pb.point,
+    qa: inputs.msg2.qb.point,
+    paqaProofC: inputs.msg2.pbqbProof.c,
+    paqaProofD0: inputs.msg2.pbqbProof.d0,
+    paqaProofD1: inputs.msg2.pbqbProof.d1,
+    ph: inputs.msg3.pa.point,
+    qh: inputs.msg3.qa.point,
+    phqhProofC: inputs.msg3.paqaProof.c,
+    phqhProofD0: inputs.msg3.paqaProof.d0,
+    phqhProofD1: inputs.msg3.paqaProof.d1,
+    rh: inputs.msg3.ra.point,
+    rhProofC: inputs.msg3.raProof.c,
+    rhProofD: inputs.msg3.raProof.d
   });
   return args;
 };
@@ -182,13 +140,13 @@ const proofSuccessfulSMPInputsToCircuitArgs = (
   inputs: ProofSuccessfulSMPInput
 ) => {
   return stringifyBigInts({
-    a3: inputs.a3.toString(),
-    pa: [inputs.pa.point[0].toString(), inputs.pa.point[1].toString()],
-    ph: [inputs.ph.point[0].toString(), inputs.ph.point[1].toString()],
-    rh: [inputs.rh.point[0].toString(), inputs.rh.point[1].toString()],
-    pubkeyA: [inputs.pubkeyA[0].toString(), inputs.pubkeyA[1].toString()],
-    sigRhR8: [inputs.sigRh.R8[0].toString(), inputs.sigRh.R8[1].toString()],
-    sigRhS: inputs.sigRh.S.toString()
+    a3: inputs.a3,
+    pa: inputs.pa.point,
+    ph: inputs.ph.point,
+    rh: inputs.rh.point,
+    pubkeyA: inputs.pubkeyA,
+    sigRhR8: inputs.sigRh.R8,
+    sigRhS: inputs.sigRh.S
   });
 };
 

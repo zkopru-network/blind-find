@@ -49,11 +49,11 @@ describe("proof of discrete log", () => {
       y: BabyJubPoint
     ) => {
       const args = stringifyBigInts({
-        version: BigInt(version).toString(),
-        c: pf.c.toString(),
-        d: pf.d.toString(),
-        g: [g.point[0].toString(), g.point[1].toString()],
-        y: [y.point[0].toString(), y.point[1].toString()]
+        version: BigInt(version),
+        c: pf.c,
+        d: pf.d,
+        g: g.point,
+        y: y.point
       });
       const witness = await executeCircuit(circuit, args);
       const res = getSignalByName(circuit, witness, "main.valid").toString();
@@ -108,15 +108,15 @@ describe("ProofEqualDiscreteCoordinates", () => {
       y1: BabyJubPoint
     ) => {
       const circuitInputs = stringifyBigInts({
-        version: BigInt(version).toString(),
-        c: pf.c.toString(),
-        d0: pf.d0.toString(),
-        d1: pf.d1.toString(),
-        g0: [g0.point[0].toString(), g0.point[1].toString()],
-        g1: [g1.point[0].toString(), g1.point[1].toString()],
-        g2: [g2.point[0].toString(), g2.point[1].toString()],
-        y0: [y0.point[0].toString(), y0.point[1].toString()],
-        y1: [y1.point[0].toString(), y1.point[1].toString()]
+        version: BigInt(version),
+        c: pf.c,
+        d0: pf.d0,
+        d1: pf.d1,
+        g0: g0.point,
+        g1: g1.point,
+        g2: g2.point,
+        y0: y0.point,
+        y1: y1.point
       });
       const witness = await executeCircuit(circuit, circuitInputs);
       const res = getSignalByName(circuit, witness, "main.valid").toString();
@@ -162,13 +162,13 @@ describe("ProofEqualDiscreteLogs", () => {
       y1: BabyJubPoint
     ) => {
       const circuitInputs = stringifyBigInts({
-        version: BigInt(version).toString(),
-        c: pf.c.toString(),
-        d: pf.d.toString(),
-        g0: [g0.point[0].toString(), g0.point[1].toString()],
-        g1: [g1.point[0].toString(), g1.point[1].toString()],
-        y0: [y0.point[0].toString(), y0.point[1].toString()],
-        y1: [y1.point[0].toString(), y1.point[1].toString()]
+        version: BigInt(version),
+        c: pf.c,
+        d: pf.d,
+        g0: g0.point,
+        g1: g1.point,
+        y0: y0.point,
+        y1: y1.point
       });
       const witness = await executeCircuit(circuit, circuitInputs);
       const res = getSignalByName(circuit, witness, "main.valid").toString();

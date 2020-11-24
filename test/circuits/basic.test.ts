@@ -42,8 +42,8 @@ describe("point computation", () => {
     const circuit = await compileCircuit("testBabyMulScalar.circom");
 
     const circuitInputs = stringifyBigInts({
-      scalar: scalar.toString(),
-      point: [point.point[0].toString(), point.point[1].toString()]
+      scalar: scalar,
+      point: point.point
     });
     const witness = await executeCircuit(circuit, circuitInputs);
     const resCircuitX = getSignalByName(
@@ -68,9 +68,7 @@ describe("point computation", () => {
 
     const circuit = await compileCircuit("testBabyJubInverse.circom");
 
-    const circuitInputs = stringifyBigInts({
-      point: [pubkey[0].toString(), pubkey[1].toString()]
-    });
+    const circuitInputs = stringifyBigInts({ point: pubkey });
     const witness = await executeCircuit(circuit, circuitInputs);
     const resCircuitX = getSignalByName(
       circuit,
@@ -98,8 +96,8 @@ describe("point equal", () => {
 
     const verifyAEqualToB = async (a: BabyJubPoint, b: BabyJubPoint) => {
       const circuitInputs = stringifyBigInts({
-        pointA: [a.point[0].toString(), a.point[1].toString()],
-        pointB: [b.point[0].toString(), b.point[1].toString()]
+        pointA: a.point,
+        pointB: b.point
       });
       const witness = await executeCircuit(circuit, circuitInputs);
       const res = getSignalByName(circuit, witness, "main.out").toString();

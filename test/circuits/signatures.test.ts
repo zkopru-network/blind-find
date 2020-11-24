@@ -27,12 +27,12 @@ describe("join msg signatures", () => {
     sigHub: Signature
   ) => {
     const circuitInputs = stringifyBigInts({
-      userPubkey: [userPubkey[0].toString(), userPubkey[1].toString()],
-      userSigR8: [userSig.R8[0].toString(), userSig.R8[1].toString()],
-      userSigS: userSig.S.toString(),
-      hubPubkey: [hubPubkey[0].toString(), hubPubkey[1].toString()],
-      hubSigR8: [sigHub.R8[0].toString(), sigHub.R8[1].toString()],
-      hubSigS: sigHub.S.toString()
+      userPubkey: userPubkey,
+      userSigR8: userSig.R8,
+      userSigS: userSig.S,
+      hubPubkey: hubPubkey,
+      hubSigR8: sigHub.R8,
+      hubSigS: sigHub.S
     });
     const witness = await executeCircuit(circuit, circuitInputs);
     const isValid = getSignalByName(circuit, witness, "main.valid").toString();
@@ -161,27 +161,15 @@ describe("HubRegistry", () => {
         throw new Error(`registry is not counter-signed: registry=${registry}`);
       }
       const circuitInputs = {
-        pubkeyHub: [
-          registry.pubkey[0].toString(),
-          registry.pubkey[1].toString()
-        ],
-        sigHubR8: [
-          registry.sig.R8[0].toString(),
-          registry.sig.R8[1].toString()
-        ],
-        sigHubS: registry.sig.S.toString(),
+        pubkeyHub: registry.pubkey,
+        sigHubR8: registry.sig.R8,
+        sigHubS: registry.sig.S,
         merklePathElements: proof.pathElements,
         merklePathIndices: proof.indices,
         merkleRoot: root,
-        pubkeyAdmin: [
-          registry.adminPubkey[0].toString(),
-          registry.adminPubkey[1].toString()
-        ],
-        sigAdminR8: [
-          registry.adminSig.R8[0].toString(),
-          registry.adminSig.R8[1].toString()
-        ],
-        sigAdminS: registry.adminSig.S.toString()
+        pubkeyAdmin: registry.adminPubkey,
+        sigAdminR8: registry.adminSig.R8,
+        sigAdminS: registry.adminSig.S
       };
       const witness = await executeCircuit(circuit, circuitInputs);
       const isValid = getSignalByName(

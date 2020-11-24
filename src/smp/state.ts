@@ -504,7 +504,6 @@ class SMPState3 extends BaseSMPState {
       this.pL,
       rab
     );
-    // const msg4 = serialize(tlv, SMPMessage4);
     return [state, msg4.toTLV()];
   }
 }
