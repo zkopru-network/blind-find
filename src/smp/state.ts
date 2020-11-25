@@ -173,23 +173,22 @@ abstract class BaseSMPState implements ISMPState {
    * @param version - The prefixed version, used when generating the proof.
    * @param g2 - `g2` in the spec.
    * @param g3 - `g3` in the spec.
+   * @param r4 - `r4` in the spec.
    */
   makePLQL(
     version: number,
     g2: IGroup,
-    g3: IGroup
+    g3: IGroup,
+    r4: BigInt
   ): [IGroup, IGroup, ProofEqualDiscreteCoordinates] {
-    const randomValue = this.getRandomSecret();
-    const pL = g3.exponentiate(randomValue);
-    const qL = this.g1
-      .exponentiate(randomValue)
-      .operate(g2.exponentiate(this.x));
+    const pL = g3.exponentiate(r4);
+    const qL = this.g1.exponentiate(r4).operate(g2.exponentiate(this.x));
     const proof = makeProofEqualDiscreteCoordinates(
       this.getHashFunc(version),
       g3,
       this.g1,
       g2,
-      randomValue,
+      r4,
       this.x,
       this.getRandomSecret(),
       this.getRandomSecret(),
@@ -298,6 +297,7 @@ abstract class BaseSMPState implements ISMPState {
 class SMPState1 extends BaseSMPState {
   s2: BigInt;
   s3: BigInt;
+  r4?: BigInt;
 
   constructor(x: BigInt, config: ISMPConfig) {
     super(x, config);
@@ -344,7 +344,9 @@ class SMPState1 extends BaseSMPState {
       const g2 = this.makeDHSharedSecret(msg.g2a, this.s2);
       const g3 = this.makeDHSharedSecret(msg.g3a, this.s3);
       // Make `Pb` and `Qb`
-      const [pb, qb, pbqbProof] = this.makePLQL(5, g2, g3);
+      const r4 = this.getRandomSecret();
+      this.r4 = r4;
+      const [pb, qb, pbqbProof] = this.makePLQL(5, g2, g3, r4);
 
       const msg2 = this.createSMPMessage2(
         g2b,
@@ -375,6 +377,8 @@ class SMPState1 extends BaseSMPState {
 }
 
 class SMPState2 extends BaseSMPState {
+  r4?: BigInt;
+
   constructor(
     x: BigInt,
     config: ISMPConfig,
@@ -418,8 +422,11 @@ class SMPState2 extends BaseSMPState {
     if (!this.verifyPRQRProof(5, g2, g3, msg.pb, msg.qb, msg.pbqbProof)) {
       throw new InvalidProof();
     }
+    // Save r4 for generating `Pa` in the circuit.
+    const r4 = this.getRandomSecret();
+    this.r4 = r4;
     // Calculate `Pa` and `Qa`
-    const [pa, qa, paqaProof] = this.makePLQL(6, g2, g3);
+    const [pa, qa, paqaProof] = this.makePLQL(6, g2, g3, r4);
     // Calculate `Ra`
     const [ra, raProof] = this.makeRL(7, this.s3, qa, msg.qb);
 

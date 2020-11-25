@@ -8,7 +8,7 @@ import {
   signMsg
 } from "./";
 import { SMPStateMachine } from "./smp";
-import { SMPState1 } from "./smp/state";
+import { SMPState1, SMPState2 } from "./smp/state";
 import {
   SMPMessage1Wire,
   SMPMessage2Wire,
@@ -65,11 +65,11 @@ let sueccessfulSMPMessages: {
   h3: BigInt;
   a2: BigInt;
   a3: BigInt;
+  r4h: BigInt;
 } | null = null;
 
-export const successfulSMPMessagesFactory = () => {
+export const successfulSMPMessagesFactory = (secret: BigInt = BigInt(1)) => {
   if (sueccessfulSMPMessages === null) {
-    const secret = "hello world";
     const alice = new SMPStateMachine(secret);
     const hub = new SMPStateMachine(secret);
     const a2 = (alice.state as SMPState1).s2;
@@ -78,7 +78,13 @@ export const successfulSMPMessagesFactory = () => {
     const h3 = (hub.state as SMPState1).s3;
     const msg1TLV = hub.transit(null);
     const msg2TLV = alice.transit(msg1TLV);
+    const hubState2 = hub.state as SMPState2;
     const msg3TLV = hub.transit(msg2TLV);
+    if (hubState2.r4 === undefined) {
+      throw new Error("r4 should have been generated to compute Ph and Qh");
+    }
+    const r4h = hubState2.r4;
+    // Get `r4` after hub transits from state 2 to state 4.
     alice.transit(msg3TLV);
     expect(alice.isFinished()).toBeTruthy();
     expect(alice.getResult()).toBeTruthy();
@@ -90,13 +96,12 @@ export const successfulSMPMessagesFactory = () => {
     const msg1 = SMPMessage1Wire.fromTLV(msg1TLV);
     const msg2 = SMPMessage2Wire.fromTLV(msg2TLV);
     const msg3 = SMPMessage3Wire.fromTLV(msg3TLV);
-    sueccessfulSMPMessages = { msg1, msg2, msg3, h2, h3, a2, a3 };
+    sueccessfulSMPMessages = { msg1, msg2, msg3, h2, h3, a2, a3, r4h };
   }
   return sueccessfulSMPMessages;
 };
 
 export const proofOfSMPInputsFactory = (levels: number = 32) => {
-  const { msg1, msg2, msg3, h2, h3, a2, a3 } = successfulSMPMessagesFactory();
   const hubIndex = 3;
   const hubs = [
     genKeypair(),
@@ -121,6 +126,24 @@ export const proofOfSMPInputsFactory = (levels: number = 32) => {
   const hubRegistry = tree.leaves[hubIndex];
   const root = tree.tree.root;
   const proof = tree.tree.genMerklePath(hubIndex);
+
+  const secret = hash5([
+    keypairC.pubKey[0],
+    keypairC.pubKey[1],
+    BigInt(0),
+    BigInt(0),
+    BigInt(0)
+  ]);
+  const {
+    msg1,
+    msg2,
+    msg3,
+    h2,
+    h3,
+    a2,
+    a3,
+    r4h
+  } = successfulSMPMessagesFactory(secret);
 
   if (!hubRegistry.verify()) {
     throw new Error(`registry is invalid: hubIndex=${hubIndex}`);
@@ -148,12 +171,22 @@ export const proofOfSMPInputsFactory = (levels: number = 32) => {
     h2,
     h3,
     a2,
-    a3
+    a3,
+    r4h
   };
 };
 
 export const proofSuccessfulSMPInputsFactory = () => {
-  const { msg1, msg2, msg3, h2, h3, a2, a3 } = successfulSMPMessagesFactory();
+  const {
+    msg1,
+    msg2,
+    msg3,
+    h2,
+    h3,
+    a2,
+    a3,
+    r4h
+  } = successfulSMPMessagesFactory();
 
   const pa = msg2.pb;
   const ph = msg3.pa;
@@ -168,7 +201,7 @@ export const proofSuccessfulSMPInputsFactory = () => {
     BigInt(0)
   ]);
   const sigRh = signMsg(keypairA.privKey, signingHash);
-  return { pa, ph, rh, msg1, msg2, msg3, h2, h3, a2, a3, pubkeyA, sigRh };
+  return { pa, ph, rh, msg1, msg2, msg3, h2, h3, r4h, a2, a3, pubkeyA, sigRh };
 };
 
 export const proofIndirectConnectionInputsFactory = (levels: number = 32) => {
@@ -191,6 +224,7 @@ export const proofIndirectConnectionInputsFactory = (levels: number = 32) => {
     msg3: inputs.msg3,
     h2: inputs.h2,
     h3: inputs.h3,
+    r4h: inputs.r4h,
     a2: inputs.a2,
     a3: inputs.a3,
     root: inputs.root,

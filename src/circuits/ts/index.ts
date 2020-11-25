@@ -46,6 +46,7 @@ const proofSuccessfulSMPPath = "instance/proofSuccessfulSMP.circom";
 type ProofOfSMPInput = {
   h2: BigInt;
   h3: BigInt;
+  r4h: BigInt;
   msg1: SMPMessage1Wire;
   msg2: SMPMessage2Wire;
   msg3: SMPMessage3Wire;
@@ -103,6 +104,7 @@ const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
     sigJoinMsgHubS: inputs.sigJoinMsgHub.S,
     h2: inputs.h2,
     h3: inputs.h3,
+    r4h: inputs.r4h,
     g2h: inputs.msg1.g2a.point,
     g2hProofC: inputs.msg1.g2aProof.c,
     g2hProofD: inputs.msg1.g2aProof.d,

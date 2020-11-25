@@ -168,6 +168,8 @@ template HubRegistryVerifier(levels) {
 
 // Created by H after H runs SMP with A where H is the initiator.
 template ProofOfSMP(levels) {
+    // TODO: Add check for points
+
     /* Private */
     signal private input sigCR8[2];
     signal private input sigCS;
@@ -183,9 +185,9 @@ template ProofOfSMP(levels) {
     signal private input sigAdminR8[2];
     signal private input sigAdminS;
 
-    // TODO: Add check for points
     signal private input h2;
     signal private input h3;
+    signal private input r4h;
 
     /* Public */
 
@@ -377,6 +379,33 @@ template ProofOfSMP(levels) {
     msg2Valid.in[2] <== paqaProofVerifier.valid;
 
     /* msg 3 */
+
+    // Make sure `Qh` is calculated from `pubkeyC`
+    component g1R4 = BabyMulScalar(254);
+    g1R4.scalar <== r4h;
+    g1R4.point[0] <== BASE8[0];
+    g1R4.point[1] <== BASE8[1];
+    component x = Hasher5();
+    x.in[0] <== pubkeyC[0];
+    x.in[1] <== pubkeyC[1];
+    x.in[2] <== 0;
+    x.in[3] <== 0;
+    x.in[4] <== 0;
+    component g2X = BabyMulScalar(254);
+    g2X.scalar <== x.hash;
+    g2X.point[0] <== g2.out[0];
+    g2X.point[1] <== g2.out[1];
+    component qhComputed = BabyAdd();
+    qhComputed.x1 <== g1R4.out[0];
+    qhComputed.y1 <== g1R4.out[1];
+    qhComputed.x2 <== g2X.out[0];
+    qhComputed.y2 <== g2X.out[1];
+    component qhCorrect = IsPointEqual();
+    qhCorrect.pointA[0] <== qh[0];
+    qhCorrect.pointA[1] <== qh[1];
+    qhCorrect.pointB[0] <== qhComputed.xout;
+    qhCorrect.pointB[1] <== qhComputed.yout;
+    qhCorrect.out === 1;
 
     // Verify `Ph` and `Qh`, with the given inputs and the calculated `g2` and `g3`.
     component phqhProofVerifier = ProofEqualDiscreteCoordinatesVerifier();
