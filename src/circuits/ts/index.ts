@@ -18,6 +18,11 @@ import { HubRegistry } from "../..";
 import { BabyJubPoint } from "../../smp/v4/babyJub";
 const circom = require("circom");
 
+/**
+ * Ref
+ *  - maci-circuit: https://github.com/appliedzkp/maci/blob/e5e3c2f9f5f0d6b130b1c4b0ee41e6042c0cbcc0/circuits/ts/index.ts#L161
+ */
+
 const zkutilPath = "~/.cargo/bin/zkutil";
 
 export const compileAndLoadCircuit = async (circuitPath: string) => {
@@ -27,11 +32,6 @@ export const compileAndLoadCircuit = async (circuitPath: string) => {
 
   return circuit;
 };
-
-/**
- * Ref
- *  - maci-circuit: https://github.com/appliedzkp/maci/blob/e5e3c2f9f5f0d6b130b1c4b0ee41e6042c0cbcc0/circuits/ts/index.ts#L161
- */
 
 const circomFilePostfix = ".circom";
 const circomDir = `${__dirname}/../circom`;
@@ -345,6 +345,7 @@ const verifyProofIndirectConnection = async (
   pubkeyA: PubKey,
   pubkeyC: PubKey,
   pubkeyAdmin: PubKey,
+  merkleRoot: BigInt,
   proofOfSMP: Proof,
   proofSuccessfulSMP: Proof
 ) => {
@@ -368,6 +369,12 @@ const verifyProofIndirectConnection = async (
     return false;
   }
   if (!isPubkeySame(resProofOfSMP.pubkeyAdmin, pubkeyAdmin)) {
+    return false;
+  }
+  /**
+   * Check merkle root
+   */
+  if (resProofOfSMP.merkleRoot !== merkleRoot) {
     return false;
   }
   /**

@@ -56,6 +56,7 @@ describe("Test `genProof` and `verifyProof`", () => {
       inputs.pubkeyA,
       inputs.pubkeyC,
       inputs.pubkeyAdmin,
+      inputs.root,
       proofOfSMP,
       proofSuccessfulSMP
     );
@@ -69,29 +70,47 @@ describe("Test `genProof` and `verifyProof`", () => {
       },
       (a, b) => a === b
     );
+    const anotherRoot = bigIntFactoryExclude([inputs.root]);
+    // Wrong pubkeyA
     expect(
       await verifyProofIndirectConnection(
         anotherPubkey,
         inputs.pubkeyC,
         inputs.pubkeyAdmin,
+        inputs.root,
         proofOfSMP,
         proofSuccessfulSMP
       )
     ).toBeFalsy();
+    // Wrong pubkeyC
     expect(
       await verifyProofIndirectConnection(
         inputs.pubkeyA,
         anotherPubkey,
         inputs.pubkeyAdmin,
+        inputs.root,
         proofOfSMP,
         proofSuccessfulSMP
       )
     ).toBeFalsy();
+    // Wrong pubkeyAdmin
     expect(
       await verifyProofIndirectConnection(
         inputs.pubkeyA,
         inputs.pubkeyC,
         anotherPubkey,
+        inputs.root,
+        proofOfSMP,
+        proofSuccessfulSMP
+      )
+    ).toBeFalsy();
+    // Wrong root
+    expect(
+      await verifyProofIndirectConnection(
+        inputs.pubkeyA,
+        inputs.pubkeyC,
+        inputs.pubkeyAdmin,
+        anotherRoot,
         proofOfSMP,
         proofSuccessfulSMP
       )
