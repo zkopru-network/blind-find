@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "main": "index.js",
   "scripts": {
-    "build_circuits": "sh buildScript.sh src/circuits/circom/instance/proofSuccessfulSMP.circom && sh buildScript.sh src/circuits/circom/instance/proofOfSMP.circom",
+    "build_circuits": "sh scripts/buildScript.sh src/circuits/circom/instance/proofSuccessfulSMP.circom && sh scripts/buildScript.sh src/circuits/circom/instance/proofOfSMP.circom",
     "test": "tsdx test",
     "lint": "tsdx lint"
   },

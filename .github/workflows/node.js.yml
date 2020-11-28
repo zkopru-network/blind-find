@@ -17,13 +17,23 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+
+    - name: Cache rust and zkutil
+      id: cache-zkutil
+      uses: actions/cache@v2
+      with:
+        path: ~/.cargo
+        key: ${{ runner.os }}-zkutil-${{ hashFiles('./scripts/installZkutil.sh') }}
+
+    - name: Install rust and zkutil
+      if: steps.cache-zkutil.outputs.cache-hit != 'true'
+      run: ./scripts/installZkutil.sh
+
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
     - run: npm ci
     - run: npm run lint
-    - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    - run: cargo install zkutil --version 0.3.2 && zkutil --help
     - run: npm run build_circuits
     - run: npm test
