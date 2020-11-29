@@ -28,14 +28,13 @@ jobs:
     # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
     - name: Prepend cargo's bin directory to PATH
       run: echo "~/.cargo/bin" >> $GITHUB_PATH
-    - name: try cargo
-      run: cargo
-    - name: ls cargo path
-      run: ls ~/.cargo
 
     - name: Install rust and zkutil
       if: steps.cache-zkutil.outputs.cache-hit != 'true'
       run: ./scripts/installZkutil.sh
+
+    - name: try zkutil
+      run: zkutil --help
 
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
@@ -43,5 +42,9 @@ jobs:
         node-version: ${{ matrix.node-version }}
     - run: npm ci
     - run: npm run lint
+
+    - name: try zkutil
+      run: zkutil --help
+
     - run: npm run build_circuits
     - run: npm test
