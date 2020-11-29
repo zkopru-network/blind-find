@@ -33,10 +33,18 @@ jobs:
       if: steps.cache-zkutil.outputs.cache-hit != 'true'
       run: ./scripts/installZkutil.sh
 
+    - name: ls cargo
+      run: ls ~/.cargo/
+
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
+
+
+    - name: ls cargo
+      run: ls ~/.cargo/
+
     - run: npm ci
     - run: npm run lint
     # TODO: Add cache for built circuits?
