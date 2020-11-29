@@ -10,6 +10,7 @@ fi
 which zkutil > /dev/null
 if [ "$?" != "0" ]
 then
+    # Install zkutil...
     echo "zkutil is not installed. Installing...";
     cargo install zkutil --version 0.3.2 && zkutil --help
 fi
