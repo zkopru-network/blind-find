@@ -27,7 +27,7 @@ jobs:
 
     # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
     - name: Prepend cargo's bin directory to PATH
-      run: echo "::add-path::~/.cargo/bin"
+      run: echo "~/.cargo/bin" >> $GITHUB_PATH
 
     - name: Install rust and zkutil
       if: steps.cache-zkutil.outputs.cache-hit != 'true'
