@@ -10,6 +10,6 @@ fi
 which zkutil > /dev/null
 if [ "$?" != "0" ]
 then
-    # Install zkutil
+    # Install zkutil.
     cargo install zkutil --version 0.3.2 && zkutil --help
 fi
