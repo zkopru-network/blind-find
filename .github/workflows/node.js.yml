@@ -30,6 +30,8 @@ jobs:
       run: echo "~/.cargo/bin" >> $GITHUB_PATH
     - name: try cargo
       run: cargo
+    - name: ls cargo path
+      run: ls ~/.cargo
 
     - name: Install rust and zkutil
       if: steps.cache-zkutil.outputs.cache-hit != 'true'
