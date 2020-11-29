@@ -24,6 +24,8 @@ jobs:
       with:
         path: ~/.cargo
         key: ${{ runner.os }}-zkutil-${{ hashFiles('./scripts/installZkutil.sh') }}
+        restore-keys: |
+          ${{ runner.os }}-zkutil-
 
     # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
     - name: Prepend cargo's bin directory to PATH
@@ -33,17 +35,10 @@ jobs:
       if: steps.cache-zkutil.outputs.cache-hit != 'true'
       run: ./scripts/installZkutil.sh
 
-    - name: ls cargo
-      run: ls ~/.cargo/
-
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-
-
-    - name: ls cargo
-      run: ls ~/.cargo/bin
 
     - run: npm ci
     - run: npm run lint
