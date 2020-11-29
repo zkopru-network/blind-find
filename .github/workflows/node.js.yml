@@ -18,6 +18,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
+    - name: Prepend path with cargo's bin directory
+      run: echo "~/.cargo/bin" >> $GITHUB_PATH
+
     - name: Cache rust and zkutil
       id: cache-zkutil
       uses: actions/cache@v2
