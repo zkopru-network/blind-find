@@ -24,8 +24,6 @@ jobs:
       with:
         path: ~/.cargo
         key: ${{ runner.os }}-zkutil-${{ hashFiles('./scripts/installZkutil.sh') }}
-        restore-keys: |
-          ${{ runner.os }}-zkutil-
 
     # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
     - name: Prepend cargo's bin directory to PATH
