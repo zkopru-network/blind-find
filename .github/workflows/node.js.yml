@@ -22,6 +22,8 @@ jobs:
       id: cache-zkutil
       uses: actions/cache@v2
       with:
+        # NOTE: Cache is reset if we cache whole `~/.cargo` instead of `~/.cargo/bin/zkutil`.
+        #   Not sure the reason why this happens.
         path: ~/.cargo/bin/zkutil
         key: ${{ runner.os }}-zkutil-${{ hashFiles('./scripts/installZkutil.sh') }}
 
@@ -33,23 +35,13 @@ jobs:
       if: steps.cache-zkutil.outputs.cache-hit != 'true'
       run: ./scripts/installZkutil.sh
 
-    - name: Test default cargo
-      run: ls ~/.cargo/bin
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
 
-    - name: Run cargo
-      run: cargo --help
-
-    - name: Run zkutil
-      run: zkutil --help
-
-
-    # - name: Use Node.js ${{ matrix.node-version }}
-    #   uses: actions/setup-node@v1
-    #   with:
-    #     node-version: ${{ matrix.node-version }}
-
-    # - run: npm ci
-    # - run: npm run lint
-    # # TODO: Add cache for built circuits?
-    # - run: npm run build_circuits
-    # - run: npm test
+    - run: npm ci
+    - run: npm run lint
+    # TODO: Add cache for built circuits?
+    - run: npm run build_circuits
+    - run: npm test
