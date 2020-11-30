@@ -34,7 +34,7 @@ jobs:
     #   run: ./scripts/installZkutil.sh
 
     - name: Test default cargo
-      run: ls ~/.cargo/bi
+      run: ls ~/.cargo/bin
 
     - name: Run zkutil
       run: cargo --help
