@@ -18,16 +18,18 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-    - name: Prepend path with cargo's bin directory
-      run: echo "~/.cargo/bin" >> $GITHUB_PATH
-
     - name: Cache rust and zkutil
       id: cache-zkutil
       uses: actions/cache@v2
       with:
-        path: ~/.cargo
+        # NOTE: Cache is reset if we cache whole `~/.cargo` instead of `~/.cargo/bin/zkutil`.
+        #   Not sure the reason why this happens.
+        path: ~/.cargo/bin/zkutil
         key: ${{ runner.os }}-zkutil-${{ hashFiles('./scripts/installZkutil.sh') }}
+
+    # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
+    - name: Prepend cargo's bin directory to PATH
+      run: echo "~/.cargo/bin" >> $GITHUB_PATH
 
     - name: Install rust and zkutil
       if: steps.cache-zkutil.outputs.cache-hit != 'true'
@@ -37,7 +39,24 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
+
     - run: npm ci
     - run: npm run lint
-    - run: npm run build_circuits
+
+    - name: Cache circuits
+      id: cache-circuits
+      uses: actions/cache@v2
+      with:
+        # NOTE: Just roughly cache all compiled circuits. It can be split further.
+        path: build
+        # NOTE: Using hash of the following files for the reasons:
+        #   - `package.json`: script possibly changes
+        #   - `package-lock.json`: circom/snarkjs version possibly changes
+        #   - `installZkutil.sh`: zkutil version possibly changes
+        #   - `proofOfSMP.circom`, proofSuccessfulSMP.circom: circom code possibly change
+        key: ${{ runner.os }}-circuits-${{ hashFiles('./package.json', './package-lock.json', './scripts/installZkutil.sh', 'src/circuits/circom/instance/proofOfSMP.circom', 'src/circuits/circom/instance/proofSuccessfulSMP.circom') }}
+    - name: Build circuits if hasn't been built
+      if: steps.cache-circuits.outputs.cache-hit != 'true'
+      run: npm run build_all_circuits
+
     - run: npm test
