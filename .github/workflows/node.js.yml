@@ -43,7 +43,7 @@ jobs:
     - run: npm ci
     - run: npm run lint
 
-    - name: Circuits
+    - name: Cache circuits
       id: cache-circuits
       uses: actions/cache@v2
       with:
