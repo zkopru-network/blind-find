@@ -18,20 +18,23 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Cache rust and zkutil
-      id: cache-zkutil
-      uses: actions/cache@v2
-      with:
-        path: ~/.cargo
-        key: ${{ runner.os }}-zkutil-${{ hashFiles('./scripts/installZkutil.sh') }}
+    # - name: Cache rust and zkutil
+    #   id: cache-zkutil
+    #   uses: actions/cache@v2
+    #   with:
+    #     path: ~/.cargo
+    #     key: ${{ runner.os }}-zkutil-${{ hashFiles('./scripts/installZkutil.sh') }}
 
-    # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-    - name: Prepend cargo's bin directory to PATH
-      run: echo "~/.cargo/bin" >> $GITHUB_PATH
+    # # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
+    # - name: Prepend cargo's bin directory to PATH
+    #   run: echo "~/.cargo/bin" >> $GITHUB_PATH
 
-    - name: Install rust and zkutil
-      if: steps.cache-zkutil.outputs.cache-hit != 'true'
-      run: ./scripts/installZkutil.sh
+    # - name: Install rust and zkutil
+    #   if: steps.cache-zkutil.outputs.cache-hit != 'true'
+    #   run: ./scripts/installZkutil.sh
+
+    - name: Test default cargo
+      run: ls ~/.cargo
 
     - name: Run zkutil
       run: zkutil --help
