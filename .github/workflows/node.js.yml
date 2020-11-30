@@ -35,13 +35,16 @@ jobs:
       if: steps.cache-zkutil.outputs.cache-hit != 'true'
       run: ./scripts/installZkutil.sh
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v1
-      with:
-        node-version: ${{ matrix.node-version }}
+    - name: Run zkutil
+      run: zkutil --help
 
-    - run: npm ci
-    - run: npm run lint
-    # TODO: Add cache for built circuits?
-    - run: npm run build_circuits
-    - run: npm test
+    # - name: Use Node.js ${{ matrix.node-version }}
+    #   uses: actions/setup-node@v1
+    #   with:
+    #     node-version: ${{ matrix.node-version }}
+
+    # - run: npm ci
+    # - run: npm run lint
+    # # TODO: Add cache for built circuits?
+    # - run: npm run build_circuits
+    # - run: npm test
