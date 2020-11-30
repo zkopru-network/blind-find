@@ -42,6 +42,16 @@ jobs:
 
     - run: npm ci
     - run: npm run lint
-    # TODO: Add cache for built circuits?
-    - run: npm run build_circuits
+
+    - name: Circuits
+      id: cache-circuits
+      uses: actions/cache@v2
+      with:
+        # NOTE: Just roughly cache all compiled circuits. It can be split further.
+        path: build
+        key: ${{ runner.os }}-circuits-${{ hashFiles('src/circuits/circom/instance/proofOfSMP.circom') }}-${{ hashFiles('src/circuits/circom/instance/proofSuccessfulSMP.circom') }}
+    - name: Build circuits if hasn't been built
+      if: steps.cache-circuits.outputs.cache-hit != 'true'
+      run: npm run build_all_circuits
+
     - run: npm test
