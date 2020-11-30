@@ -36,8 +36,11 @@ jobs:
     - name: Test default cargo
       run: ls ~/.cargo/bin
 
-    - name: Run zkutil
+    - name: Run cargo
       run: cargo --help
+
+    - name: Run zkutil
+      run: zkutil --help
 
 
     # - name: Use Node.js ${{ matrix.node-version }}
