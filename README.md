@@ -11,23 +11,13 @@ npm install
 ```
 
 ### Install zkutil
-Install rust if you don't have it.
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-Install [`zkutil`](https://github.com/poma/zkutil)@`0.3.2` with `cargo`.
-
-```bash
-cargo install zkutil --version 0.3.2 && zkutil --help
-```
+Run [installZkutil.sh](scripts/installZkutil.sh) to install zkutil.
 
 ## Test
 
 Build circuits before running tests.
 ```bash
-npm run build_circuits
+npm run build_all_circuits
 ```
 
 Run all tests.
