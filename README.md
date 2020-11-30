@@ -11,7 +11,12 @@ npm install
 ```
 
 ### Install zkutil
+
 Run [installZkutil.sh](scripts/installZkutil.sh) to install zkutil.
+
+```bash
+./scripts/installZkutil.sh
+```
 
 ## Test
 
