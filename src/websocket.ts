@@ -18,7 +18,7 @@ export class WSServer {
     this.isRunning = true;
 
     const app = express();
-    // Change to https.
+    // TODO: Change to https.
     let webServer: http.Server;
     const newConnectionCB = () => {
       if (webServer.address() === null) {
