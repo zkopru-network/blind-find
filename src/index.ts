@@ -16,6 +16,7 @@ import {
 import { PREFIX_JOIN, PREFIX_REGISTER_NEW_HUB } from "./constants";
 import { ValueError } from "./smp/exceptions";
 import { bigIntMod } from "./smp/utils";
+import { LEVELS, ZERO_VALUE } from "./configs";
 
 const hashStringToField = (s: string): BigInt => {
   return bigIntMod(
@@ -129,9 +130,6 @@ class HubRegistry {
     ]);
   }
 }
-
-const LEVELS = 32;
-const ZERO_VALUE = 0;
 
 class HubRegistryTree {
   leaves: HubRegistry[];

@@ -2,6 +2,7 @@ import * as http from "http";
 import express from "express";
 import WebSocket from "ws";
 
+// TODO: Add tests for WSServer
 export class WSServer {
   isRunning: boolean;
   httpServer?: http.Server;

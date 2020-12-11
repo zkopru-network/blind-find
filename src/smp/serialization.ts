@@ -23,8 +23,16 @@ abstract class BaseSerializable {
   /**
    * Parse the value from its binary representation.
    */
-  static deserialize(_: Uint8Array): BaseSerializable {
-    throw new NotImplemented(); // Make tsc happy
+  static deserialize(b: Uint8Array): BaseSerializable {
+    const [req, bytesRemaining] = this.consume(b);
+    if (bytesRemaining.length !== 0) {
+        throw new ValueError(`b should contain only this message: b=${b}`);
+    }
+    return req;
+  }
+
+  static consume(_: Uint8Array): [BaseSerializable, Uint8Array] {
+    throw new NotImplemented();
   }
   /**
    * Return the value's binary representation.
@@ -50,6 +58,9 @@ class BaseFixedInt extends BaseSerializable {
 
   static deserialize(_: Uint8Array): BaseFixedInt {
     throw new NotImplemented(); // Make tsc happy
+  }
+  static consume(_: Uint8Array): [BaseFixedInt, Uint8Array] {
+    throw new NotImplemented();
   }
   serialize(): Uint8Array {
     throw new NotImplemented(); // Make tsc happy
@@ -79,6 +90,11 @@ function createFixedIntClass(
         throw new ValueError(`length of ${bytes} should be ${size}`);
       }
       return new FixedIntClass(uint8ArrayToBigInt(bytes, endian));
+    }
+
+    static consume(bytes: Uint8Array): [FixedIntClass, Uint8Array] {
+      const res = this.deserialize(bytes.slice(0, this.size));
+      return [res, bytes.slice(this.size)];
     }
 
     serialize(): Uint8Array {
@@ -181,6 +197,11 @@ class TLV extends BaseSerializable {
   }
 
   static deserialize(bytes: Uint8Array): TLV {
+    const [tlv, _] = this.consume(bytes);
+    return tlv;
+  }
+
+  static consume(bytes: Uint8Array): [TLV, Uint8Array] {
     const typeSize = Short.size;
     const lengthSize = Short.size;
     const type = Short.deserialize(bytes.slice(0, typeSize));
@@ -194,7 +215,7 @@ class TLV extends BaseSerializable {
       throw new ValueError("`bytes` is not long enough");
     }
     const value = bytes.slice(typeSize + lengthSize, expectedTLVTotalSize);
-    return new TLV(type, value);
+    return [new TLV(type, value), bytes.slice(expectedTLVTotalSize)];
   }
 
   serialize(): Uint8Array {

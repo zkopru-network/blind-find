@@ -3,7 +3,7 @@ import { wsServerFactory } from "../src/factories";
 import { WSServer } from "../src/websocket";
 import { AsyncEvent } from "./utils";
 
-describe("", () => {
+describe("test WebSocket.Server and client connect", () => {
   let wsServer: WSServer;
 
   beforeAll(() => {
@@ -24,7 +24,7 @@ describe("", () => {
     wsServer.httpServer.on("close", () => {
       console.log("http server: has been closed");
     });
-    const data = '0123';
+    const data = "0123";
 
     wsServer.wsServer.on("connection", (socket, request) => {
       console.log(
@@ -45,8 +45,8 @@ describe("", () => {
     };
     const msgEvent = new AsyncEvent();
     c.onmessage = event => {
-        expect(data).toEqual(event.data);
-        msgEvent.set();
+      expect(data).toEqual(event.data);
+      msgEvent.set();
     };
 
     await msgEvent.wait();

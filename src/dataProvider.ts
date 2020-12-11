@@ -1,20 +1,20 @@
 import * as express from "express";
 
 import { HubRegistryTree } from "./";
-
-interface IDB {
-  get(): Buffer;
-  set(b: Buffer): void;
-}
+import { WSServer } from "./websocket";
 
 // TODO: Persistance
 class DataProvider {
-  db: IDB;
+  wss: WSServer;
 
-  constructor(db: IDB) {
-    this.db = db;
+  constructor(readonly tree: HubRegistryTree, wss: WSServer) {
+    this.wss = wss;
   }
 
-  start(port: number): void {
+  start(port?: number) {
+    this.wss.start(port);
+    // Register handlers
   }
 }
+
+// TODO: Read TLV, map the handle method and messages

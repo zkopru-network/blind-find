@@ -48,10 +48,12 @@ class Point extends BaseSerializable {
   }
 
   static deserialize(bytes: Uint8Array): Point {
-    if (bytes.length !== Point.size) {
-      throw new ValueError(`length of ${bytes} should be ${Point.size}`);
-    }
-    return new Point(babyJub.unpackPoint(bytes) as ECPoint);
+    return super.deserialize(bytes) as Point;
+  }
+
+  static consume(bytes: Uint8Array): [Point, Uint8Array] {
+    const res = new Point(babyJub.unpackPoint(bytes.slice(0, this.size)) as ECPoint);
+    return [res, bytes.slice(this.size)];
   }
 
   serialize(): Uint8Array {
