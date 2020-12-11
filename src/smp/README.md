@@ -10,6 +10,7 @@ Even though OTR version 4 is obeyed as much as possible, this SMP implementation
     - [`Point` and `Scalar`](https://github.com/otrv4/otrv4/blob/master/otrv4.md#data-types) are added. Unlike other data types, they are serialized in little-endian order, which conforms to [RFC 8032][rfc-8032].
     - `Point` is 32 bytes instead of 57 bytes. 32 bytes is enough to contain a Baby Jubjub point.
     - `Scalar` is 32 bytes instead of 57 bytes. 32 bytes is enough to contain a scalar field.
+    - Messages are **not** encoded with [base64][otr-v4-base64], which is used in OTR v4.
 - Hash function
     - SHA256 is replaced by Poseidon, instead of SHAKE-256 in version 4 spec.
     - Each parameter (except for `version`) of smp hash function is a `Point`. A `Point` is passed to Poseidon as two arguments, x and y.
@@ -23,3 +24,4 @@ Even though OTR version 4 is obeyed as much as possible, this SMP implementation
 [poseidon]: https://www.poseidon-hash.info/
 [baby-jubjub]: https://github.com/barryWhiteHat/baby_jubjub_ecc
 [rfc-8032]: https://tools.ietf.org/html/rfc8032
+[otr-v4-base64]: https://github.com/otrv4/otrv4/blob/master/otrv4.md#encoded-messages
