@@ -57,7 +57,7 @@ export const hubRegistryTreeFactory = (
   return tree;
 };
 
-// Should be only initialized once.
+// Should be only initialized once, to avoid redundant expensive SMP calculations.
 let sueccessfulSMPMessages: {
   msg1: SMPMessage1Wire;
   msg2: SMPMessage2Wire;

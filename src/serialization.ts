@@ -2,7 +2,7 @@ import { PubKey, Signature } from 'maci-crypto';
 import { LEVELS } from './configs';
 import { ValueError } from './smp/exceptions';
 import { BaseFixedInt, BaseSerializable } from './smp/serialization';
-import { concatUint8Array } from './smp/utils';
+import { bigIntToNumber, concatUint8Array } from './smp/utils';
 import { Point, Scalar } from './smp/v4/serialization';
 
 
@@ -76,69 +76,79 @@ export class GetMerkleProofReq extends BaseSerializable {
     }
 }
 
-
-const merklePathWireType: (typeof BaseFixedInt)[] = [];
-for (let i = 0; i < LEVELS; i++) {
-    merklePathWireType.push(Scalar);
+interface MerkleProof {
+    pathElements: BigInt[][];
+    indices: number[];  // 2 ** 53
+    depth: number;
+    root: BigInt;
+    leaf: BigInt;
 }
 
-class MerklePath extends BaseSerializable {
-    static wireTypes = merklePathWireType;
+const merklePathWireType: (typeof BaseFixedInt)[] = [];
+const merkleIndicesWireType: (typeof BaseFixedInt)[] = [];
+for (let i = 0; i < LEVELS; i++) {
+    merklePathWireType.push(Scalar);
+    merkleIndicesWireType.push(Scalar);
+}
 
-    constructor(readonly merklePath: BigInt[]) {
+class MerkleProofWire extends BaseSerializable {
+    static wireTypes: (typeof BaseFixedInt)[]  = [
+        ...merklePathWireType,
+        ...merkleIndicesWireType,
+        Scalar,  // Depth. Use `BigInt` just for convenient. It can be changed to 8-byte element.
+        Scalar,  // Root
+        Scalar,  // Leaf
+    ];
+
+    // NOTE: It should be a one-dimension array.
+    //  Just be consistent with maci-crpyto.
+    constructor(readonly merkleProof: MerkleProof) {
         super();
-        if (merklePath.length !== LEVELS) {
+        if (merkleProof.depth !== LEVELS) {
             throw new ValueError(
-                `incorrect levels: expected=${LEVELS}, actual=${merklePath.length}`
+                `incorrect depth: expected=${LEVELS}, actual=${merkleProof.depth}`
+            );
+        }
+        if (merkleProof.pathElements.length !== LEVELS || merkleProof.indices.length !== LEVELS) {
+            throw new ValueError(
+                `incorrect path levels: expected=${LEVELS}, ` +
+                `merkleProof.pathElements.length=${merkleProof.pathElements.length}, ` +
+                `merkleProof.indices.length=${merkleProof.indices.length}`
             );
         }
     }
 
-    static deserialize(b: Uint8Array): MerklePath {
-        return super.deserialize(b) as MerklePath;
+    static deserialize(b: Uint8Array): MerkleProofWire {
+        return super.deserialize(b) as MerkleProofWire;
     }
 
-    static consume(b: Uint8Array): [MerklePath, Uint8Array] {
+    static consume(b: Uint8Array): [MerkleProofWire, Uint8Array] {
         const [elements, bytesRemaining] = deserializeElements(b, this.wireTypes);
-        const res = elements.map(x => (x as BaseFixedInt).value);
-        return [new MerklePath(res), bytesRemaining];
-    }
-
-    serialize(): Uint8Array {
-        const wireValues = this.merklePath.map(x => new Scalar(x));
-        return serializeElements(wireValues);
-    }
-}
-
-export class GetMerkleProofResp extends BaseSerializable {
-    static wireTypes = [
-        Scalar,  // merkleRoot,
-        MerklePath,  // merklePath
-    ];
-
-    constructor(
-        readonly merkleRoot: BigInt,
-        readonly merklePath: BigInt[],
-    ) {
-        super();
-    }
-
-    static deserialize(b: Uint8Array): GetMerkleProofResp {
-        return super.deserialize(b) as GetMerkleProofResp;
-    }
-
-    static consume(b: Uint8Array): [GetMerkleProofResp, Uint8Array] {
-        const [elements, bytesRemaining] = deserializeElements(b, this.wireTypes);
-        return [new GetMerkleProofResp(
-            (elements[0] as BaseFixedInt).value,
-            (elements[1] as MerklePath).merklePath,
-        ), bytesRemaining];
+        const bigInts = elements.map(x => (x as BaseFixedInt).value);
+        const pathElements = bigInts.slice(0, merklePathWireType.length).map(x => [x]);
+        const indices = bigInts.slice(merklePathWireType.length, merklePathWireType.length + merkleIndicesWireType.length).map(x => bigIntToNumber(x));
+        const proof = {
+            pathElements: pathElements,
+            indices: indices,
+            depth: bigIntToNumber(bigInts[merklePathWireType.length + merklePathWireType.length]),
+            root: bigInts[merklePathWireType.length + merklePathWireType.length + 1],
+            leaf: bigInts[merklePathWireType.length + merklePathWireType.length + 2],
+        }
+        return [
+            new MerkleProofWire(proof),
+            bytesRemaining,
+        ];
     }
 
     serialize(): Uint8Array {
         return serializeElements([
-            new Scalar(this.merkleRoot),
-            new MerklePath(this.merklePath),
+            ...this.merkleProof.pathElements.map(x => new Scalar(x[0])),
+            ...this.merkleProof.indices.map(x => new Scalar(x)),
+            new Scalar(this.merkleProof.depth),
+            new Scalar(this.merkleProof.root),
+            new Scalar(this.merkleProof.leaf),
         ]);
     }
 }
+
+export class GetMerkleProofResp extends MerkleProofWire {}
