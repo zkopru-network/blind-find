@@ -26,7 +26,7 @@ abstract class BaseSerializable {
   static deserialize(b: Uint8Array): BaseSerializable {
     const [req, bytesRemaining] = this.consume(b);
     if (bytesRemaining.length !== 0) {
-        throw new ValueError(`b should contain only this message: b=${b}`);
+      throw new ValueError(`b should contain only this message: b=${b}`);
     }
     return req;
   }
@@ -197,7 +197,7 @@ class TLV extends BaseSerializable {
   }
 
   static deserialize(bytes: Uint8Array): TLV {
-    const [tlv, _] = this.consume(bytes);
+    const [tlv] = this.consume(bytes);
     return tlv;
   }
 

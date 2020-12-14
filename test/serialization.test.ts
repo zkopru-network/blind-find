@@ -36,7 +36,9 @@ describe("Serialization of messages", () => {
     const msg = new GetMerkleProofResp(merkleProof);
     const bytes = msg.serialize();
     const msgFromBytes = GetMerkleProofResp.deserialize(bytes);
-    expect(msg.merkleProof.pathElements).toEqual(msgFromBytes.merkleProof.pathElements);
+    expect(msg.merkleProof.pathElements).toEqual(
+      msgFromBytes.merkleProof.pathElements
+    );
     expect(msg.merkleProof.indices).toEqual(msgFromBytes.merkleProof.indices);
     expect(msg.merkleProof.depth).toEqual(msgFromBytes.merkleProof.depth);
     expect(msg.merkleProof.root).toEqual(msgFromBytes.merkleProof.root);

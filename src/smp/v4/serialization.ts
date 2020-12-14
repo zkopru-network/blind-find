@@ -52,7 +52,12 @@ class Point extends BaseSerializable {
   }
 
   static consume(bytes: Uint8Array): [Point, Uint8Array] {
-    const res = new Point(babyJub.unpackPoint(bytes.slice(0, this.size)) as ECPoint);
+    if (bytes.length < this.size) {
+      throw new ValueError("bytes is too short");
+    }
+    const res = new Point(
+      babyJub.unpackPoint(bytes.slice(0, this.size)) as ECPoint
+    );
     return [res, bytes.slice(this.size)];
   }
 

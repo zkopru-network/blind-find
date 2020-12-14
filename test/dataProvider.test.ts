@@ -1,52 +1,75 @@
 import Websocket from "ws";
-import { wsServerFactory } from "../src/factories";
-import { WSServer } from "../src/websocket";
-import { AsyncEvent } from "./utils";
+import { wsServerFactory, hubRegistryTreeFactory } from "../src/factories";
+import { Server } from "../src/websocket";
+import { AsyncEvent } from "../src/utils";
+import { DataProvider } from "../src/dataProvider";
+import { genKeypair, Keypair } from "maci-crypto";
+import { LEVELS } from "../src/configs";
+import { HubRegistry, HubRegistryTree } from "../src";
+import { GetMerkleProofReq, GetMerkleProofResp } from "../src/serialization";
+
+jest.setTimeout(30000);
 
 describe("test WebSocket.Server and client connect", () => {
-  let wsServer: WSServer;
+  let wsServer: Server;
+  let dataProvider: DataProvider;
+  let hub: Keypair;
+  let admin: Keypair;
+  let tree: HubRegistryTree;
+  let hubRegistry: HubRegistry;
 
-  beforeAll(() => {
-    wsServer = wsServerFactory();
+  beforeAll(async () => {
+    wsServer = await wsServerFactory();
+    hub = genKeypair();
+    admin = genKeypair();
+    tree = hubRegistryTreeFactory([hub], LEVELS, admin);
+    expect(tree.length).toEqual(1);
+    hubRegistry = tree.leaves[0];
+    dataProvider = new DataProvider(admin.pubKey, tree, wsServer);
+    await dataProvider.start();
   });
 
   afterAll(() => {
-    wsServer.close();
+    dataProvider.close();
   });
 
   test("", async () => {
-    if (!wsServer.isRunning) {
+    if (wsServer.wsServer === undefined) {
       throw new Error();
     }
-    if (wsServer.httpServer === undefined || wsServer.wsServer === undefined) {
-      throw new Error();
-    }
-    wsServer.httpServer.on("close", () => {
-      console.log("http server: has been closed");
-    });
-    const data = "0123";
 
-    wsServer.wsServer.on("connection", (socket, request) => {
-      console.log(
-        `server: received connection, socket=${socket}, request=${request}`
-      );
-      socket.send(data);
-    });
     const c = new Websocket(
       `ws://localhost:${(wsServer.wsServer.address() as any).port}`
     );
 
-    c.onopen = async event => {
-      console.log(`client: opened connection, event=${event.target}`);
-    };
-    const closeEvent = new AsyncEvent();
-    c.onclose = () => {
-      closeEvent.set();
-    };
     const msgEvent = new AsyncEvent();
-    c.onmessage = event => {
-      expect(data).toEqual(event.data);
-      msgEvent.set();
+    const closeEvent = new AsyncEvent();
+    c.onopen = async event => {
+      console.log(`Client: opened connection, event=${event.target}`);
+      if (hubRegistry.adminSig === undefined) {
+        throw new Error();
+      }
+      const req = new GetMerkleProofReq(
+        hubRegistry.pubkey,
+        hubRegistry.sig,
+        hubRegistry.adminSig
+      );
+      c.send(req.serialize());
+      c.onmessage = event => {
+        const resp = GetMerkleProofResp.deserialize(event.data as Buffer);
+        if (resp.merkleProof.leaf !== hubRegistry.hash()) {
+          throw new Error("response mismatches the request");
+        }
+        console.log(
+          `Client: received proof from provider, proof=`,
+          resp.merkleProof
+        );
+        msgEvent.set();
+      };
+
+      c.onclose = () => {
+        closeEvent.set();
+      };
     };
 
     await msgEvent.wait();

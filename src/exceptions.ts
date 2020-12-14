@@ -21,3 +21,11 @@ export class ValueError extends BaseBlindFind {
     Object.setPrototypeOf(this, ValueError.prototype);
   }
 }
+
+export class ServerNotRunning extends BaseBlindFind {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, BaseBlindFind.prototype);
+  }
+}

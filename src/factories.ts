@@ -1,4 +1,4 @@
-import { WSServer } from "./websocket";
+import { Server } from "./websocket";
 import { genKeypair, hash5, Keypair } from "maci-crypto";
 import {
   getCounterSignHashedData,
@@ -241,8 +241,8 @@ export const proofIndirectConnectionInputsFactory = (levels: number = 32) => {
   };
 };
 
-export const wsServerFactory = () => {
-  const wsServer = new WSServer();
-  wsServer.start();
+export const wsServerFactory = async () => {
+  const wsServer = new Server();
+  await wsServer.start();
   return wsServer;
 };
