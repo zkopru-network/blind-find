@@ -1,16 +1,9 @@
 import { PubKey, Signature } from "maci-crypto";
 import { LEVELS } from "./configs";
 import { ValueError } from "./smp/exceptions";
-import { BaseFixedInt, BaseSerializable } from "./smp/serialization";
+import { BaseFixedInt, BaseSerializable, TLV } from "./smp/serialization";
 import { bigIntToNumber, concatUint8Array } from "./smp/utils";
 import { Point, Scalar } from "./smp/v4/serialization";
-
-// TODO: Add RPC types back when we need several RPC in a single server. E.g. a hub
-//  has RPC `join` and `search`.
-// enum RPCType {
-//   GetMerkleProofReq = 6,
-//   GetMerkleProofResp
-// }
 
 function serializeElements(values: BaseSerializable[]): Uint8Array {
   let bytes = new Uint8Array([]);
@@ -31,6 +24,7 @@ function deserializeElements(
   const res: BaseSerializable[] = [];
   let element: BaseSerializable;
   let bytesRemaining = bytes;
+  // Used `TSerializable[]` because `(typeof BaseSerializable)[]` doesn't work.
   for (const t of wireTypes) {
     [element, bytesRemaining] = t.consume(bytesRemaining);
     res.push(element);
@@ -173,3 +167,71 @@ class MerkleProofWire extends BaseSerializable {
 }
 
 export class GetMerkleProofResp extends MerkleProofWire {}
+
+export class JoinReq extends BaseSerializable {
+  static wireTypes = [
+    Point, // userPubkey,
+    Point,
+    Scalar // userSig
+  ];
+
+  constructor(readonly userPubkey: PubKey, readonly userSig: Signature) {
+    super();
+  }
+
+  static deserialize(b: Uint8Array): JoinReq {
+    return super.deserialize(b) as JoinReq;
+  }
+
+  static consume(b: Uint8Array): [JoinReq, Uint8Array] {
+    const [elements, bytesRemaining] = deserializeElements(b, this.wireTypes);
+    return [
+      new JoinReq((elements[0] as Point).point, {
+        R8: (elements[1] as Point).point,
+        S: (elements[2] as BaseFixedInt).value
+      }),
+      bytesRemaining
+    ];
+  }
+
+  serialize(): Uint8Array {
+    return serializeElements([
+      new Point(this.userPubkey),
+      new Point(this.userSig.R8),
+      new Scalar(this.userSig.S)
+    ]);
+  }
+}
+
+export class JoinResp extends BaseSerializable {
+  static wireTypes = [
+    Point,
+    Scalar // hubSig
+  ];
+
+  constructor(readonly hubSig: Signature) {
+    super();
+  }
+
+  static deserialize(b: Uint8Array): JoinResp {
+    return super.deserialize(b) as JoinResp;
+  }
+
+  static consume(b: Uint8Array): [JoinResp, Uint8Array] {
+    const [elements, bytesRemaining] = deserializeElements(b, this.wireTypes);
+    return [
+      new JoinResp({
+        R8: (elements[0] as Point).point,
+        S: (elements[1] as BaseFixedInt).value
+      }),
+      bytesRemaining
+    ];
+  }
+
+  serialize(): Uint8Array {
+    return serializeElements([
+      new Point(this.hubSig.R8),
+      new Scalar(this.hubSig.S)
+    ]);
+  }
+}

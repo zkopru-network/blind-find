@@ -1,4 +1,4 @@
-import { genKeypair, hash5, Keypair } from "maci-crypto";
+import { genKeypair, hash5, Keypair, PubKey, Signature } from "maci-crypto";
 import {
   getCounterSignHashedData,
   getJoinHubMsgHashedData,
@@ -14,6 +14,38 @@ import {
   SMPMessage2Wire,
   SMPMessage3Wire
 } from "./smp/v4/serialization";
+
+type SignedJoinMsg = {
+  userPubkey: PubKey;
+  userSig: Signature;
+  hubPubkey: PubKey;
+  hubSig: Signature;
+};
+
+export const signedJoinMsgFactory = (
+  userKeypair?: Keypair,
+  hubKeypair?: Keypair
+): SignedJoinMsg => {
+  if (userKeypair === undefined) {
+    userKeypair = genKeypair();
+  }
+  if (hubKeypair === undefined) {
+    hubKeypair = genKeypair();
+  }
+  const joinMsg = getJoinHubMsgHashedData(
+    userKeypair.pubKey,
+    hubKeypair.pubKey
+  );
+  const sig = signMsg(userKeypair.privKey, joinMsg);
+  const counterSignedhashedData = getCounterSignHashedData(sig);
+  const sigHub = signMsg(hubKeypair.privKey, counterSignedhashedData);
+  return {
+    userPubkey: userKeypair.pubKey,
+    userSig: sig,
+    hubPubkey: hubKeypair.pubKey,
+    hubSig: sigHub
+  };
+};
 
 export const hubRegistryFactory = (
   adminKeypair?: Keypair,
@@ -113,15 +145,9 @@ export const proofOfSMPInputsFactory = (levels: number = 32) => {
   const admin = genKeypair();
   const keypairC = genKeypair();
   const keypairHub = hubs[hubIndex];
-  const joinHubMsg = getJoinHubMsgHashedData(
-    keypairC.pubKey,
-    keypairHub.pubKey
-  );
-  const sigJoinMsgC = signMsg(keypairC.privKey, joinHubMsg);
-  const sigJoinMsgHub = signMsg(
-    keypairHub.privKey,
-    getCounterSignHashedData(sigJoinMsgC)
-  );
+  const signedJoinMsg = signedJoinMsgFactory(keypairC, keypairHub);
+  const sigJoinMsgC = signedJoinMsg.userSig;
+  const sigJoinMsgHub = signedJoinMsg.hubSig;
   const tree = hubRegistryTreeFactory(hubs, levels, admin);
   const hubRegistry = tree.leaves[hubIndex];
   const root = tree.tree.root;

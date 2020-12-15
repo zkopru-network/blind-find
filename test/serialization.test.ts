@@ -1,9 +1,18 @@
 import { genKeypair } from "maci-crypto";
 import { LEVELS } from "../src/configs";
-import { hubRegistryFactory, hubRegistryTreeFactory } from "../src/factories";
-import { GetMerkleProofReq, GetMerkleProofResp } from "../src/serialization";
+import {
+  hubRegistryFactory,
+  hubRegistryTreeFactory,
+  signedJoinMsgFactory
+} from "../src/factories";
+import {
+  GetMerkleProofReq,
+  GetMerkleProofResp,
+  JoinReq,
+  JoinResp
+} from "../src/serialization";
 
-describe("Serialization of messages", () => {
+describe("Serialization and Deserialization of wire messages", () => {
   test("GetMerkleProofReq", () => {
     const hubRegistry = hubRegistryFactory();
     if (hubRegistry.adminSig === undefined) {
@@ -43,5 +52,25 @@ describe("Serialization of messages", () => {
     expect(msg.merkleProof.depth).toEqual(msgFromBytes.merkleProof.depth);
     expect(msg.merkleProof.root).toEqual(msgFromBytes.merkleProof.root);
     expect(msg.merkleProof.leaf).toEqual(msgFromBytes.merkleProof.leaf);
+  });
+
+  test("JoinReq", () => {
+    const signedJoinMsg = signedJoinMsgFactory();
+    const joinReq = new JoinReq(
+      signedJoinMsg.userPubkey,
+      signedJoinMsg.userSig
+    );
+    const bytes = joinReq.serialize();
+    const reqFromBytes = JoinReq.deserialize(bytes);
+    expect(joinReq.userPubkey).toEqual(reqFromBytes.userPubkey);
+    expect(joinReq.userSig).toEqual(reqFromBytes.userSig);
+  });
+
+  test("JoinResp", () => {
+    const signedJoinMsg = signedJoinMsgFactory();
+    const joinResp = new JoinResp(signedJoinMsg.hubSig);
+    const bytes = joinResp.serialize();
+    const reqFromBytes = JoinResp.deserialize(bytes);
+    expect(joinResp.hubSig).toEqual(reqFromBytes.hubSig);
   });
 });
