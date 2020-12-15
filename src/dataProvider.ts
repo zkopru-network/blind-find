@@ -3,26 +3,20 @@ import { PubKey } from "maci-crypto";
 import WebSocket from "ws";
 
 import { HubRegistry, HubRegistryTree } from "./";
-import { ServerNotRunning, RequestFailed, ValueError } from "./exceptions";
+import { RequestFailed, ValueError } from "./exceptions";
 import { GetMerkleProofReq, GetMerkleProofResp } from "./serialization";
 import { AsyncEvent } from "./utils";
-import { Server, WS_PROTOCOL } from "./websocket";
+import { BaseServer, WS_PROTOCOL } from "./websocket";
 
 // TODO: Persistance
-export class DataProviderServer {
-  wss: Server;
-
-  constructor(
-    readonly adminPubkey: PubKey,
-    readonly tree: HubRegistryTree,
-    wss: Server
-  ) {
-    this.wss = wss;
+export class DataProviderServer extends BaseServer {
+  constructor(readonly adminPubkey: PubKey, readonly tree: HubRegistryTree) {
+    super();
   }
 
   onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
+    console.log(`DataProviderServer: new incoming connection`);
     socket.onmessage = event => {
-      console.log(`DataProviderServer: onmessage`);
       const req = GetMerkleProofReq.deserialize(event.data as Buffer);
       const hubRegistry = new HubRegistry(
         req.hubSig,
@@ -58,19 +52,6 @@ export class DataProviderServer {
       socket.send(resp.serialize());
       socket.close();
     };
-  }
-
-  async start(port?: number) {
-    await this.wss.start(port);
-    // Register handlers
-    if (this.wss.wsServer === undefined) {
-      throw new ServerNotRunning("websocket server is not running");
-    }
-    this.wss.wsServer.on("connection", this.onIncomingConnection.bind(this));
-  }
-
-  close() {
-    this.wss.close();
   }
 }
 

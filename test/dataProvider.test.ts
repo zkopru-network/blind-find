@@ -1,9 +1,4 @@
-import {
-  wsServerFactory,
-  hubRegistryTreeFactory,
-  hubRegistryFactory
-} from "../src/factories";
-import { Server } from "../src/websocket";
+import { hubRegistryTreeFactory, hubRegistryFactory } from "../src/factories";
 import { DataProviderServer, sendGetMerkleProofReq } from "../src/dataProvider";
 import { genKeypair, Keypair } from "maci-crypto";
 import { LEVELS } from "../src/configs";
@@ -12,7 +7,6 @@ import WebSocket from "ws";
 import { RequestFailed, ValueError } from "../src/exceptions";
 
 describe("DataProviderServer", () => {
-  let wsServer: Server;
   let dataProvider: DataProviderServer;
   let hub: Keypair;
   let admin: Keypair;
@@ -22,19 +16,15 @@ describe("DataProviderServer", () => {
   let port: number;
 
   beforeAll(async () => {
-    wsServer = await wsServerFactory();
     hub = genKeypair();
     admin = genKeypair();
     tree = hubRegistryTreeFactory([hub], LEVELS, admin);
     expect(tree.length).toEqual(1);
     hubRegistry = tree.leaves[0];
-    dataProvider = new DataProviderServer(admin.pubKey, tree, wsServer);
+    dataProvider = new DataProviderServer(admin.pubKey, tree);
     await dataProvider.start();
 
-    if (wsServer.wsServer === undefined) {
-      throw new Error();
-    }
-    const addr = wsServer.wsServer.address() as WebSocket.AddressInfo;
+    const addr = dataProvider.address as WebSocket.AddressInfo;
     ip = "localhost";
     port = addr.port;
   });

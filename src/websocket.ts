@@ -2,18 +2,31 @@ import * as http from "http";
 import express from "express";
 import WebSocket from "ws";
 import { AsyncEvent } from "./utils";
+import { ServerNotRunning } from "./exceptions";
 
 // Should be changed to wss later when we support https
 export const WS_PROTOCOL = "ws";
 
 // TODO: Add tests for Server
-export class Server {
+export abstract class BaseServer {
   isRunning: boolean;
-  httpServer?: http.Server;
-  wsServer?: WebSocket.Server;
+  private httpServer?: http.Server;
+  private wsServer?: WebSocket.Server;
 
   constructor() {
     this.isRunning = false;
+  }
+
+  abstract onIncomingConnection(
+    socket: WebSocket,
+    request: http.IncomingMessage
+  );
+
+  public get address() {
+    if (this.wsServer === undefined) {
+      throw new ServerNotRunning();
+    }
+    return this.wsServer.address();
   }
 
   async start(port?: number) {
@@ -44,6 +57,7 @@ export class Server {
     await event.wait();
     this.httpServer = webServer;
     this.wsServer = server;
+    this.wsServer.on("connection", this.onIncomingConnection.bind(this));
   }
 
   close() {
