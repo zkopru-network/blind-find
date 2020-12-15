@@ -26,6 +26,22 @@ export class ServerNotRunning extends BaseBlindFind {
   constructor(m?: string) {
     super(m);
     // Set the prototype explicitly.
-    Object.setPrototypeOf(this, BaseBlindFind.prototype);
+    Object.setPrototypeOf(this, ServerNotRunning.prototype);
+  }
+}
+
+export class RPCError extends BaseBlindFind {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, RPCError.prototype);
+  }
+}
+
+export class RequestFailed extends RPCError {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, RequestFailed.prototype);
   }
 }

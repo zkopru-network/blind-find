@@ -1,22 +1,25 @@
-import Websocket from "ws";
-import { wsServerFactory, hubRegistryTreeFactory } from "../src/factories";
+import {
+  wsServerFactory,
+  hubRegistryTreeFactory,
+  hubRegistryFactory
+} from "../src/factories";
 import { Server } from "../src/websocket";
-import { AsyncEvent } from "../src/utils";
-import { DataProvider } from "../src/dataProvider";
+import { DataProviderServer, sendGetMerkleProofReq } from "../src/dataProvider";
 import { genKeypair, Keypair } from "maci-crypto";
 import { LEVELS } from "../src/configs";
 import { HubRegistry, HubRegistryTree } from "../src";
-import { GetMerkleProofReq, GetMerkleProofResp } from "../src/serialization";
+import WebSocket from "ws";
+import { RequestFailed, ValueError } from "../src/exceptions";
 
-jest.setTimeout(30000);
-
-describe("test WebSocket.Server and client connect", () => {
+describe("DataProviderServer", () => {
   let wsServer: Server;
-  let dataProvider: DataProvider;
+  let dataProvider: DataProviderServer;
   let hub: Keypair;
   let admin: Keypair;
   let tree: HubRegistryTree;
   let hubRegistry: HubRegistry;
+  let ip: string;
+  let port: number;
 
   beforeAll(async () => {
     wsServer = await wsServerFactory();
@@ -25,55 +28,38 @@ describe("test WebSocket.Server and client connect", () => {
     tree = hubRegistryTreeFactory([hub], LEVELS, admin);
     expect(tree.length).toEqual(1);
     hubRegistry = tree.leaves[0];
-    dataProvider = new DataProvider(admin.pubKey, tree, wsServer);
+    dataProvider = new DataProviderServer(admin.pubKey, tree, wsServer);
     await dataProvider.start();
+
+    if (wsServer.wsServer === undefined) {
+      throw new Error();
+    }
+    const addr = wsServer.wsServer.address() as WebSocket.AddressInfo;
+    ip = "localhost";
+    port = addr.port;
   });
 
   afterAll(() => {
     dataProvider.close();
   });
 
-  test("", async () => {
-    if (wsServer.wsServer === undefined) {
-      throw new Error();
-    }
+  test("send request", async () => {
+    await sendGetMerkleProofReq(ip, port, hubRegistry);
+  });
 
-    const c = new Websocket(
-      `ws://localhost:${(wsServer.wsServer.address() as any).port}`
-    );
+  test("request fails when registry is invalid", async () => {
+    // Invalid registry because of the wrong pubkey
+    const invalidRegistry = hubRegistryFactory();
+    invalidRegistry.pubkey = admin.pubKey;
+    await expect(
+      sendGetMerkleProofReq(ip, port, invalidRegistry)
+    ).rejects.toThrowError(ValueError);
+  });
 
-    const msgEvent = new AsyncEvent();
-    const closeEvent = new AsyncEvent();
-    c.onopen = async event => {
-      console.log(`Client: opened connection, event=${event.target}`);
-      if (hubRegistry.adminSig === undefined) {
-        throw new Error();
-      }
-      const req = new GetMerkleProofReq(
-        hubRegistry.pubkey,
-        hubRegistry.sig,
-        hubRegistry.adminSig
-      );
-      c.send(req.serialize());
-      c.onmessage = event => {
-        const resp = GetMerkleProofResp.deserialize(event.data as Buffer);
-        if (resp.merkleProof.leaf !== hubRegistry.hash()) {
-          throw new Error("response mismatches the request");
-        }
-        console.log(
-          `Client: received proof from provider, proof=`,
-          resp.merkleProof
-        );
-        msgEvent.set();
-      };
-
-      c.onclose = () => {
-        closeEvent.set();
-      };
-    };
-
-    await msgEvent.wait();
-    c.close();
-    await closeEvent.wait();
+  test("request fails when no registry matches", async () => {
+    const randomValidRegistry = hubRegistryFactory();
+    await expect(
+      sendGetMerkleProofReq(ip, port, randomValidRegistry)
+    ).rejects.toThrowError(RequestFailed);
   });
 });

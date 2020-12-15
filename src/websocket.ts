@@ -3,6 +3,9 @@ import express from "express";
 import WebSocket from "ws";
 import { AsyncEvent } from "./utils";
 
+// Should be changed to wss later when we support https
+export const WS_PROTOCOL = "ws";
+
 // TODO: Add tests for Server
 export class Server {
   isRunning: boolean;
