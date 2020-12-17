@@ -2,13 +2,17 @@ import * as http from "http";
 import { Keypair, PubKey, Signature } from "maci-crypto";
 import WebSocket from "ws";
 
-import { getCounterSignHashedData, HubRegistry, signMsg, verifySignedMsg } from ".";
-import { RequestFailed, ValueError, UnsupportedRequest, TimeoutError } from "./exceptions";
-import { GetMerkleProofReq, GetMerkleProofResp, JoinReq, JoinResp } from "./serialization";
+import { getCounterSignHashedData, signMsg, verifySignedMsg } from ".";
+import { RequestFailed, UnsupportedRequest } from "./exceptions";
+import { JoinReq, JoinResp } from "./serialization";
 import { TLV, Short } from "./smp/serialization";
 import { bigIntToNumber } from "./smp/utils";
-import { AsyncEvent } from "./utils";
-import { BaseServer, WS_PROTOCOL, waitForMessage, waitForSocketOpen } from "./websocket";
+import {
+  BaseServer,
+  WS_PROTOCOL,
+  waitForMessage,
+  waitForSocketOpen
+} from "./websocket";
 import { TIMEOUT } from "./configs";
 
 enum requestType {
@@ -31,11 +35,14 @@ export class Hub extends BaseServer {
   }
 
   onJoinRequest(socket: WebSocket, bytes: Uint8Array) {
-    console.log('server: onJoinRequest');
+    console.log("server: onJoinRequest");
     const req = JoinReq.deserialize(bytes);
     const hashedData = getCounterSignHashedData(req.userSig);
     const hubSig = signMsg(this.keypair.privKey, hashedData);
-    this.userStore.set(req.userPubkey, { userSig: req.userSig, hubSig: hubSig});
+    this.userStore.set(req.userPubkey, {
+      userSig: req.userSig,
+      hubSig: hubSig
+    });
     socket.send(new JoinResp(hubSig).serialize());
     socket.close();
   }
@@ -43,7 +50,7 @@ export class Hub extends BaseServer {
   onSearchRequest(socket: WebSocket, bytes: Uint8Array) {}
 
   onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
-    console.log('server: onIncoming');
+    console.log("server: onIncoming");
     // Delegate to the corresponding handler
     socket.onmessage = event => {
       const tlv = TLV.deserialize(event.data as Buffer);
@@ -87,7 +94,7 @@ export const sendJoinHubReq = async (
       throw new RequestFailed("hub signature is invalid");
     }
     return resp;
-  }
+  };
   const resp = await waitForMessage(c, onMessage, timeout);
   c.close();
   return resp.hubSig;

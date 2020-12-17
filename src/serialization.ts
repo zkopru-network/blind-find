@@ -1,7 +1,7 @@
 import { PubKey, Signature } from "maci-crypto";
 import { LEVELS } from "./configs";
 import { ValueError } from "./smp/exceptions";
-import { BaseFixedInt, BaseSerializable, TLV } from "./smp/serialization";
+import { BaseFixedInt, BaseSerializable } from "./smp/serialization";
 import { bigIntToNumber, concatUint8Array } from "./smp/utils";
 import { Point, Scalar } from "./smp/v4/serialization";
 

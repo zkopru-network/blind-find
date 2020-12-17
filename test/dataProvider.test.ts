@@ -52,5 +52,4 @@ describe("DataProviderServer", () => {
   test("send request", async () => {
     await sendGetMerkleProofReq(ip, port, hubRegistry);
   });
-
 });

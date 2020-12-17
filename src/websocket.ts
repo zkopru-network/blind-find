@@ -76,7 +76,11 @@ export abstract class BaseServer {
   }
 }
 
-export const waitForMessage = async<TResponse>(s: WebSocket, onMessage: (data: Uint8Array) => TResponse, timeout: number) => {
+export const waitForMessage = async <TResponse>(
+  s: WebSocket,
+  onMessage: (data: Uint8Array) => TResponse,
+  timeout: number
+) => {
   return (await new Promise((res, rej) => {
     const t = setTimeout(() => {
       rej(new TimeoutError());
@@ -89,19 +93,18 @@ export const waitForMessage = async<TResponse>(s: WebSocket, onMessage: (data: U
       } catch (e) {
         rej(e);
       }
-    }
+    };
     s.onclose = event => {
       clearTimeout(t);
       rej(new RequestFailed("socket is closed before receiving response"));
-    }
+    };
     s.onerror = event => {
       clearTimeout(t);
       rej(new RequestFailed("error occurs before receiving response"));
-    }
-  }) as TResponse);
+    };
+  })) as TResponse;
 };
 
 export const waitForSocketOpen = async (s: WebSocket) => {
   await new Promise(resolve => s.once("open", resolve));
-}
-
+};
