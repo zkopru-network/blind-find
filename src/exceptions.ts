@@ -53,3 +53,11 @@ export class UnsupportedRequest extends RPCError {
     Object.setPrototypeOf(this, UnsupportedRequest.prototype);
   }
 }
+
+export class TimeoutError extends RPCError {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, TimeoutError.prototype);
+  }
+}

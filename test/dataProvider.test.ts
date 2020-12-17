@@ -33,10 +33,6 @@ describe("DataProviderServer", () => {
     dataProvider.close();
   });
 
-  test("send request", async () => {
-    await sendGetMerkleProofReq(ip, port, hubRegistry);
-  });
-
   test("request fails when registry is invalid", async () => {
     // Invalid registry because of the wrong pubkey
     const invalidRegistry = hubRegistryFactory();
@@ -52,4 +48,9 @@ describe("DataProviderServer", () => {
       sendGetMerkleProofReq(ip, port, randomValidRegistry)
     ).rejects.toThrowError(RequestFailed);
   });
+
+  test("send request", async () => {
+    await sendGetMerkleProofReq(ip, port, hubRegistry);
+  });
+
 });

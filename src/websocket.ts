@@ -2,7 +2,7 @@ import * as http from "http";
 import express from "express";
 import WebSocket from "ws";
 import { AsyncEvent } from "./utils";
-import { ServerNotRunning } from "./exceptions";
+import { ServerNotRunning, RequestFailed, TimeoutError } from "./exceptions";
 
 // Should be changed to wss later when we support https
 export const WS_PROTOCOL = "ws";
@@ -75,3 +75,33 @@ export abstract class BaseServer {
     this.httpServer.close();
   }
 }
+
+export const waitForMessage = async<TResponse>(s: WebSocket, onMessage: (data: Uint8Array) => TResponse, timeout: number) => {
+  return (await new Promise((res, rej) => {
+    const t = setTimeout(() => {
+      rej(new TimeoutError());
+    }, timeout);
+    s.onmessage = event => {
+      clearTimeout(t);
+      try {
+        const resp = onMessage(event.data as Buffer);
+        res(resp);
+      } catch (e) {
+        rej(e);
+      }
+    }
+    s.onclose = event => {
+      clearTimeout(t);
+      rej(new RequestFailed("socket is closed before receiving response"));
+    }
+    s.onerror = event => {
+      clearTimeout(t);
+      rej(new RequestFailed("error occurs before receiving response"));
+    }
+  }) as TResponse);
+};
+
+export const waitForSocketOpen = async (s: WebSocket) => {
+  await new Promise(resolve => s.once("open", resolve));
+}
+

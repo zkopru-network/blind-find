@@ -3,10 +3,10 @@ import { PubKey } from "maci-crypto";
 import WebSocket from "ws";
 
 import { HubRegistry, HubRegistryTree } from "./";
+import { TIMEOUT } from "./configs";
 import { RequestFailed, ValueError } from "./exceptions";
 import { GetMerkleProofReq, GetMerkleProofResp } from "./serialization";
-import { AsyncEvent } from "./utils";
-import { BaseServer, WS_PROTOCOL } from "./websocket";
+import { BaseServer, WS_PROTOCOL, waitForMessage, waitForSocketOpen } from "./websocket";
 
 // TODO: Persistance
 export class DataProviderServer extends BaseServer {
@@ -58,61 +58,41 @@ export class DataProviderServer extends BaseServer {
 export const sendGetMerkleProofReq = async (
   ip: string,
   port: number,
-  hubRegistry: HubRegistry
+  hubRegistry: HubRegistry,
+  timeout: number = TIMEOUT,
 ): Promise<GetMerkleProofResp> => {
   const c = new WebSocket(`${WS_PROTOCOL}://${ip}:${port}`);
-
-  const finishedEvent = new AsyncEvent();
-  let resp: GetMerkleProofResp | null = null;
-  let error: Error | undefined;
-  // TODO: Add timeout.
-
+  console.log('1');
   if (hubRegistry.adminSig === undefined || !hubRegistry.verify()) {
     throw new ValueError("invalid hub registry");
   }
+  console.log('2');
   // Wait until the socket is opened.
-  await new Promise(resolve => c.once("open", resolve));
+  await waitForSocketOpen(c);
+  console.log('3');
   if (hubRegistry.adminSig === undefined) {
     throw new Error("this SHOULD NOT happen because we checked it outside");
   }
+  console.log('4');
   const req = new GetMerkleProofReq(
     hubRegistry.pubkey,
     hubRegistry.sig,
     hubRegistry.adminSig
   );
-  c.send(req.serialize(), err => {
-    if (err !== undefined) {
-      error = err;
-    }
-  });
-  c.onmessage = event => {
-    finishedEvent.set();
-    resp = GetMerkleProofResp.deserialize(event.data as Buffer);
+  c.send(req.serialize());
+  console.log('5');
+  const onMessage = (data: Uint8Array) => {
+    const resp = GetMerkleProofResp.deserialize(data);
     if (resp.merkleProof.leaf !== hubRegistry.hash()) {
-      error = new RequestFailed("response mismatches the request");
-      return;
+      console.log('client: mismatch');
+      throw new RequestFailed("response mismatches the request");
     }
-    console.log(
-      `Client: received proof from provider, proof=`,
-      resp.merkleProof
-    );
+    console.log('client: succeeds');
+    return resp;
   };
-  c.onclose = event => {
-    if (!finishedEvent.isSet) {
-      // Socket is closed before msg is received.
-      // This means there is something wrong.
-      error = new RequestFailed("socket is closed before receiving response");
-      finishedEvent.set();
-    }
-  };
-
-  if (error !== undefined) {
-    throw new RequestFailed(`request failed: error=${error}`);
-  }
-  await finishedEvent.wait();
-  if (error !== undefined || resp === null) {
-    throw new RequestFailed(`request failed: error=${error}, resp=${resp}`);
-  }
+  const resp = await waitForMessage(c, onMessage, timeout);
+  console.log('6');
   c.close();
+  console.log('client: closed');
   return resp;
 };
