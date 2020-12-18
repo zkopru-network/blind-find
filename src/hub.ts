@@ -1,5 +1,5 @@
 import * as http from "http";
-import { Keypair, PubKey, Signature } from "maci-crypto";
+import { hash5, Keypair, PubKey, Signature } from "maci-crypto";
 import WebSocket from "ws";
 
 import { getCounterSignHashedData, signMsg, verifySignedMsg } from ".";
@@ -21,16 +21,62 @@ enum requestType {
 }
 
 type TUserRegistry = { userSig: Signature; hubSig: Signature };
-type TUserStore = Map<PubKey, TUserRegistry>;
+type TUserStoreMap = Map<BigInt, TUserRegistry>;
+type TUserStorePubkeyMap = Map<BigInt, PubKey>;
+
+interface IUserStore {
+  get(pubkey: PubKey): TUserRegistry | undefined;
+  set(pubkey: PubKey, registry: TUserRegistry): void;
+  size: number;
+}
+
+export class UserStore implements IUserStore {
+  private mapStore: TUserStoreMap;
+  private mapPubkey: TUserStorePubkeyMap;
+
+  constructor() {
+    this.mapStore = new Map<BigInt, TUserRegistry>();
+    this.mapPubkey = new Map<BigInt, PubKey>();
+  }
+
+  public get size() {
+    return this.mapStore.size;
+  }
+
+  private hash(pubkey: PubKey): BigInt {
+    return hash5([pubkey[0], pubkey[1], BigInt(0), BigInt(0), BigInt(0)]);
+  }
+
+  get(pubkey: PubKey) {
+    return this.mapStore.get(this.hash(pubkey));
+  }
+
+  set(pubkey: PubKey, registry: TUserRegistry) {
+    const pubkeyHash = this.hash(pubkey);
+    this.mapPubkey.set(pubkeyHash, pubkey);
+    this.mapStore.set(pubkeyHash, registry);
+  }
+
+  forEach(callbackFn: (value: TUserRegistry, key: PubKey) => void): void {
+    this.mapStore.forEach((value, key, map) => {
+      const pubkey = this.mapPubkey.get(key);
+      if (pubkey === undefined) {
+        throw new Error("pubkey shouldn't be undefined");
+      }
+      callbackFn(value, pubkey);
+    });
+  }
+}
 
 export class Hub extends BaseServer {
-  userStore: TUserStore;
-  constructor(readonly keypair: Keypair, userStore?: TUserStore) {
+  userStore: IUserStore;
+
+  constructor(readonly keypair: Keypair, userStore?: IUserStore) {
     super();
     if (userStore !== undefined) {
       this.userStore = userStore;
     } else {
-      this.userStore = new Map<PubKey, TUserRegistry>();
+      this.userStore = new UserStore();
     }
   }
 
