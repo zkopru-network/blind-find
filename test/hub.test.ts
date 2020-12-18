@@ -5,7 +5,7 @@ import { LEVELS } from "../src/configs";
 import { HubRegistryTree } from "../src";
 import WebSocket from "ws";
 
-const timeoutSmall = 100;
+const timeoutSmall = 5000;
 
 type TRegistry = { userSig: Signature; hubSig: Signature };
 const isRegistrySignedMsgMatch = (
