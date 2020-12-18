@@ -76,19 +76,22 @@ export abstract class BaseServer {
   }
 }
 
-export const waitForMessage = async <TResponse>(
+export const request = async <TResponse>(
   s: WebSocket,
-  onMessage: (data: Uint8Array) => TResponse,
+  requestData: Uint8Array,
+  messageHandler: (data: Uint8Array) => TResponse,
   timeout: number
 ) => {
   return (await new Promise((res, rej) => {
     const t = setTimeout(() => {
       rej(new TimeoutError());
     }, timeout);
+    // Register handlers before sending data, in case servers respond faster than us
+    //  registering the listners.
     s.onmessage = event => {
       clearTimeout(t);
       try {
-        const resp = onMessage(event.data as Buffer);
+        const resp = messageHandler(event.data as Buffer);
         res(resp);
       } catch (e) {
         rej(e);
@@ -102,6 +105,7 @@ export const waitForMessage = async <TResponse>(
       clearTimeout(t);
       rej(new RequestFailed("error occurs before receiving response"));
     };
+    s.send(requestData);
   })) as TResponse;
 };
 

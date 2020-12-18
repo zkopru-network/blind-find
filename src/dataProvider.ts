@@ -9,7 +9,7 @@ import { GetMerkleProofReq, GetMerkleProofResp } from "./serialization";
 import {
   BaseServer,
   WS_PROTOCOL,
-  waitForMessage,
+  request,
   waitForSocketOpen
 } from "./websocket";
 
@@ -84,9 +84,8 @@ export const sendGetMerkleProofReq = async (
     hubRegistry.sig,
     hubRegistry.adminSig
   );
-  c.send(req.serialize());
   console.log("5");
-  const onMessage = (data: Uint8Array) => {
+  const messageHandler = (data: Uint8Array) => {
     const resp = GetMerkleProofResp.deserialize(data);
     if (resp.merkleProof.leaf !== hubRegistry.hash()) {
       console.log("client: mismatch");
@@ -95,7 +94,7 @@ export const sendGetMerkleProofReq = async (
     console.log("client: succeeds");
     return resp;
   };
-  const resp = await waitForMessage(c, onMessage, timeout);
+  const resp = await request(c, req.serialize(), messageHandler, timeout);
   console.log("6");
   c.close();
   console.log("client: closed");

@@ -10,7 +10,7 @@ import { bigIntToNumber } from "./smp/utils";
 import {
   BaseServer,
   WS_PROTOCOL,
-  waitForMessage,
+  request,
   waitForSocketOpen
 } from "./websocket";
 import { TIMEOUT } from "./configs";
@@ -85,9 +85,7 @@ export const sendJoinHubReq = async (
   const joinReq = new JoinReq(userPubkey, userSig);
   const req = new TLV(new Short(requestType.JoinReq), joinReq.serialize());
 
-  c.send(req.serialize());
-
-  const onMessage = (data: Uint8Array): JoinResp => {
+  const messageHandler = (data: Uint8Array): JoinResp => {
     const resp = JoinResp.deserialize(data);
     const hasedData = getCounterSignHashedData(userSig);
     if (!verifySignedMsg(hasedData, resp.hubSig, hubPubkey)) {
@@ -95,7 +93,7 @@ export const sendJoinHubReq = async (
     }
     return resp;
   };
-  const resp = await waitForMessage(c, onMessage, timeout);
+  const resp = await request(c, req.serialize(), messageHandler, timeout);
   c.close();
   return resp.hubSig;
 };
