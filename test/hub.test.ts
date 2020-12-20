@@ -1,5 +1,5 @@
 import { hubRegistryTreeFactory, signedJoinMsgFactory } from "../src/factories";
-import { Hub, sendJoinHubReq, UserStore } from "../src/hub";
+import { HubServer, sendJoinHubReq, UserStore } from "../src/hub";
 import { genKeypair, Keypair, Signature } from "maci-crypto";
 import { LEVELS } from "../src/configs";
 import { HubRegistryTree } from "../src";
@@ -57,8 +57,8 @@ describe("UserStore", () => {
   });
 });
 
-describe("DataProviderServer", () => {
-  let hub: Hub;
+describe("HubServer", () => {
+  let hub: HubServer;
   let hubkeypair: Keypair;
   let admin: Keypair;
   let tree: HubRegistryTree;
@@ -72,7 +72,7 @@ describe("DataProviderServer", () => {
     tree = hubRegistryTreeFactory([hubkeypair], LEVELS, admin);
     expect(tree.length).toEqual(1);
     // hubRegistry = tree.leaves[0];
-    hub = new Hub(hubkeypair);
+    hub = new HubServer(hubkeypair);
     await hub.start();
 
     const addr = hub.address as WebSocket.AddressInfo;

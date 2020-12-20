@@ -68,7 +68,7 @@ export class UserStore implements IUserStore {
   }
 }
 
-export class Hub extends BaseServer {
+export class HubServer extends BaseServer {
   userStore: IUserStore;
 
   constructor(readonly keypair: Keypair, userStore?: IUserStore) {
