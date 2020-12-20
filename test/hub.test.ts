@@ -4,6 +4,9 @@ import { genKeypair, Keypair, Signature } from "maci-crypto";
 import { LEVELS } from "../src/configs";
 import { HubRegistryTree } from "../src";
 import WebSocket from "ws";
+import { TimeoutError } from "../src/exceptions";
+import { WS_PROTOCOL, waitForSocketOpen } from "../src/websocket";
+import { Short, TLV } from "../src/smp/serialization";
 
 const timeoutSmall = 5000;
 
@@ -58,6 +61,9 @@ describe("UserStore", () => {
 });
 
 describe("HubServer", () => {
+  // NOTE: We only have **one** hub server in our tests. This means the order of the
+  //  following tests matters. The server should be alive until the end of the final
+  //  test (which should be closed in `afterAll`).
   let hub: HubServer;
   let hubkeypair: Keypair;
   let admin: Keypair;
@@ -84,7 +90,31 @@ describe("HubServer", () => {
     hub.close();
   });
 
-  test("send request", async () => {
+  test("request fails when message has unsupported RPC type", async () => {
+    // Invalid registry because of the wrong pubkey
+    const expectedUnsupportedType = 5566;
+    const c = new WebSocket(`${WS_PROTOCOL}://${ip}:${port}`);
+
+    // Wait until the socket is opened.
+    await waitForSocketOpen(c);
+    const task = new Promise((res, rej) => {
+      const tlv = new TLV(new Short(expectedUnsupportedType), new Uint8Array());
+      c.onmessage = () => {
+        console.log("!@# client: recevied");
+        res();
+      };
+      c.onclose = (event) => {
+        rej(new Error(event.reason));
+      };
+      c.onerror = (event => {
+        rej(event.error);
+      });
+      c.send(tlv.serialize());
+    });
+    await expect(task).rejects.toThrow();
+  });
+
+  test("`Join` request should succeed with correct request data", async () => {
     const signedMsg = signedJoinMsgFactory(undefined, hubkeypair);
     await sendJoinHubReq(
       ip,
@@ -95,26 +125,32 @@ describe("HubServer", () => {
       timeoutSmall
     );
     expect(hub.userStore.size).toEqual(1);
-    const userData = hub.userStore.get(signedMsg.userPubkey);
-    if (userData === undefined) {
-      throw new Error("should not be undefined");
-    }
-    isRegistrySignedMsgMatch(userData, signedMsg);
+    expect(hub.userStore.get(signedMsg.userPubkey)).not.toBeUndefined();
+
+    // Another request
+
+    const signedMsgAnother = signedJoinMsgFactory(undefined, hubkeypair);
+    await sendJoinHubReq(
+      ip,
+      port,
+      signedMsgAnother.userPubkey,
+      signedMsgAnother.userSig,
+      signedMsgAnother.hubPubkey,
+      timeoutSmall
+    );
+    expect(hub.userStore.size).toEqual(2);
+    expect(hub.userStore.get(signedMsgAnother.userPubkey)).not.toBeUndefined();
   });
 
-  // test("request fails when registry is invalid", async () => {
-  //   // Invalid registry because of the wrong pubkey
-  //   const invalidRegistry = hubRegistryFactory();
-  //   invalidRegistry.pubkey = admin.pubKey;
-  //   await expect(
-  //     sendGetMerkleProofReq(ip, port, invalidRegistry)
-  //   ).rejects.toThrowError(ValueError);
-  // });
-
-  // test("request fails when no registry matches", async () => {
-  //   const randomValidRegistry = hubRegistryFactory();
-  //   await expect(
-  //     sendGetMerkleProofReq(ip, port, randomValidRegistry)
-  //   ).rejects.toThrowError(RequestFailed);
-  // });
+  test("request fails when timeout", async () => {
+    // NOTE: Server still possibly adds the registry in `userStore` because
+    //  the request is indeed valid. We can let the server revert if timeout happens.
+    //  However, it requires additional designs.
+    // Invalid registry because of the wrong pubkey
+    const signedMsg = signedJoinMsgFactory(undefined, hubkeypair);
+    const timeoutExpectedToFail = 10;
+    await expect(
+      sendJoinHubReq(ip, port, signedMsg.userPubkey, signedMsg.userSig, signedMsg.hubPubkey, timeoutExpectedToFail)
+    ).rejects.toThrowError(TimeoutError);
+  });
 });

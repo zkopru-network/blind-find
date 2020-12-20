@@ -15,6 +15,7 @@ import {
 } from "./websocket";
 import { TIMEOUT } from "./configs";
 
+// TODO: Should be moved to `serialization.ts`?
 enum requestType {
   JoinReq = 6,
   SearchReq
@@ -30,6 +31,10 @@ interface IUserStore {
   size: number;
 }
 
+/**
+ * `UserStore` stores the mapping from `Pubkey` to `TUserRegistry`.
+ * It is implemented because NodeJS doesn't work well with Array-typed keys.
+ */
 export class UserStore implements IUserStore {
   private mapStore: TUserStoreMap;
   private mapPubkey: TUserStorePubkeyMap;
@@ -68,6 +73,13 @@ export class UserStore implements IUserStore {
   }
 }
 
+// TODO: Probably we can use `close.code` to indicate the reason why a socket is closed by
+//  the server.
+//  Ref: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+/**
+ * `HubServer` is run by Hubs. The server receives requests and send the corresponding
+ *  response to the users.
+ */
 export class HubServer extends BaseServer {
   userStore: IUserStore;
 
@@ -81,36 +93,45 @@ export class HubServer extends BaseServer {
   }
 
   onJoinRequest(socket: WebSocket, bytes: Uint8Array) {
-    console.log("server: onJoinRequest");
+    console.debug("server: onJoinRequest");
     const req = JoinReq.deserialize(bytes);
     const hashedData = getCounterSignHashedData(req.userSig);
     const hubSig = signMsg(this.keypair.privKey, hashedData);
+    socket.send(new JoinResp(hubSig).serialize());
     this.userStore.set(req.userPubkey, {
       userSig: req.userSig,
       hubSig: hubSig
     });
-    socket.send(new JoinResp(hubSig).serialize());
-    socket.close();
   }
 
-  onSearchRequest(socket: WebSocket, bytes: Uint8Array) {}
+  onSearchRequest(socket: WebSocket, bytes: Uint8Array) {
+    console.debug("server: onSearchRequest");
+  }
 
   onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
-    console.log("server: onIncoming");
     // Delegate to the corresponding handler
     socket.onmessage = event => {
       const tlv = TLV.deserialize(event.data as Buffer);
       const tlvType = bigIntToNumber(tlv.type.value);
-      console.log(`server: onMessage, type=${tlvType}`);
+
+      const remoteAddress = request.connection.remoteAddress;
+      if (remoteAddress !== undefined) {
+        console.info(`server: incoming connection from ${remoteAddress}, type=${tlvType}`);
+      } else {
+        console.info(`server: incoming connection from unknown address, type=${tlvType}`);
+      }
       switch (tlvType) {
         case requestType.JoinReq:
           this.onJoinRequest(socket, tlv.value);
+          socket.close();
           break;
         case requestType.SearchReq:
           this.onSearchRequest(socket, tlv.value);
+          socket.close();
           break;
         default:
-          throw new UnsupportedRequest(`type ${tlvType} is unsupported`);
+          console.error(`type ${tlvType} is unsupported`);
+          socket.terminate();
       }
     };
   }
