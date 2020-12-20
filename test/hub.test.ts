@@ -103,12 +103,12 @@ describe("HubServer", () => {
         console.log("!@# client: recevied");
         res();
       };
-      c.onclose = (event) => {
+      c.onclose = event => {
         rej(new Error(event.reason));
       };
-      c.onerror = (event => {
+      c.onerror = event => {
         rej(event.error);
-      });
+      };
       c.send(tlv.serialize());
     });
     await expect(task).rejects.toThrow();
@@ -150,7 +150,14 @@ describe("HubServer", () => {
     const signedMsg = signedJoinMsgFactory(undefined, hubkeypair);
     const timeoutExpectedToFail = 10;
     await expect(
-      sendJoinHubReq(ip, port, signedMsg.userPubkey, signedMsg.userSig, signedMsg.hubPubkey, timeoutExpectedToFail)
+      sendJoinHubReq(
+        ip,
+        port,
+        signedMsg.userPubkey,
+        signedMsg.userSig,
+        signedMsg.hubPubkey,
+        timeoutExpectedToFail
+      )
     ).rejects.toThrowError(TimeoutError);
   });
 });

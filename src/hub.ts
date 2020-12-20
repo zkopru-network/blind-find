@@ -3,7 +3,7 @@ import { hash5, Keypair, PubKey, Signature } from "maci-crypto";
 import WebSocket from "ws";
 
 import { getCounterSignHashedData, signMsg, verifySignedMsg } from ".";
-import { RequestFailed, UnsupportedRequest } from "./exceptions";
+import { RequestFailed } from "./exceptions";
 import { JoinReq, JoinResp } from "./serialization";
 import { TLV, Short } from "./smp/serialization";
 import { bigIntToNumber } from "./smp/utils";
@@ -116,9 +116,13 @@ export class HubServer extends BaseServer {
 
       const remoteAddress = request.connection.remoteAddress;
       if (remoteAddress !== undefined) {
-        console.info(`server: incoming connection from ${remoteAddress}, type=${tlvType}`);
+        console.info(
+          `server: incoming connection from ${remoteAddress}, type=${tlvType}`
+        );
       } else {
-        console.info(`server: incoming connection from unknown address, type=${tlvType}`);
+        console.info(
+          `server: incoming connection from unknown address, type=${tlvType}`
+        );
       }
       switch (tlvType) {
         case requestType.JoinReq:
