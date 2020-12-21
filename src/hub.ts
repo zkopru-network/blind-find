@@ -106,11 +106,18 @@ export class HubServer extends BaseServer {
 
   onSearchRequest(socket: WebSocket, bytes: Uint8Array) {
     console.debug("server: onSearchRequest");
+    // TODO: Copy the whole userStore
+    // const stateMachine = new SMPStateMachine();
+    // for () {
+    // TODO: send control message, indicate if this is the n'th message.
+    // }
+    // TODO: send control message, indicate it's the end.
   }
 
   onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
     // Delegate to the corresponding handler
     socket.onmessage = event => {
+      // TODO: Put into another msg?
       const tlv = TLV.deserialize(event.data as Buffer);
       const tlvType = bigIntToNumber(tlv.type.value);
 

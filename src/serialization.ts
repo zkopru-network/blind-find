@@ -1,9 +1,9 @@
 import { PubKey, Signature } from "maci-crypto";
 import { LEVELS } from "./configs";
 import { ValueError } from "./smp/exceptions";
-import { BaseFixedInt, BaseSerializable } from "./smp/serialization";
+import { BaseFixedInt, BaseSerializable, Byte, TLV } from "./smp/serialization";
 import { bigIntToNumber, concatUint8Array } from "./smp/utils";
-import { Point, Scalar } from "./smp/v4/serialization";
+import { Point, Scalar, SMPMessage1Wire } from "./smp/v4/serialization";
 
 function serializeElements(values: BaseSerializable[]): Uint8Array {
   let bytes = new Uint8Array([]);
@@ -233,5 +233,56 @@ export class JoinResp extends BaseSerializable {
       new Point(this.hubSig.R8),
       new Scalar(this.hubSig.S)
     ]);
+  }
+}
+
+export class Message1 extends BaseSerializable {
+  static wireTypes = [
+    Byte, // isLast
+    TLV // smpMsg1
+  ];
+
+  constructor(readonly isLast: boolean, readonly smpMsg1?: SMPMessage1Wire) {
+    super();
+    if (isLast && smpMsg1 !== undefined) {
+      throw new ValueError(
+        "no smpMsg1 should be given if it's the last message"
+      );
+    }
+    if (!isLast && smpMsg1 === undefined) {
+      throw new ValueError(
+        "smpMsg1 should be given if it's not the last message"
+      );
+    }
+  }
+
+  static deserialize(b: Uint8Array): Message1 {
+    return super.deserialize(b) as Message1;
+  }
+
+  static consume(b: Uint8Array): [Message1, Uint8Array] {
+    let bytesRemaining: Uint8Array;
+    let isLast: BaseFixedInt;
+    let smpMsg1TLV: TLV;
+    [isLast, bytesRemaining] = Byte.consume(b);
+    // False
+    if (isLast.value === BigInt(0)) {
+      [smpMsg1TLV, bytesRemaining] = TLV.consume(bytesRemaining);
+      const smpMsg1 = SMPMessage1Wire.fromTLV(smpMsg1TLV);
+      return [new Message1(false, smpMsg1), bytesRemaining];
+    } else {
+      return [new Message1(true), bytesRemaining];
+    }
+  }
+
+  serialize(): Uint8Array {
+    if (this.isLast) {
+      return serializeElements([new Byte(1)]);
+    } else {
+      if (this.smpMsg1 === undefined) {
+        throw new Error("smpMsg1 should not be undefined");
+      }
+      return serializeElements([new Byte(0), this.smpMsg1.toTLV()]);
+    }
   }
 }
