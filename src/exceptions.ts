@@ -61,3 +61,11 @@ export class TimeoutError extends RPCError {
     Object.setPrototypeOf(this, TimeoutError.prototype);
   }
 }
+
+export class SearchFinished extends RPCError {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, SearchFinished.prototype);
+  }
+}

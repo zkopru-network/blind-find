@@ -1,5 +1,10 @@
 import { hubRegistryTreeFactory, signedJoinMsgFactory } from "../src/factories";
-import { HubServer, sendJoinHubReq, UserStore } from "../src/hub";
+import {
+  HubServer,
+  sendJoinHubReq,
+  sendSearchReq,
+  UserStore
+} from "../src/hub";
 import { genKeypair, Keypair, Signature } from "maci-crypto";
 import { LEVELS } from "../src/configs";
 import { HubRegistryTree } from "../src";
@@ -67,6 +72,8 @@ describe("HubServer", () => {
   //  test (which should be closed in `afterAll`).
   let hub: HubServer;
   let hubkeypair: Keypair;
+  let user1: Keypair;
+  let user2: Keypair;
   let admin: Keypair;
   let tree: HubRegistryTree;
   // let hubRegistry: HubRegistry;
@@ -76,6 +83,8 @@ describe("HubServer", () => {
   beforeAll(async () => {
     hubkeypair = genKeypair();
     admin = genKeypair();
+    user1 = genKeypair();
+    user2 = genKeypair();
     tree = hubRegistryTreeFactory([hubkeypair], LEVELS, admin);
     expect(tree.length).toEqual(1);
     // hubRegistry = tree.leaves[0];
@@ -116,7 +125,7 @@ describe("HubServer", () => {
   });
 
   test("`Join` request should succeed with correct request data", async () => {
-    const signedMsg = signedJoinMsgFactory(undefined, hubkeypair);
+    const signedMsg = signedJoinMsgFactory(user1, hubkeypair);
     await sendJoinHubReq(
       ip,
       port,
@@ -130,7 +139,7 @@ describe("HubServer", () => {
 
     // Another request
 
-    const signedMsgAnother = signedJoinMsgFactory(undefined, hubkeypair);
+    const signedMsgAnother = signedJoinMsgFactory(user2, hubkeypair);
     await sendJoinHubReq(
       ip,
       port,
@@ -160,5 +169,9 @@ describe("HubServer", () => {
         timeoutExpectedToFail
       )
     ).rejects.toThrowError(TimeoutError);
+  });
+
+  test("single SMP", async () => {
+    expect(await sendSearchReq(ip, port, user1.pubKey)).toBeTruthy();
   });
 });

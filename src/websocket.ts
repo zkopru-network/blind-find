@@ -78,7 +78,7 @@ export abstract class BaseServer {
 
 export const request = async <TResponse>(
   s: WebSocket,
-  requestData: Uint8Array,
+  requestData: Uint8Array | undefined,
   messageHandler: (data: Uint8Array) => TResponse,
   timeout: number
 ) => {
@@ -105,7 +105,9 @@ export const request = async <TResponse>(
       clearTimeout(t);
       rej(new RequestFailed("error occurs before receiving response"));
     };
-    s.send(requestData);
+    if (requestData !== undefined) {
+      s.send(requestData);
+    }
   })) as TResponse;
 };
 

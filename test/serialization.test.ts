@@ -10,7 +10,7 @@ import {
   GetMerkleProofResp,
   JoinReq,
   JoinResp,
-  Message1
+  SearchMessage1
 } from "../src/serialization";
 import { smpMessage1Factory } from "../src/smp/v4/factories";
 import { SMPMessage1Wire } from "../src/smp/v4/serialization";
@@ -77,24 +77,28 @@ describe("Serialization and Deserialization of wire messages", () => {
     expect(joinResp.hubSig).toEqual(reqFromBytes.hubSig);
   });
 
-  test("Message1", () => {
-    const msg1Last = new Message1(true);
+  test("SearchMessage1", () => {
+    const msg1Last = new SearchMessage1(true);
     const bytes = msg1Last.serialize();
-    const msg1LastFromBytes = Message1.deserialize(bytes);
-    expect(msg1LastFromBytes.isLast).toBeTruthy();
+    const msg1LastFromBytes = SearchMessage1.deserialize(bytes);
+    expect(msg1LastFromBytes.isEnd).toBeTruthy();
     expect(msg1LastFromBytes.smpMsg1).toBeUndefined();
 
     const smpMsg1 = smpMessage1Factory() as SMPMessage1Wire;
-    const msg1NotLast = new Message1(false, smpMsg1);
-    const msg1NotLastFromBytes = Message1.deserialize(msg1NotLast.serialize());
-    expect(msg1NotLastFromBytes.isLast).toBeFalsy();
+    const msg1NotLast = new SearchMessage1(false, smpMsg1.toTLV());
+    const msg1NotLastFromBytes = SearchMessage1.deserialize(
+      msg1NotLast.serialize()
+    );
+    expect(msg1NotLastFromBytes.isEnd).toBeFalsy();
     if (msg1NotLastFromBytes.smpMsg1 === undefined) {
       throw new Error();
     }
-    const actualSMPMsg1 = msg1NotLastFromBytes.smpMsg1;
-    expect(actualSMPMsg1.g2a).toEqual(smpMsg1.g2a);
-    expect(actualSMPMsg1.g2aProof).toEqual(smpMsg1.g2aProof);
-    expect(actualSMPMsg1.g3a).toEqual(smpMsg1.g3a);
-    expect(actualSMPMsg1.g3aProof).toEqual(smpMsg1.g3aProof);
+    const smpMsg1FromBytes = SMPMessage1Wire.fromTLV(
+      msg1NotLastFromBytes.smpMsg1
+    );
+    expect(smpMsg1FromBytes.g2a).toEqual(smpMsg1.g2a);
+    expect(smpMsg1FromBytes.g2aProof).toEqual(smpMsg1.g2aProof);
+    expect(smpMsg1FromBytes.g3a).toEqual(smpMsg1.g3a);
+    expect(smpMsg1FromBytes.g3aProof).toEqual(smpMsg1.g3aProof);
   });
 });

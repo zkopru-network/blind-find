@@ -3,7 +3,7 @@ import { LEVELS } from "./configs";
 import { ValueError } from "./smp/exceptions";
 import { BaseFixedInt, BaseSerializable, Byte, TLV } from "./smp/serialization";
 import { bigIntToNumber, concatUint8Array } from "./smp/utils";
-import { Point, Scalar, SMPMessage1Wire } from "./smp/v4/serialization";
+import { Point, Scalar } from "./smp/v4/serialization";
 
 function serializeElements(values: BaseSerializable[]): Uint8Array {
   let bytes = new Uint8Array([]);
@@ -236,53 +236,74 @@ export class JoinResp extends BaseSerializable {
   }
 }
 
-export class Message1 extends BaseSerializable {
+export class SearchMessage0 extends BaseSerializable {
+  static wireTypes = [];
+
+  // TODO: Probably add `ProofOfUser`?
+
+  static deserialize(b: Uint8Array): SearchMessage0 {
+    return super.deserialize(b) as SearchMessage0;
+  }
+
+  static consume(b: Uint8Array): [SearchMessage0, Uint8Array] {
+    return [new SearchMessage0(), b];
+  }
+
+  serialize(): Uint8Array {
+    return new Uint8Array();
+  }
+}
+
+export class SearchMessage1 extends BaseSerializable {
   static wireTypes = [
-    Byte, // isLast
+    Byte, // isEnd
     TLV // smpMsg1
   ];
 
-  constructor(readonly isLast: boolean, readonly smpMsg1?: SMPMessage1Wire) {
+  constructor(readonly isEnd: boolean, readonly smpMsg1?: TLV) {
     super();
-    if (isLast && smpMsg1 !== undefined) {
+    if (isEnd && smpMsg1 !== undefined) {
       throw new ValueError(
         "no smpMsg1 should be given if it's the last message"
       );
     }
-    if (!isLast && smpMsg1 === undefined) {
+    if (!isEnd && smpMsg1 === undefined) {
       throw new ValueError(
         "smpMsg1 should be given if it's not the last message"
       );
     }
   }
 
-  static deserialize(b: Uint8Array): Message1 {
-    return super.deserialize(b) as Message1;
+  static deserialize(b: Uint8Array): SearchMessage1 {
+    return super.deserialize(b) as SearchMessage1;
   }
 
-  static consume(b: Uint8Array): [Message1, Uint8Array] {
+  static consume(b: Uint8Array): [SearchMessage1, Uint8Array] {
     let bytesRemaining: Uint8Array;
-    let isLast: BaseFixedInt;
+    let isEnd: BaseFixedInt;
     let smpMsg1TLV: TLV;
-    [isLast, bytesRemaining] = Byte.consume(b);
+    [isEnd, bytesRemaining] = Byte.consume(b);
     // False
-    if (isLast.value === BigInt(0)) {
+    if (isEnd.value === BigInt(0)) {
       [smpMsg1TLV, bytesRemaining] = TLV.consume(bytesRemaining);
-      const smpMsg1 = SMPMessage1Wire.fromTLV(smpMsg1TLV);
-      return [new Message1(false, smpMsg1), bytesRemaining];
+      return [new SearchMessage1(false, smpMsg1TLV), bytesRemaining];
     } else {
-      return [new Message1(true), bytesRemaining];
+      return [new SearchMessage1(true), bytesRemaining];
     }
   }
 
   serialize(): Uint8Array {
-    if (this.isLast) {
+    if (this.isEnd) {
       return serializeElements([new Byte(1)]);
     } else {
       if (this.smpMsg1 === undefined) {
         throw new Error("smpMsg1 should not be undefined");
       }
-      return serializeElements([new Byte(0), this.smpMsg1.toTLV()]);
+      return serializeElements([new Byte(0), this.smpMsg1]);
     }
   }
 }
+
+export class SearchMessage2 extends TLV {}
+
+export class SearchMessage3 extends TLV {}
