@@ -46,11 +46,12 @@ describe("UserStore", () => {
     isRegistrySignedMsgMatch(registryAnother, msgs[1]);
   });
 
-  test("for each should work", () => {
+  test("userStore is an Iterable", () => {
     let counter = 0;
-    userStore.forEach(() => {
-      counter += 1;
-    });
+    for (const item of userStore) {
+      console.log(item);
+      counter++;
+    }
     expect(counter).toEqual(2);
   });
 

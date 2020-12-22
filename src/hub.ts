@@ -24,8 +24,9 @@ enum requestType {
 type TUserRegistry = { userSig: Signature; hubSig: Signature };
 type TUserStoreMap = Map<BigInt, TUserRegistry>;
 type TUserStorePubkeyMap = Map<BigInt, PubKey>;
+type TIterItem = [PubKey, TUserRegistry];
 
-interface IUserStore {
+interface IUserStore extends Iterable<TIterItem> {
   get(pubkey: PubKey): TUserRegistry | undefined;
   set(pubkey: PubKey, registry: TUserRegistry): void;
   size: number;
@@ -46,6 +47,20 @@ export class UserStore implements IUserStore {
 
   public get size() {
     return this.mapStore.size;
+  }
+
+  *[Symbol.iterator]() {
+    // Shallow-copy the maps, to avoid race condition.
+    const mapStoreCopied = new Map(this.mapStore);
+    const mapPubkeyCopied = new Map(this.mapPubkey);
+    for (const item of mapStoreCopied) {
+      const pubkeyHash = item[0];
+      const pubkey = mapPubkeyCopied.get(pubkeyHash);
+      if (pubkey === undefined) {
+        throw new Error("pubkey should be found");
+      }
+      yield [pubkey, item[1]] as TIterItem;
+    }
   }
 
   private hash(pubkey: PubKey): BigInt {
@@ -81,6 +96,7 @@ export class UserStore implements IUserStore {
  *  response to the users.
  */
 export class HubServer extends BaseServer {
+  // TODO: Add a lock to protect `userStore` from racing between tasks?
   userStore: IUserStore;
 
   constructor(readonly keypair: Keypair, userStore?: IUserStore) {
@@ -109,9 +125,10 @@ export class HubServer extends BaseServer {
     // TODO: Copy the whole userStore
     // const stateMachine = new SMPStateMachine();
     // for () {
-    // TODO: send control message, indicate if this is the n'th message.
+    // TODO: message 1, indicate if this is the n'th message.
     // }
-    // TODO: send control message, indicate it's the end.
+    // TODO: message 1, indicate it's the end.
+    // TODO: start from the first peer.
   }
 
   onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
@@ -149,6 +166,34 @@ export class HubServer extends BaseServer {
 }
 
 export const sendJoinHubReq = async (
+  ip: string,
+  port: number,
+  userPubkey: PubKey,
+  userSig: Signature,
+  hubPubkey: PubKey,
+  timeout: number = TIMEOUT
+): Promise<Signature> => {
+  const c = new WebSocket(`${WS_PROTOCOL}://${ip}:${port}`);
+
+  // Wait until the socket is opened.
+  await waitForSocketOpen(c);
+  const joinReq = new JoinReq(userPubkey, userSig);
+  const req = new TLV(new Short(requestType.JoinReq), joinReq.serialize());
+
+  const messageHandler = (data: Uint8Array): JoinResp => {
+    const resp = JoinResp.deserialize(data);
+    const hasedData = getCounterSignHashedData(userSig);
+    if (!verifySignedMsg(hasedData, resp.hubSig, hubPubkey)) {
+      throw new RequestFailed("hub signature is invalid");
+    }
+    return resp;
+  };
+  const resp = await request(c, req.serialize(), messageHandler, timeout);
+  c.close();
+  return resp.hubSig;
+};
+
+export const sendSearchReq = async (
   ip: string,
   port: number,
   userPubkey: PubKey,
