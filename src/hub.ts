@@ -1,5 +1,5 @@
 import * as http from "http";
-import { hash5, Keypair, PubKey, Signature } from "maci-crypto";
+import { Keypair, PubKey, Signature } from "maci-crypto";
 import WebSocket from "ws";
 
 import { getCounterSignHashedData, signMsg, verifySignedMsg } from ".";
@@ -14,6 +14,8 @@ import {
   waitForSocketOpen
 } from "./websocket";
 import { TIMEOUT } from "./configs";
+import { SMPStateMachine } from "./smp";
+import { hashPointToScalar } from "./utils";
 
 // TODO: Should be moved to `serialization.ts`?
 enum requestType {
@@ -64,7 +66,7 @@ export class UserStore implements IUserStore {
   }
 
   private hash(pubkey: PubKey): BigInt {
-    return hash5([pubkey[0], pubkey[1], BigInt(0), BigInt(0), BigInt(0)]);
+    return hashPointToScalar(pubkey);
   }
 
   get(pubkey: PubKey) {

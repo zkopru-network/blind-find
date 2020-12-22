@@ -1,4 +1,4 @@
-import { genKeypair, hash5, Keypair, PubKey, Signature } from "maci-crypto";
+import { genKeypair, Keypair, PubKey, Signature } from "maci-crypto";
 import {
   getCounterSignHashedData,
   getJoinHubMsgHashedData,
@@ -14,6 +14,7 @@ import {
   SMPMessage2Wire,
   SMPMessage3Wire
 } from "./smp/v4/serialization";
+import { hashPointToScalar } from "./utils";
 
 type SignedJoinMsg = {
   userPubkey: PubKey;
@@ -152,14 +153,7 @@ export const proofOfSMPInputsFactory = (levels: number = 32) => {
   const hubRegistry = tree.leaves[hubIndex];
   const root = tree.tree.root;
   const proof = tree.tree.genMerklePath(hubIndex);
-
-  const secret = hash5([
-    keypairC.pubKey[0],
-    keypairC.pubKey[1],
-    BigInt(0),
-    BigInt(0),
-    BigInt(0)
-  ]);
+  const secret = hashPointToScalar(keypairC.pubKey);
   const {
     msg1,
     msg2,
@@ -219,13 +213,7 @@ export const proofSuccessfulSMPInputsFactory = () => {
   const rh = msg3.ra;
   const keypairA = genKeypair();
   const pubkeyA = keypairA.pubKey;
-  const signingHash = hash5([
-    rh.point[0],
-    rh.point[1],
-    BigInt(0),
-    BigInt(0),
-    BigInt(0)
-  ]);
+  const signingHash = hashPointToScalar(rh.point);
   const sigRh = signMsg(keypairA.privKey, signingHash);
   return { pa, ph, rh, msg1, msg2, msg3, h2, h3, r4h, a2, a3, pubkeyA, sigRh };
 };
@@ -237,10 +225,7 @@ export const proofIndirectConnectionInputsFactory = (levels: number = 32) => {
   const rh = inputs.msg3.ra;
   const keypairA = genKeypair();
   const pubkeyA = keypairA.pubKey;
-  const sigRh = signMsg(
-    keypairA.privKey,
-    hash5([rh.point[0], rh.point[1], BigInt(0), BigInt(0), BigInt(0)])
-  );
+  const sigRh = signMsg(keypairA.privKey, hashPointToScalar(rh.point));
   return {
     pa: pa,
     ph: ph,
