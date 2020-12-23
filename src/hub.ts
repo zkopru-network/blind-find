@@ -26,18 +26,26 @@ import { TIMEOUT, MAXIMUM_TRIALS, TIMEOUT_LARGE } from "./configs";
 import { SMPStateMachine } from "./smp";
 import { hashPointToScalar } from "./utils";
 import { MerkleProof } from "./interfaces";
-import { genProofOfSMP } from "./circuits/ts";
+import { genProofOfSMP, Proof } from "./circuits/ts";
 import { SMPState1, SMPState2 } from "./smp/state";
 import {
   SMPMessage1Wire,
   SMPMessage2Wire,
   SMPMessage3Wire
 } from "./smp/v4/serialization";
+import { BabyJubPoint } from "./smp/v4/babyJub";
 
 type TUserRegistry = { userSig: Signature; hubSig: Signature };
 type TUserStoreMap = Map<BigInt, TUserRegistry>;
 type TUserStorePubkeyMap = Map<BigInt, PubKey>;
 type TIterItem = [PubKey, TUserRegistry];
+type TSMPResult = {
+  a3: BigInt;
+  pa: BabyJubPoint;
+  ph: BabyJubPoint;
+  rh: BabyJubPoint;
+  proofOfSMP: Proof;
+};
 
 interface IUserStore extends Iterable<TIterItem> {
   get(pubkey: PubKey): TUserRegistry | undefined;
@@ -309,7 +317,7 @@ export const sendSearchReq = async (
   timeoutSmall: number = TIMEOUT,
   timeoutLarge: number = TIMEOUT_LARGE,
   maximumTrial: number = MAXIMUM_TRIALS
-): Promise<boolean> => {
+): Promise<TSMPResult | null> => {
   const c = connect(ip, port);
 
   // Wait until the socket is opened.
@@ -319,24 +327,24 @@ export const sendSearchReq = async (
   const req = new TLV(new Short(msgType.SearchReq), msg0.serialize());
   c.send(req.serialize());
 
-  let isMatched = false;
-  // TODO: Where should it be checked?
+  let smpRes: TSMPResult | null = null;
   let numTrials = 0;
 
   const secret = hashPointToScalar(target);
 
   while (numTrials < maximumTrial) {
     console.debug(
-      `runSMPClient: trial ${numTrials}, waiting for msg1 from the server`
+      `sendSearchReq: starting trial ${numTrials}, waiting for msg1 from the server`
     );
     const stateMachine = new SMPStateMachine(secret);
+    const a3 = (stateMachine.state as SMPState1).s3;
     const msg1 = await request(
       c,
       undefined,
       data => SearchMessage1.deserialize(data),
       timeoutSmall
     );
-    console.debug(`runSMPClient: received msg1`);
+    console.debug("sendSearchReq: received search msg1");
     // Check if there is no more candidates.
     // TODO: Add a check for maximum candidates, to avoid endless searching with the server.
     if (msg1.isEnd) {
@@ -351,26 +359,37 @@ export const sendSearchReq = async (
     if (msg2 === null) {
       throw new Error("this should never happen");
     }
-    console.debug(`runSMPClient: sending msg2`);
+    console.debug("sendSearchReq: sending search msg2");
     const msg3 = await request(
       c,
       msg2.serialize(),
       data => SearchMessage3.deserialize(data),
       timeoutLarge
     );
-    console.debug(`runSMPClient: received msg3`);
     stateMachine.transit(msg3.smpMsg3);
     if (!stateMachine.isFinished()) {
       throw new RequestFailed(
         "smp should have been finished. there must be something wrong"
       );
     }
-    console.debug("runSMPClient: msg3.proof=", msg3.proof);
+    console.debug("sendSearchReq: msg3.proof=", msg3.proof);
     const msg4 = new SearchMessage4();
     c.send(msg4.serialize());
-    isMatched = isMatched || stateMachine.getResult();
+    if (stateMachine.getResult()) {
+      const pa = SMPMessage2Wire.fromTLV(msg2).pb;
+      const smpMsg3 = SMPMessage3Wire.fromTLV(msg3.smpMsg3);
+      const ph = smpMsg3.pa;
+      const rh = smpMsg3.ra;
+      smpRes = {
+        a3,
+        pa,
+        ph,
+        rh,
+        proofOfSMP: msg3.proof
+      };
+    }
     numTrials++;
   }
   c.close();
-  return isMatched;
+  return smpRes;
 };
