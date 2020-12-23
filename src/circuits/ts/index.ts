@@ -69,7 +69,7 @@ type ProofSuccessfulSMPInput = {
   sigRh: Signature;
 };
 
-type Proof = { proof: any; publicSignals: any };
+type Proof = { proof: any, publicSignals: any };
 
 const genProofOfSMP = async (inputs: ProofOfSMPInput) => {
   const args = proofOfSMPInputsToCircuitArgs(inputs);

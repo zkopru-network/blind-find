@@ -1,4 +1,4 @@
-import { PubKey, Signature } from "maci-crypto";
+import { PubKey, Signature, stringifyBigInts, unstringifyBigInts } from "maci-crypto";
 import { Proof } from "./circuits/ts";
 import { LEVELS } from "./configs";
 import { MerkleProof } from "./interfaces";
@@ -352,7 +352,8 @@ class JSONObj extends BaseSerializable {
 export class SearchMessage3 extends BaseSerializable {
   static wireTypes = [
     TLV, // smpMsg3
-    JSONObj
+    JSONObj,  // proof.proof
+    JSONObj,  // proof.publicSignals
   ];
   constructor(readonly smpMsg3: TLV, readonly proof: Proof) {
     super();
@@ -365,15 +366,17 @@ export class SearchMessage3 extends BaseSerializable {
   static consume(b: Uint8Array): [SearchMessage3, Uint8Array] {
     const [elements, bytesRemaining] = deserializeElements(b, this.wireTypes);
     const smpMsg3 = elements[0] as TLV;
-    const jsonObj = (elements[1] as JSONObj).jsonObj;
-    if (jsonObj.proof === undefined || jsonObj.publicSignals === undefined) {
-      throw TypeError("jsonObj is not a proof");
-    }
-    return [new SearchMessage3(smpMsg3, jsonObj as Proof), bytesRemaining];
+    const proof = unstringifyBigInts((elements[1] as JSONObj).jsonObj);
+    const publicSignals = unstringifyBigInts((elements[2] as JSONObj).jsonObj);
+    return [new SearchMessage3(smpMsg3, {proof: proof, publicSignals: publicSignals}), bytesRemaining];
   }
 
   serialize(): Uint8Array {
-    return serializeElements([this.smpMsg3, new JSONObj(this.proof)]);
+    return serializeElements([
+      this.smpMsg3,
+      new JSONObj(stringifyBigInts(this.proof.proof)),
+      new JSONObj(stringifyBigInts(this.proof.publicSignals)),
+    ]);
   }
 }
 
