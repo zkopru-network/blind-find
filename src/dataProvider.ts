@@ -67,24 +67,19 @@ export const sendGetMerkleProofReq = async (
   timeout: number = TIMEOUT
 ): Promise<GetMerkleProofResp> => {
   const c = new WebSocket(`${WS_PROTOCOL}://${ip}:${port}`);
-  console.log("1");
   if (hubRegistry.adminSig === undefined || !hubRegistry.verify()) {
     throw new ValueError("invalid hub registry");
   }
-  console.log("2");
   // Wait until the socket is opened.
   await waitForSocketOpen(c);
-  console.log("3");
   if (hubRegistry.adminSig === undefined) {
     throw new Error("this SHOULD NOT happen because we checked it outside");
   }
-  console.log("4");
   const req = new GetMerkleProofReq(
     hubRegistry.pubkey,
     hubRegistry.sig,
     hubRegistry.adminSig
   );
-  console.log("5");
   const messageHandler = (data: Uint8Array) => {
     const resp = GetMerkleProofResp.deserialize(data);
     if (resp.merkleProof.leaf !== hubRegistry.hash()) {
@@ -95,7 +90,6 @@ export const sendGetMerkleProofReq = async (
     return resp;
   };
   const resp = await request(c, req.serialize(), messageHandler, timeout);
-  console.log("6");
   c.close();
   console.log("client: closed");
   return resp;

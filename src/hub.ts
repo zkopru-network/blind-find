@@ -3,14 +3,15 @@ import { Keypair, PubKey, Signature } from "maci-crypto";
 import WebSocket from "ws";
 
 import { getCounterSignHashedData, signMsg, verifySignedMsg } from ".";
-import { RequestFailed, SearchFinished } from "./exceptions";
+import { RequestFailed } from "./exceptions";
 import {
   JoinReq,
   JoinResp,
   SearchMessage0,
   SearchMessage1,
   SearchMessage2,
-  SearchMessage3
+  SearchMessage3,
+  SearchMessage4
 } from "./serialization";
 import { TLV, Short } from "./smp/serialization";
 import { bigIntToNumber } from "./smp/utils";
@@ -20,7 +21,7 @@ import {
   request,
   waitForSocketOpen
 } from "./websocket";
-import { TIMEOUT } from "./configs";
+import { TIMEOUT, MAXIMUM_TRIALS } from "./configs";
 import { SMPStateMachine } from "./smp";
 import { hashPointToScalar } from "./utils";
 
@@ -123,48 +124,12 @@ export const runSMPServer = async (
     throw new Error("this should never happen");
   }
   console.debug(`runSMPServer: sending msg3`);
-  socket.send(msg3.serialize());
-};
-
-export const runSMPClient = async (
-  socket: WebSocket,
-  target: PubKey,
-  timeout: number
-): Promise<boolean> => {
-  console.debug(`runSMPClient: running smp using ${target}`);
-  const secret = hashPointToScalar(target);
-  const stateMachine = new SMPStateMachine(secret);
-  const msg1 = await request(
+  await request(
     socket,
-    undefined,
-    data => SearchMessage1.deserialize(data),
+    msg3.serialize(),
+    data => SearchMessage4.deserialize(data),
     timeout
   );
-  console.debug(`runSMPClient: received msg1`);
-  // Check if there is no more candidates.
-  // TODO: Add a check for maximum candidates, to avoid endless searching with the server.
-  if (msg1.isEnd) {
-    throw new SearchFinished();
-  }
-  if (msg1.smpMsg1 === undefined) {
-    throw new Error(
-      "this should never happen, constructor already handles it for us"
-    );
-  }
-  const msg2 = stateMachine.transit(msg1.smpMsg1);
-  if (msg2 === null) {
-    throw new Error("this should never happen");
-  }
-  console.debug(`runSMPClient: sending msg2`);
-  const msg3 = await request(
-    socket,
-    msg2.serialize(),
-    data => SearchMessage3.deserialize(data),
-    timeout
-  );
-  console.debug(`runSMPClient: received msg3`);
-  stateMachine.transit(msg3);
-  return stateMachine.getResult();
 };
 
 // TODO: Probably we can use `close.code` to indicate the reason why a socket is closed by
@@ -208,22 +173,42 @@ export class HubServer extends BaseServer {
   async onSearchRequest(socket: WebSocket, bytes: Uint8Array) {
     console.debug("server: onSearchRequest");
     // SearchMessage0
-    SearchMessage0.deserialize(bytes);
     // TODO: Handle Message0. If it's a proof of user, disconnect
     //  right away if the proof is invalid.
+    SearchMessage0.deserialize(bytes);
 
     for (const peer of this.userStore) {
-      const [pubkey, registry] = peer;
-      await runSMPServer(socket, pubkey, this.timeout);
-      // Just test the first one for now.
-      break;
+      const [pubkey] = peer;
+      console.debug(`runSMPServer: running smp using ${pubkey}`);
+      const secret = hashPointToScalar(pubkey);
+      const stateMachine = new SMPStateMachine(secret);
+      const smpMsg1 = stateMachine.transit(null);
+      if (smpMsg1 === null) {
+        throw new Error("smpMsg1tlv should not be null");
+      }
+      const msg1 = new SearchMessage1(false, smpMsg1);
+      console.debug(`runSMPServer: sending msg1`);
+      const msg2 = await request(
+        socket,
+        msg1.serialize(),
+        data => SearchMessage2.deserialize(data),
+        this.timeout
+      );
+      console.debug(`runSMPServer: received msg2`);
+      const msg3 = stateMachine.transit(msg2);
+      if (msg3 === null) {
+        throw new Error("this should never happen");
+      }
+      console.debug(`runSMPServer: sending msg3`);
+      await request(
+        socket,
+        msg3.serialize(),
+        data => SearchMessage4.deserialize(data),
+        this.timeout
+      );
     }
-
-    // for () {
-    // TODO: message 1, indicate if this is the n'th message.
-    // }
-    // TODO: message 1, indicate it's the end.
-    // TODO: start from the first peer.
+    const endMessage1 = new SearchMessage1(true);
+    socket.send(endMessage1.serialize());
   }
 
   onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
@@ -291,7 +276,8 @@ export const sendSearchReq = async (
   ip: string,
   port: number,
   target: PubKey,
-  timeout: number = TIMEOUT
+  timeout: number = TIMEOUT,
+  maximumTrial: number = MAXIMUM_TRIALS
 ): Promise<boolean> => {
   const c = new WebSocket(`${WS_PROTOCOL}://${ip}:${port}`);
 
@@ -303,19 +289,54 @@ export const sendSearchReq = async (
   c.send(req.serialize());
 
   let isMatched = false;
+  // TODO: Where should it be checked?
+  let numTrials = 0;
 
-  while (1) {
-    try {
-      isMatched = isMatched || (await runSMPClient(c, target, timeout));
-    } catch (e) {
-      if (e instanceof SearchFinished) {
-        break;
-      } else {
-        throw e;
-      }
+  const secret = hashPointToScalar(target);
+
+  while (numTrials < maximumTrial) {
+    console.debug(`runSMPClient: starting trial ${numTrials}`);
+    const stateMachine = new SMPStateMachine(secret);
+    const msg1 = await request(
+      c,
+      undefined,
+      data => SearchMessage1.deserialize(data),
+      timeout
+    );
+    console.debug(`runSMPClient: received msg1`);
+    // Check if there is no more candidates.
+    // TODO: Add a check for maximum candidates, to avoid endless searching with the server.
+    if (msg1.isEnd) {
+      break;
     }
-    // NOTE: Break whatever, for test.
-    break;
+    if (msg1.smpMsg1 === undefined) {
+      throw new Error(
+        "this should never happen, constructor already handles it for us"
+      );
+    }
+    const msg2 = stateMachine.transit(msg1.smpMsg1);
+    if (msg2 === null) {
+      throw new Error("this should never happen");
+    }
+    console.debug(`runSMPClient: sending msg2`);
+    const msg3 = await request(
+      c,
+      msg2.serialize(),
+      data => SearchMessage3.deserialize(data),
+      timeout
+    );
+    const msg4 = new SearchMessage4();
+    c.send(msg4.serialize());
+    console.debug(`runSMPClient: received msg3`);
+    stateMachine.transit(msg3);
+    if (!stateMachine.isFinished()) {
+      throw new RequestFailed(
+        "smp should have been finished. there must be something wrong"
+      );
+    }
+    isMatched = isMatched || stateMachine.getResult();
+    numTrials++;
   }
+  c.close();
   return isMatched;
 };

@@ -307,3 +307,21 @@ export class SearchMessage1 extends BaseSerializable {
 export class SearchMessage2 extends TLV {}
 
 export class SearchMessage3 extends TLV {}
+
+export class SearchMessage4 extends BaseSerializable {
+  static wireTypes = [];
+
+  // TODO: Probably add `ProofOfUser`?
+
+  static deserialize(b: Uint8Array): SearchMessage0 {
+    return super.deserialize(b) as SearchMessage0;
+  }
+
+  static consume(b: Uint8Array): [SearchMessage0, Uint8Array] {
+    return [new SearchMessage0(), b];
+  }
+
+  serialize(): Uint8Array {
+    return new Uint8Array();
+  }
+}

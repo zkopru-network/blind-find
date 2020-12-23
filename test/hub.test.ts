@@ -15,6 +15,8 @@ import { Short, TLV } from "../src/smp/serialization";
 
 const timeoutSmall = 5000;
 
+jest.setTimeout(30000);
+
 type TRegistry = { userSig: Signature; hubSig: Signature };
 const isRegistrySignedMsgMatch = (
   registry: TRegistry,
