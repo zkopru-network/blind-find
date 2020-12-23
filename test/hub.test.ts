@@ -6,16 +6,20 @@ import {
   UserStore
 } from "../src/hub";
 import { genKeypair, Keypair, Signature } from "maci-crypto";
-import { LEVELS } from "../src/configs";
+import { LEVELS, TIMEOUT, TIMEOUT_LARGE } from "../src/configs";
 import { HubRegistryTree } from "../src";
 import WebSocket from "ws";
 import { TimeoutError } from "../src/exceptions";
 import { waitForSocketOpen, connect } from "../src/websocket";
 import { Short, TLV } from "../src/smp/serialization";
 
-const timeoutSmall = 5000;
+const timeoutBeginAndEnd = TIMEOUT + TIMEOUT;
+// Timeout for running SMP against one peer (including time generating/verifying proofs).
+const timeoutOneSMP = TIMEOUT + TIMEOUT + TIMEOUT + TIMEOUT_LARGE + TIMEOUT;
+const expectedNumSMPs = 4;
+const timeoutTotal = timeoutBeginAndEnd + expectedNumSMPs * timeoutOneSMP;
 
-jest.setTimeout(30000);
+jest.setTimeout(timeoutTotal);
 
 type TRegistry = { userSig: Signature; hubSig: Signature };
 const isRegistrySignedMsgMatch = (
@@ -77,7 +81,6 @@ describe("HubServer", () => {
   let user2: Keypair;
   let admin: Keypair;
   let tree: HubRegistryTree;
-  // let hubRegistry: HubRegistry;
   let ip: string;
   let port: number;
 
@@ -88,8 +91,9 @@ describe("HubServer", () => {
     user2 = genKeypair();
     tree = hubRegistryTreeFactory([hubkeypair], LEVELS, admin);
     expect(tree.length).toEqual(1);
-    // hubRegistry = tree.leaves[0];
-    hub = new HubServer(hubkeypair);
+    const hubRegistry = tree.leaves[0];
+    const merkleProof = tree.tree.genMerklePath(0);
+    hub = new HubServer(hubkeypair, hubRegistry, merkleProof);
     await hub.start();
 
     const addr = hub.address as WebSocket.AddressInfo;
@@ -131,8 +135,7 @@ describe("HubServer", () => {
       port,
       signedMsg.userPubkey,
       signedMsg.userSig,
-      signedMsg.hubPubkey,
-      timeoutSmall
+      signedMsg.hubPubkey
     );
     expect(hub.userStore.size).toEqual(1);
     expect(hub.userStore.get(signedMsg.userPubkey)).not.toBeUndefined();
@@ -145,11 +148,19 @@ describe("HubServer", () => {
       port,
       signedMsgAnother.userPubkey,
       signedMsgAnother.userSig,
-      signedMsgAnother.hubPubkey,
-      timeoutSmall
+      signedMsgAnother.hubPubkey
     );
     expect(hub.userStore.size).toEqual(2);
     expect(hub.userStore.get(signedMsgAnother.userPubkey)).not.toBeUndefined();
+  });
+
+  test("search succeeds", async () => {
+    expect(await sendSearchReq(ip, port, user1.pubKey)).toBeTruthy();
+  });
+
+  test("search fails when target is not found", async () => {
+    const anotherUser = genKeypair();
+    expect(await sendSearchReq(ip, port, anotherUser.pubKey)).toBeFalsy();
   });
 
   test("request fails when timeout", async () => {
@@ -169,9 +180,5 @@ describe("HubServer", () => {
         timeoutExpectedToFail
       )
     ).rejects.toThrowError(TimeoutError);
-  });
-
-  test("single SMP", async () => {
-    expect(await sendSearchReq(ip, port, user1.pubKey)).toBeTruthy();
   });
 });

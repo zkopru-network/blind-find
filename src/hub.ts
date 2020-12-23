@@ -2,7 +2,12 @@ import * as http from "http";
 import { Keypair, PubKey, Signature } from "maci-crypto";
 import WebSocket from "ws";
 
-import { getCounterSignHashedData, signMsg, verifySignedMsg } from ".";
+import {
+  getCounterSignHashedData,
+  HubRegistry,
+  signMsg,
+  verifySignedMsg
+} from ".";
 import { RequestFailed } from "./exceptions";
 import {
   JoinReq,
@@ -17,9 +22,17 @@ import {
 import { TLV, Short } from "./smp/serialization";
 import { bigIntToNumber } from "./smp/utils";
 import { BaseServer, request, waitForSocketOpen, connect } from "./websocket";
-import { TIMEOUT, MAXIMUM_TRIALS } from "./configs";
+import { TIMEOUT, MAXIMUM_TRIALS, TIMEOUT_LARGE } from "./configs";
 import { SMPStateMachine } from "./smp";
 import { hashPointToScalar } from "./utils";
+import { MerkleProof } from "./interfaces";
+import { genProofOfSMP } from "./circuits/ts";
+import { SMPState1, SMPState2 } from "./smp/state";
+import {
+  SMPMessage1Wire,
+  SMPMessage2Wire,
+  SMPMessage3Wire
+} from "./smp/v4/serialization";
 
 type TUserRegistry = { userSig: Signature; hubSig: Signature };
 type TUserStoreMap = Map<BigInt, TUserRegistry>;
@@ -132,20 +145,23 @@ export const runSMPServer = async (
 export class HubServer extends BaseServer {
   // TODO: Add a lock to protect `userStore` from racing between tasks?
   userStore: IUserStore;
-  timeout: number;
+  merkleProof: MerkleProof;
 
   constructor(
     readonly keypair: Keypair,
+    readonly hubRegistry: HubRegistry,
+    merkleProof: MerkleProof,
     userStore?: IUserStore,
-    timeout = TIMEOUT
+    readonly timeoutSmall = TIMEOUT,
+    readonly timeoutLarge = TIMEOUT_LARGE
   ) {
     super();
-    this.timeout = timeout;
     if (userStore !== undefined) {
       this.userStore = userStore;
     } else {
       this.userStore = new UserStore();
     }
+    this.merkleProof = merkleProof;
   }
 
   onJoinRequest(socket: WebSocket, bytes: Uint8Array) {
@@ -168,10 +184,12 @@ export class HubServer extends BaseServer {
     SearchMessage0.deserialize(bytes);
 
     for (const peer of this.userStore) {
-      const [pubkey] = peer;
+      const [pubkey, userRegistry] = peer;
       console.debug(`runSMPServer: running smp using ${pubkey}`);
       const secret = hashPointToScalar(pubkey);
       const stateMachine = new SMPStateMachine(secret);
+      const h2 = (stateMachine.state as SMPState1).s2;
+      const h3 = (stateMachine.state as SMPState1).s3;
       const smpMsg1 = stateMachine.transit(null);
       if (smpMsg1 === null) {
         throw new Error("smpMsg1tlv should not be null");
@@ -182,23 +200,41 @@ export class HubServer extends BaseServer {
         socket,
         msg1.serialize(),
         data => SearchMessage2.deserialize(data),
-        this.timeout
+        this.timeoutSmall
       );
       console.debug(`runSMPServer: received msg2`);
+      const state2 = stateMachine.state as SMPState2;
       const smpMsg3 = stateMachine.transit(msg2);
       if (smpMsg3 === null) {
         throw new Error("this should never happen");
       }
-      const msg3 = new SearchMessage3(smpMsg3, {
-        proof: "123",
-        publicSignals: "456"
+      if (state2.r4 === undefined) {
+        throw new Error("r4 should have been generated to compute Ph and Qh");
+      }
+      const r4h = state2.r4;
+      // TODO: Generate ProofOfSMP
+      const proofOfSMP = await genProofOfSMP({
+        h2,
+        h3,
+        r4h,
+        msg1: SMPMessage1Wire.fromTLV(smpMsg1),
+        msg2: SMPMessage2Wire.fromTLV(msg2),
+        msg3: SMPMessage3Wire.fromTLV(smpMsg3),
+        root: this.merkleProof.root,
+        proof: this.merkleProof,
+        hubRegistry: this.hubRegistry,
+        pubkeyC: pubkey,
+        pubkeyHub: this.keypair.pubKey,
+        sigJoinMsgC: userRegistry.userSig,
+        sigJoinMsgHub: userRegistry.hubSig
       });
+      const msg3 = new SearchMessage3(smpMsg3, proofOfSMP);
       console.debug(`runSMPServer: sending msg3`);
       await request(
         socket,
         msg3.serialize(),
         data => SearchMessage4.deserialize(data),
-        this.timeout
+        this.timeoutSmall
       );
     }
     const endMessage1 = new SearchMessage1(true);
@@ -270,7 +306,8 @@ export const sendSearchReq = async (
   ip: string,
   port: number,
   target: PubKey,
-  timeout: number = TIMEOUT,
+  timeoutSmall: number = TIMEOUT,
+  timeoutLarge: number = TIMEOUT_LARGE,
   maximumTrial: number = MAXIMUM_TRIALS
 ): Promise<boolean> => {
   const c = connect(ip, port);
@@ -289,13 +326,15 @@ export const sendSearchReq = async (
   const secret = hashPointToScalar(target);
 
   while (numTrials < maximumTrial) {
-    console.debug(`runSMPClient: starting trial ${numTrials}`);
+    console.debug(
+      `runSMPClient: trial ${numTrials}, waiting for msg1 from the server`
+    );
     const stateMachine = new SMPStateMachine(secret);
     const msg1 = await request(
       c,
       undefined,
       data => SearchMessage1.deserialize(data),
-      timeout
+      timeoutSmall
     );
     console.debug(`runSMPClient: received msg1`);
     // Check if there is no more candidates.
@@ -317,10 +356,8 @@ export const sendSearchReq = async (
       c,
       msg2.serialize(),
       data => SearchMessage3.deserialize(data),
-      timeout
+      timeoutLarge
     );
-    const msg4 = new SearchMessage4();
-    c.send(msg4.serialize());
     console.debug(`runSMPClient: received msg3`);
     stateMachine.transit(msg3.smpMsg3);
     if (!stateMachine.isFinished()) {
@@ -328,6 +365,9 @@ export const sendSearchReq = async (
         "smp should have been finished. there must be something wrong"
       );
     }
+    console.debug("runSMPClient: msg3.proof=", msg3.proof);
+    const msg4 = new SearchMessage4();
+    c.send(msg4.serialize());
     isMatched = isMatched || stateMachine.getResult();
     numTrials++;
   }

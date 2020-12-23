@@ -51,7 +51,7 @@ type ProofOfSMPInput = {
   msg1: SMPMessage1Wire;
   msg2: SMPMessage2Wire;
   msg3: SMPMessage3Wire;
-  root: BigInt;
+  root: BigInt; // Already inside `MerkleProof`
   proof: MerkleProof;
   hubRegistry: HubRegistry;
   pubkeyC: PubKey;
@@ -69,7 +69,7 @@ type ProofSuccessfulSMPInput = {
   sigRh: Signature;
 };
 
-type Proof = { proof: any, publicSignals: any };
+type Proof = { proof: any; publicSignals: any };
 
 const genProofOfSMP = async (inputs: ProofOfSMPInput) => {
   const args = proofOfSMPInputsToCircuitArgs(inputs);
