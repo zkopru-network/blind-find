@@ -22,7 +22,15 @@ export class ValueError extends BaseBlindFind {
   }
 }
 
-export class ServerNotRunning extends BaseBlindFind {
+export class NetworkingError extends BaseBlindFind {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, NetworkingError.prototype);
+  }
+}
+
+export class ServerNotRunning extends NetworkingError {
   constructor(m?: string) {
     super(m);
     // Set the prototype explicitly.
@@ -30,7 +38,7 @@ export class ServerNotRunning extends BaseBlindFind {
   }
 }
 
-export class RPCError extends BaseBlindFind {
+export class RPCError extends NetworkingError {
   constructor(m?: string) {
     super(m);
     // Set the prototype explicitly.
@@ -46,26 +54,10 @@ export class RequestFailed extends RPCError {
   }
 }
 
-export class UnsupportedRequest extends RPCError {
-  constructor(m?: string) {
-    super(m);
-    // Set the prototype explicitly.
-    Object.setPrototypeOf(this, UnsupportedRequest.prototype);
-  }
-}
-
 export class TimeoutError extends RPCError {
   constructor(m?: string) {
     super(m);
     // Set the prototype explicitly.
     Object.setPrototypeOf(this, TimeoutError.prototype);
-  }
-}
-
-export class SearchFinished extends RPCError {
-  constructor(m?: string) {
-    super(m);
-    // Set the prototype explicitly.
-    Object.setPrototypeOf(this, SearchFinished.prototype);
   }
 }
