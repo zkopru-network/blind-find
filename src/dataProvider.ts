@@ -6,12 +6,7 @@ import { HubRegistry, HubRegistryTree } from "./";
 import { TIMEOUT } from "./configs";
 import { RequestFailed, ValueError } from "./exceptions";
 import { GetMerkleProofReq, GetMerkleProofResp } from "./serialization";
-import {
-  BaseServer,
-  WS_PROTOCOL,
-  request,
-  waitForSocketOpen
-} from "./websocket";
+import { BaseServer, request, waitForSocketOpen, connect } from "./websocket";
 
 // TODO: Persistance
 export class DataProviderServer extends BaseServer {
@@ -66,7 +61,7 @@ export const sendGetMerkleProofReq = async (
   hubRegistry: HubRegistry,
   timeout: number = TIMEOUT
 ): Promise<GetMerkleProofResp> => {
-  const c = new WebSocket(`${WS_PROTOCOL}://${ip}:${port}`);
+  const c = connect(ip, port);
   if (hubRegistry.adminSig === undefined || !hubRegistry.verify()) {
     throw new ValueError("invalid hub registry");
   }

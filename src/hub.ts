@@ -15,12 +15,7 @@ import {
 } from "./serialization";
 import { TLV, Short } from "./smp/serialization";
 import { bigIntToNumber } from "./smp/utils";
-import {
-  BaseServer,
-  WS_PROTOCOL,
-  request,
-  waitForSocketOpen
-} from "./websocket";
+import { BaseServer, request, waitForSocketOpen, connect } from "./websocket";
 import { TIMEOUT, MAXIMUM_TRIALS } from "./configs";
 import { SMPStateMachine } from "./smp";
 import { hashPointToScalar } from "./utils";
@@ -252,7 +247,7 @@ export const sendJoinHubReq = async (
   hubPubkey: PubKey,
   timeout: number = TIMEOUT
 ): Promise<Signature> => {
-  const c = new WebSocket(`${WS_PROTOCOL}://${ip}:${port}`);
+  const c = connect(ip, port);
 
   // Wait until the socket is opened.
   await waitForSocketOpen(c);
@@ -279,7 +274,7 @@ export const sendSearchReq = async (
   timeout: number = TIMEOUT,
   maximumTrial: number = MAXIMUM_TRIALS
 ): Promise<boolean> => {
-  const c = new WebSocket(`${WS_PROTOCOL}://${ip}:${port}`);
+  const c = connect(ip, port);
 
   // Wait until the socket is opened.
   await waitForSocketOpen(c);

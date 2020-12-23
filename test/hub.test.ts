@@ -10,7 +10,7 @@ import { LEVELS } from "../src/configs";
 import { HubRegistryTree } from "../src";
 import WebSocket from "ws";
 import { TimeoutError } from "../src/exceptions";
-import { WS_PROTOCOL, waitForSocketOpen } from "../src/websocket";
+import { waitForSocketOpen, connect } from "../src/websocket";
 import { Short, TLV } from "../src/smp/serialization";
 
 const timeoutSmall = 5000;
@@ -54,11 +54,11 @@ describe("UserStore", () => {
   });
 
   test("userStore is an Iterable", () => {
-    let counter = 0;
+    const a: any[] = [];
     for (const item of userStore) {
-      counter++;
+      a.push(item);
     }
-    expect(counter).toEqual(2);
+    expect(a.length).toEqual(userStore.size);
   });
 
   test("get fails when no matched entry", () => {
@@ -104,7 +104,7 @@ describe("HubServer", () => {
   test("request fails when message has unsupported RPC type", async () => {
     // Invalid registry because of the wrong pubkey
     const expectedUnsupportedType = 5566;
-    const c = new WebSocket(`${WS_PROTOCOL}://${ip}:${port}`);
+    const c = connect(ip, port);
 
     // Wait until the socket is opened.
     await waitForSocketOpen(c);

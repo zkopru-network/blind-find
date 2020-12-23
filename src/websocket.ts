@@ -3,9 +3,7 @@ import express from "express";
 import WebSocket from "ws";
 import { AsyncEvent } from "./utils";
 import { ServerNotRunning, RequestFailed, TimeoutError } from "./exceptions";
-
-// Should be changed to wss later when we support https
-export const WS_PROTOCOL = "ws";
+import { WS_PROTOCOL } from "./configs";
 
 // TODO: Add tests for Server
 export abstract class BaseServer {
@@ -75,6 +73,10 @@ export abstract class BaseServer {
     this.httpServer.close();
   }
 }
+
+export const connect = (ip: string, port: number) => {
+  return new WebSocket(`${WS_PROTOCOL}://${ip}:${port}`);
+};
 
 export const request = async <TResponse>(
   s: WebSocket,
