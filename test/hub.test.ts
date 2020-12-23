@@ -56,7 +56,6 @@ describe("UserStore", () => {
   test("userStore is an Iterable", () => {
     let counter = 0;
     for (const item of userStore) {
-      console.log(item);
       counter++;
     }
     expect(counter).toEqual(2);
@@ -112,7 +111,6 @@ describe("HubServer", () => {
     const task = new Promise((res, rej) => {
       const tlv = new TLV(new Short(expectedUnsupportedType), new Uint8Array());
       c.onmessage = () => {
-        console.log("!@# client: recevied");
         res();
       };
       c.onclose = event => {

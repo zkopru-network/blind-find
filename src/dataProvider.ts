@@ -20,7 +20,7 @@ export class DataProviderServer extends BaseServer {
   }
 
   onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
-    console.log(`DataProviderServer: new incoming connection`);
+    console.info(`DataProviderServer: new incoming connection`);
     socket.onmessage = event => {
       const req = GetMerkleProofReq.deserialize(event.data as Buffer);
       const hubRegistry = new HubRegistry(
@@ -44,7 +44,7 @@ export class DataProviderServer extends BaseServer {
         return -1;
       };
       const index = searchRegistry(hubRegistry);
-      console.log(
+      console.debug(
         `DataProviderServer: received req: ${req.hubPubkey}, index=${index}`
       );
       if (index === -1) {
@@ -83,14 +83,14 @@ export const sendGetMerkleProofReq = async (
   const messageHandler = (data: Uint8Array) => {
     const resp = GetMerkleProofResp.deserialize(data);
     if (resp.merkleProof.leaf !== hubRegistry.hash()) {
-      console.log("client: mismatch");
+      console.debug("client: mismatch");
       throw new RequestFailed("response mismatches the request");
     }
-    console.log("client: succeeds");
+    console.debug("client: succeeds");
     return resp;
   };
   const resp = await request(c, req.serialize(), messageHandler, timeout);
   c.close();
-  console.log("client: closed");
+  console.debug("client: closed");
   return resp;
 };
