@@ -11,7 +11,8 @@ import {
   SearchMessage1,
   SearchMessage2,
   SearchMessage3,
-  SearchMessage4
+  SearchMessage4,
+  msgType
 } from "./serialization";
 import { TLV, Short } from "./smp/serialization";
 import { bigIntToNumber } from "./smp/utils";
@@ -19,12 +20,6 @@ import { BaseServer, request, waitForSocketOpen, connect } from "./websocket";
 import { TIMEOUT, MAXIMUM_TRIALS } from "./configs";
 import { SMPStateMachine } from "./smp";
 import { hashPointToScalar } from "./utils";
-
-// TODO: Should be moved to `serialization.ts`?
-enum requestType {
-  JoinReq = 6,
-  SearchReq
-}
 
 type TUserRegistry = { userSig: Signature; hubSig: Signature };
 type TUserStoreMap = Map<BigInt, TUserRegistry>;
@@ -190,10 +185,14 @@ export class HubServer extends BaseServer {
         this.timeout
       );
       console.debug(`runSMPServer: received msg2`);
-      const msg3 = stateMachine.transit(msg2);
-      if (msg3 === null) {
+      const smpMsg3 = stateMachine.transit(msg2);
+      if (smpMsg3 === null) {
         throw new Error("this should never happen");
       }
+      const msg3 = new SearchMessage3(smpMsg3, {
+        proof: "123",
+        publicSignals: "456"
+      });
       console.debug(`runSMPServer: sending msg3`);
       await request(
         socket,
@@ -223,11 +222,11 @@ export class HubServer extends BaseServer {
         );
       }
       switch (tlvType) {
-        case requestType.JoinReq:
+        case msgType.JoinReq:
           this.onJoinRequest(socket, tlv.value);
           socket.close();
           break;
-        case requestType.SearchReq:
+        case msgType.SearchReq:
           await this.onSearchRequest(socket, tlv.value);
           socket.close();
           break;
@@ -252,7 +251,7 @@ export const sendJoinHubReq = async (
   // Wait until the socket is opened.
   await waitForSocketOpen(c);
   const joinReq = new JoinReq(userPubkey, userSig);
-  const req = new TLV(new Short(requestType.JoinReq), joinReq.serialize());
+  const req = new TLV(new Short(msgType.JoinReq), joinReq.serialize());
 
   const messageHandler = (data: Uint8Array): JoinResp => {
     const resp = JoinResp.deserialize(data);
@@ -280,7 +279,7 @@ export const sendSearchReq = async (
   await waitForSocketOpen(c);
 
   const msg0 = new SearchMessage0();
-  const req = new TLV(new Short(requestType.SearchReq), msg0.serialize());
+  const req = new TLV(new Short(msgType.SearchReq), msg0.serialize());
   c.send(req.serialize());
 
   let isMatched = false;
@@ -323,7 +322,7 @@ export const sendSearchReq = async (
     const msg4 = new SearchMessage4();
     c.send(msg4.serialize());
     console.debug(`runSMPClient: received msg3`);
-    stateMachine.transit(msg3);
+    stateMachine.transit(msg3.smpMsg3);
     if (!stateMachine.isFinished()) {
       throw new RequestFailed(
         "smp should have been finished. there must be something wrong"

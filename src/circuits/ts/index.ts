@@ -16,6 +16,7 @@ import {
 } from "../../smp/v4/serialization";
 import { HubRegistry } from "../..";
 import { BabyJubPoint } from "../../smp/v4/babyJub";
+import { MerkleProof } from "../../interfaces";
 const circom = require("circom");
 
 /**
@@ -51,7 +52,7 @@ type ProofOfSMPInput = {
   msg2: SMPMessage2Wire;
   msg3: SMPMessage3Wire;
   root: BigInt;
-  proof: any; // FIXME: use any because this interface is not exposed by maci-crypto.
+  proof: MerkleProof;
   hubRegistry: HubRegistry;
   pubkeyC: PubKey;
   pubkeyHub: PubKey;

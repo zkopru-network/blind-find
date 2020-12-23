@@ -1,9 +1,23 @@
 import { PubKey, Signature } from "maci-crypto";
+import { Proof } from "./circuits/ts";
 import { LEVELS } from "./configs";
+import { MerkleProof } from "./interfaces";
 import { ValueError } from "./smp/exceptions";
-import { BaseFixedInt, BaseSerializable, Byte, TLV } from "./smp/serialization";
+import {
+  BaseFixedInt,
+  BaseSerializable,
+  Byte,
+  Short,
+  TLV
+} from "./smp/serialization";
 import { bigIntToNumber, concatUint8Array } from "./smp/utils";
 import { Point, Scalar } from "./smp/v4/serialization";
+
+export enum msgType {
+  JoinReq = 6,
+  SearchReq,
+  JSONObj
+}
 
 function serializeElements(values: BaseSerializable[]): Uint8Array {
   let bytes = new Uint8Array([]);
@@ -80,14 +94,6 @@ export class GetMerkleProofReq extends BaseSerializable {
       new Scalar(this.adminSig.S)
     ]);
   }
-}
-
-interface MerkleProof {
-  pathElements: BigInt[][];
-  indices: number[]; // 2 ** 53
-  depth: number;
-  root: BigInt;
-  leaf: BigInt;
 }
 
 const merklePathWireType: typeof BaseFixedInt[] = [];
@@ -236,21 +242,33 @@ export class JoinResp extends BaseSerializable {
   }
 }
 
-export class SearchMessage0 extends BaseSerializable {
+class EmptyMessage extends BaseSerializable {
   static wireTypes = [];
 
-  // TODO: Probably add `ProofOfUser`?
+  static deserialize(b: Uint8Array): EmptyMessage {
+    return super.deserialize(b) as EmptyMessage;
+  }
 
+  static consume(b: Uint8Array): [EmptyMessage, Uint8Array] {
+    return [new EmptyMessage(), b];
+  }
+
+  serialize(): Uint8Array {
+    return new Uint8Array();
+  }
+}
+
+export class SearchMessage0 extends EmptyMessage {
   static deserialize(b: Uint8Array): SearchMessage0 {
     return super.deserialize(b) as SearchMessage0;
   }
 
   static consume(b: Uint8Array): [SearchMessage0, Uint8Array] {
-    return [new SearchMessage0(), b];
+    return super.consume(b) as [SearchMessage0, Uint8Array];
   }
 
   serialize(): Uint8Array {
-    return new Uint8Array();
+    return super.serialize();
   }
 }
 
@@ -306,22 +324,69 @@ export class SearchMessage1 extends BaseSerializable {
 
 export class SearchMessage2 extends TLV {}
 
-export class SearchMessage3 extends TLV {}
-
-export class SearchMessage4 extends BaseSerializable {
-  static wireTypes = [];
-
-  // TODO: Probably add `ProofOfUser`?
-
-  static deserialize(b: Uint8Array): SearchMessage0 {
-    return super.deserialize(b) as SearchMessage0;
+class JSONObj extends BaseSerializable {
+  constructor(readonly jsonObj: any) {
+    super();
   }
 
-  static consume(b: Uint8Array): [SearchMessage0, Uint8Array] {
-    return [new SearchMessage0(), b];
+  static deserialize(b: Uint8Array): JSONObj {
+    return super.deserialize(b) as JSONObj;
+  }
+
+  static consume(b: Uint8Array): [JSONObj, Uint8Array] {
+    const [tlv, bytesRemaining] = TLV.consume(b);
+    const decoder = new TextDecoder();
+    const objString = decoder.decode(tlv.value);
+    const obj = JSON.parse(objString);
+    return [new JSONObj(obj), bytesRemaining];
   }
 
   serialize(): Uint8Array {
-    return new Uint8Array();
+    const objString = JSON.stringify(this.jsonObj);
+    const coder = new TextEncoder();
+    const bytes = coder.encode(objString);
+    return new TLV(new Short(msgType.JSONObj), bytes).serialize();
+  }
+}
+
+export class SearchMessage3 extends BaseSerializable {
+  static wireTypes = [
+    TLV, // smpMsg3
+    JSONObj
+  ];
+  constructor(readonly smpMsg3: TLV, readonly proof: Proof) {
+    super();
+  }
+
+  static deserialize(b: Uint8Array): SearchMessage3 {
+    return super.deserialize(b) as SearchMessage3;
+  }
+
+  static consume(b: Uint8Array): [SearchMessage3, Uint8Array] {
+    const [elements, bytesRemaining] = deserializeElements(b, this.wireTypes);
+    const smpMsg3 = elements[0] as TLV;
+    const jsonObj = (elements[1] as JSONObj).jsonObj;
+    if (jsonObj.proof === undefined || jsonObj.publicSignals === undefined) {
+      throw TypeError("jsonObj is not a proof");
+    }
+    return [new SearchMessage3(smpMsg3, jsonObj as Proof), bytesRemaining];
+  }
+
+  serialize(): Uint8Array {
+    return serializeElements([this.smpMsg3, new JSONObj(this.proof)]);
+  }
+}
+
+export class SearchMessage4 extends EmptyMessage {
+  static deserialize(b: Uint8Array): SearchMessage4 {
+    return super.deserialize(b) as SearchMessage4;
+  }
+
+  static consume(b: Uint8Array): [SearchMessage4, Uint8Array] {
+    return super.consume(b) as [SearchMessage4, Uint8Array];
+  }
+
+  serialize(): Uint8Array {
+    return super.serialize();
   }
 }
