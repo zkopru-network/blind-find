@@ -182,5 +182,6 @@ describe("HubServer", () => {
         timeoutExpectedToFail
       )
     ).rejects.toThrowError(TimeoutError);
+    // TODO: Add more tests for timeout for both server and client.
   });
 });

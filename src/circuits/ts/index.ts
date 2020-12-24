@@ -69,7 +69,15 @@ type ProofSuccessfulSMPInput = {
   sigRh: Signature;
 };
 
-type Proof = { proof: any; publicSignals: any };
+type TProof = { proof: any; publicSignals: any };
+type TProofIndirectConnection = {
+  pubkeyA: PubKey;
+  pubkeyC: PubKey;
+  pubkeyAdmin: PubKey;
+  merkleRoot: BigInt;
+  proofOfSMP: TProof;
+  proofSuccessfulSMP: TProof;
+};
 
 const genProofOfSMP = async (inputs: ProofOfSMPInput) => {
   const args = proofOfSMPInputsToCircuitArgs(inputs);
@@ -135,7 +143,7 @@ const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
   return args;
 };
 
-const verifyProofOfSMP = async (proof: Proof) => {
+const verifyProofOfSMP = async (proof: TProof) => {
   return await verifyProof(proofOfSMPPath, proof);
 };
 
@@ -160,7 +168,7 @@ const genProofSuccessfulSMP = async (inputs: ProofSuccessfulSMPInput) => {
   );
 };
 
-const verifyProofSuccessfulSMP = async (proof: Proof) => {
+const verifyProofSuccessfulSMP = async (proof: TProof) => {
   return await verifyProof(proofSuccessfulSMPPath, proof);
 };
 
@@ -256,7 +264,7 @@ const genProofAndPublicSignals = async (
   return { proof, publicSignals, witness, circuit };
 };
 
-const verifyProof = (circomFile: string, proof: Proof) => {
+const verifyProof = (circomFile: string, proof: TProof) => {
   const date = Date.now().toString();
   const circuitName = getCircuitName(circomFile);
   const paramsFilename = `${circuitName}.params`;
@@ -287,7 +295,6 @@ const verifyProofInFiles = async (
   const proofPath = path.join(buildDir, proofFilename);
   const publicSignalsPath = path.join(buildDir, publicSignalsFilename);
   const verifyCmd = `${zkutilPath} verify -p ${paramsPath} -r ${proofPath} -i ${publicSignalsPath}`;
-  // console.log(`verifyCmd = "${verifyCmd}"`);
   const output = shell.exec(verifyCmd).stdout.trim();
 
   shell.rm("-f", proofPath);
@@ -343,39 +350,36 @@ const isPubkeySame = (a: PubKey, b: PubKey) => {
 };
 
 const verifyProofIndirectConnection = async (
-  pubkeyA: PubKey,
-  pubkeyC: PubKey,
-  pubkeyAdmin: PubKey,
-  merkleRoot: BigInt,
-  proofOfSMP: Proof,
-  proofSuccessfulSMP: Proof
+  proof: TProofIndirectConnection
 ) => {
-  if (!(await verifyProofOfSMP(proofOfSMP))) {
+  if (!(await verifyProofOfSMP(proof.proofOfSMP))) {
     return false;
   }
-  const resProofOfSMP = parseProofOfSMPPublicSignals(proofOfSMP.publicSignals);
-  if (!(await verifyProofSuccessfulSMP(proofSuccessfulSMP))) {
+  const resProofOfSMP = parseProofOfSMPPublicSignals(
+    proof.proofOfSMP.publicSignals
+  );
+  if (!(await verifyProofSuccessfulSMP(proof.proofSuccessfulSMP))) {
     return false;
   }
   const resProofSuccessfulSMP = parseProofSuccessfulSMPPublicSignals(
-    proofSuccessfulSMP.publicSignals
+    proof.proofSuccessfulSMP.publicSignals
   );
   /**
    * Check pubkeys in `proofOfSMP` and `proofSuccessfulSMP`.
    */
-  if (!isPubkeySame(resProofSuccessfulSMP.pubkeyA, pubkeyA)) {
+  if (!isPubkeySame(resProofSuccessfulSMP.pubkeyA, proof.pubkeyA)) {
     return false;
   }
-  if (!isPubkeySame(resProofOfSMP.pubkeyC, pubkeyC)) {
+  if (!isPubkeySame(resProofOfSMP.pubkeyC, proof.pubkeyC)) {
     return false;
   }
-  if (!isPubkeySame(resProofOfSMP.pubkeyAdmin, pubkeyAdmin)) {
+  if (!isPubkeySame(resProofOfSMP.pubkeyAdmin, proof.pubkeyAdmin)) {
     return false;
   }
   /**
    * Check merkle root
    */
-  if (resProofOfSMP.merkleRoot !== merkleRoot) {
+  if (resProofOfSMP.merkleRoot !== proof.merkleRoot) {
     return false;
   }
   /**
@@ -401,5 +405,6 @@ export {
   proofSuccessfulSMPInputsToCircuitArgs,
   verifyProofSuccessfulSMP,
   verifyProofIndirectConnection,
-  Proof
+  TProof,
+  TProofIndirectConnection
 };

@@ -4,7 +4,7 @@ import {
   stringifyBigInts,
   unstringifyBigInts
 } from "maci-crypto";
-import { Proof } from "./circuits/ts";
+import { TProof } from "./circuits/ts";
 import { LEVELS } from "./configs";
 import { MerkleProof } from "./interfaces";
 import { ValueError } from "./smp/exceptions";
@@ -360,7 +360,7 @@ export class SearchMessage3 extends BaseSerializable {
     JSONObj, // proof.proof
     JSONObj // proof.publicSignals
   ];
-  constructor(readonly smpMsg3: TLV, readonly proof: Proof) {
+  constructor(readonly smpMsg3: TLV, readonly proof: TProof) {
     super();
   }
 

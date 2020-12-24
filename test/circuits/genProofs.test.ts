@@ -4,7 +4,7 @@ import {
   verifyProofOfSMP,
   verifyProofSuccessfulSMP,
   verifyProofIndirectConnection,
-  Proof
+  TProof
 } from "../../src/circuits/ts";
 import { proofIndirectConnectionInputsFactory } from "../../src/factories";
 import { babyJubPointFactory } from "../../src/smp/v4/factories";
@@ -14,8 +14,8 @@ jest.setTimeout(300000);
 
 describe("Test `genProof` and `verifyProof`", () => {
   const inputs = proofIndirectConnectionInputsFactory(32);
-  let proofOfSMP: Proof;
-  let proofSuccessfulSMP: Proof;
+  let proofOfSMP: TProof;
+  let proofSuccessfulSMP: TProof;
 
   beforeAll(async () => {
     proofOfSMP = await genProofOfSMP(inputs);
@@ -52,14 +52,14 @@ describe("Test `genProof` and `verifyProof`", () => {
   });
 
   test("proof indirect connection (proofOfSMP and proofSuccessfulSMP)", async () => {
-    const res = await verifyProofIndirectConnection(
-      inputs.pubkeyA,
-      inputs.pubkeyC,
-      inputs.pubkeyAdmin,
-      inputs.root,
+    const res = await verifyProofIndirectConnection({
+      pubkeyA: inputs.pubkeyA,
+      pubkeyC: inputs.pubkeyC,
+      pubkeyAdmin: inputs.pubkeyAdmin,
+      merkleRoot: inputs.root,
       proofOfSMP,
       proofSuccessfulSMP
-    );
+    });
     expect(res).toBeTruthy();
 
     // Fails when invalid public keys are passed.
@@ -73,47 +73,47 @@ describe("Test `genProof` and `verifyProof`", () => {
     const anotherRoot = bigIntFactoryExclude([inputs.root]);
     // Wrong pubkeyA
     expect(
-      await verifyProofIndirectConnection(
-        anotherPubkey,
-        inputs.pubkeyC,
-        inputs.pubkeyAdmin,
-        inputs.root,
+      await verifyProofIndirectConnection({
+        pubkeyA: anotherPubkey,
+        pubkeyC: inputs.pubkeyC,
+        pubkeyAdmin: inputs.pubkeyAdmin,
+        merkleRoot: inputs.root,
         proofOfSMP,
         proofSuccessfulSMP
-      )
+      })
     ).toBeFalsy();
     // Wrong pubkeyC
     expect(
-      await verifyProofIndirectConnection(
-        inputs.pubkeyA,
-        anotherPubkey,
-        inputs.pubkeyAdmin,
-        inputs.root,
+      await verifyProofIndirectConnection({
+        pubkeyA: inputs.pubkeyA,
+        pubkeyC: anotherPubkey,
+        pubkeyAdmin: inputs.pubkeyAdmin,
+        merkleRoot: inputs.root,
         proofOfSMP,
         proofSuccessfulSMP
-      )
+      })
     ).toBeFalsy();
     // Wrong pubkeyAdmin
     expect(
-      await verifyProofIndirectConnection(
-        inputs.pubkeyA,
-        inputs.pubkeyC,
-        anotherPubkey,
-        inputs.root,
+      await verifyProofIndirectConnection({
+        pubkeyA: inputs.pubkeyA,
+        pubkeyC: inputs.pubkeyC,
+        pubkeyAdmin: anotherPubkey,
+        merkleRoot: inputs.root,
         proofOfSMP,
         proofSuccessfulSMP
-      )
+      })
     ).toBeFalsy();
     // Wrong root
     expect(
-      await verifyProofIndirectConnection(
-        inputs.pubkeyA,
-        inputs.pubkeyC,
-        inputs.pubkeyAdmin,
-        anotherRoot,
+      await verifyProofIndirectConnection({
+        pubkeyA: inputs.pubkeyA,
+        pubkeyC: inputs.pubkeyC,
+        pubkeyAdmin: inputs.pubkeyAdmin,
+        merkleRoot: anotherRoot,
         proofOfSMP,
         proofSuccessfulSMP
-      )
+      })
     ).toBeFalsy();
   });
 });

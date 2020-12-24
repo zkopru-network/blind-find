@@ -26,7 +26,7 @@ import { TIMEOUT, MAXIMUM_TRIALS, TIMEOUT_LARGE } from "./configs";
 import { SMPStateMachine } from "./smp";
 import { hashPointToScalar } from "./utils";
 import { MerkleProof } from "./interfaces";
-import { genProofOfSMP, Proof } from "./circuits/ts";
+import { genProofOfSMP, TProof } from "./circuits/ts";
 import { SMPState1, SMPState2 } from "./smp/state";
 import {
   SMPMessage1Wire,
@@ -44,7 +44,7 @@ type TSMPResult = {
   pa: BabyJubPoint;
   ph: BabyJubPoint;
   rh: BabyJubPoint;
-  proofOfSMP: Proof;
+  proofOfSMP: TProof;
 };
 
 interface IUserStore extends Iterable<TIterItem> {
@@ -108,40 +108,6 @@ export class UserStore implements IUserStore {
     });
   }
 }
-
-export const runSMPServer = async (
-  socket: WebSocket,
-  target: PubKey,
-  timeout: number
-) => {
-  console.debug(`runSMPServer: running smp using ${target}`);
-  const secret = hashPointToScalar(target);
-  const stateMachine = new SMPStateMachine(secret);
-  const smpMsg1 = stateMachine.transit(null);
-  if (smpMsg1 === null) {
-    throw new Error("smpMsg1tlv should not be null");
-  }
-  const msg1 = new SearchMessage1(false, smpMsg1);
-  console.debug(`runSMPServer: sending msg1`);
-  const msg2 = await request(
-    socket,
-    msg1.serialize(),
-    data => SearchMessage2.deserialize(data),
-    timeout
-  );
-  console.debug(`runSMPServer: received msg2`);
-  const msg3 = stateMachine.transit(msg2);
-  if (msg3 === null) {
-    throw new Error("this should never happen");
-  }
-  console.debug(`runSMPServer: sending msg3`);
-  await request(
-    socket,
-    msg3.serialize(),
-    data => SearchMessage4.deserialize(data),
-    timeout
-  );
-};
 
 // TODO: Probably we can use `close.code` to indicate the reason why a socket is closed by
 //  the server.
@@ -220,7 +186,6 @@ export class HubServer extends BaseServer {
         throw new Error("r4 should have been generated to compute Ph and Qh");
       }
       const r4h = state2.r4;
-      // TODO: Generate ProofOfSMP
       const proofOfSMP = await genProofOfSMP({
         h2,
         h3,
@@ -346,7 +311,6 @@ export const sendSearchReq = async (
     );
     console.debug("sendSearchReq: received search msg1");
     // Check if there is no more candidates.
-    // TODO: Add a check for maximum candidates, to avoid endless searching with the server.
     if (msg1.isEnd) {
       break;
     }
