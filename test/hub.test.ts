@@ -156,13 +156,13 @@ describe("HubServer", () => {
 
   test("search succeeds", async () => {
     const searchRes = await sendSearchReq(ip, port, user1.pubKey);
-    expect(searchRes).not.toBeUndefined();
+    expect(searchRes).not.toBeNull();
   });
 
   test("search fails when target is not found", async () => {
     const anotherUser = genKeypair();
     const searchRes = await sendSearchReq(ip, port, anotherUser.pubKey);
-    expect(searchRes).toBeUndefined();
+    expect(searchRes).toBeNull();
   });
 
   test("request fails when timeout", async () => {
