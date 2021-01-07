@@ -1,15 +1,21 @@
-import { hubRegistryTreeFactory, hubRegistryFactory } from "../src/factories";
+import {
+  hubRegistryTreeFactory,
+  hubRegistryFactory,
+  adminAddressFactory
+} from "../src/factories";
 import { DataProviderServer, sendGetMerkleProofReq } from "../src/dataProvider";
 import { genKeypair, Keypair } from "maci-crypto";
 import { LEVELS } from "../src/configs";
 import { HubRegistry, HubRegistryTree } from "../src";
 import WebSocket from "ws";
 import { RequestFailed, ValueError } from "../src/exceptions";
+import { TEthereumAddress } from "../src/types";
+import { pubkeyFactoryExclude } from "./utils";
 
 describe("DataProviderServer", () => {
   let dataProvider: DataProviderServer;
   let hub: Keypair;
-  let admin: Keypair;
+  let adminAddress: TEthereumAddress;
   let tree: HubRegistryTree;
   let hubRegistry: HubRegistry;
   let ip: string;
@@ -17,11 +23,11 @@ describe("DataProviderServer", () => {
 
   beforeAll(async () => {
     hub = genKeypair();
-    admin = genKeypair();
-    tree = hubRegistryTreeFactory([hub], LEVELS, admin);
+    adminAddress = adminAddressFactory();
+    tree = hubRegistryTreeFactory([hub], LEVELS, adminAddress);
     expect(tree.length).toEqual(1);
     hubRegistry = tree.leaves[0];
-    dataProvider = new DataProviderServer(admin.pubKey, tree);
+    dataProvider = new DataProviderServer(adminAddress, tree);
     await dataProvider.start();
 
     const addr = dataProvider.address as WebSocket.AddressInfo;
@@ -35,10 +41,15 @@ describe("DataProviderServer", () => {
 
   test("request fails when registry is invalid", async () => {
     // Invalid registry because of the wrong pubkey
-    const invalidRegistry = hubRegistryFactory();
-    invalidRegistry.pubkey = admin.pubKey;
+    const validRegistry = hubRegistryFactory();
+    const anotherPubkey = pubkeyFactoryExclude([validRegistry.pubkey]);
+    const invalidHubRegistry = new HubRegistry(
+      validRegistry.sig,
+      anotherPubkey,
+      validRegistry.adminAddress
+    );
     await expect(
-      sendGetMerkleProofReq(ip, port, invalidRegistry)
+      sendGetMerkleProofReq(ip, port, invalidHubRegistry)
     ).rejects.toThrowError(ValueError);
   });
 

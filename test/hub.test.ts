@@ -1,4 +1,8 @@
-import { hubRegistryTreeFactory, signedJoinMsgFactory } from "../src/factories";
+import {
+  adminAddressFactory,
+  hubRegistryTreeFactory,
+  signedJoinMsgFactory
+} from "../src/factories";
 import {
   HubServer,
   sendJoinHubReq,
@@ -12,6 +16,7 @@ import WebSocket from "ws";
 import { TimeoutError } from "../src/exceptions";
 import { waitForSocketOpen, connect } from "../src/websocket";
 import { Short, TLV } from "../src/smp/serialization";
+import { TEthereumAddress } from "../src/types";
 
 const timeoutBeginAndEnd = TIMEOUT + TIMEOUT;
 // Timeout for running SMP against one peer (including time generating/verifying proofs).
@@ -79,17 +84,17 @@ describe("HubServer", () => {
   let hubkeypair: Keypair;
   let user1: Keypair;
   let user2: Keypair;
-  let admin: Keypair;
+  let adminAddress: TEthereumAddress;
   let tree: HubRegistryTree;
   let ip: string;
   let port: number;
 
   beforeAll(async () => {
     hubkeypair = genKeypair();
-    admin = genKeypair();
+    adminAddress = adminAddressFactory();
     user1 = genKeypair();
     user2 = genKeypair();
-    tree = hubRegistryTreeFactory([hubkeypair], LEVELS, admin);
+    tree = hubRegistryTreeFactory([hubkeypair], LEVELS, adminAddress);
     expect(tree.length).toEqual(1);
     const hubRegistry = tree.leaves[0];
     const merkleProof = tree.tree.genMerklePath(0);

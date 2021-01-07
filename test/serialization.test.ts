@@ -19,19 +19,11 @@ import { SMPMessage1Wire } from "../src/smp/v4/serialization";
 describe("Serialization and Deserialization of wire messages", () => {
   test("GetMerkleProofReq", () => {
     const hubRegistry = hubRegistryFactory();
-    if (hubRegistry.adminSig === undefined) {
-      throw new Error();
-    }
-    const req = new GetMerkleProofReq(
-      hubRegistry.pubkey,
-      hubRegistry.sig,
-      hubRegistry.adminSig
-    );
+    const req = new GetMerkleProofReq(hubRegistry.pubkey, hubRegistry.sig);
     const bytes = req.serialize();
     const reqFromBytes = GetMerkleProofReq.deserialize(bytes);
     expect(req.hubPubkey).toEqual(reqFromBytes.hubPubkey);
     expect(req.hubSig).toEqual(reqFromBytes.hubSig);
-    expect(req.adminSig).toEqual(reqFromBytes.adminSig);
 
     const [reqFromBytesConsumed, bytesRemaining] = GetMerkleProofReq.consume(
       bytes
@@ -39,7 +31,6 @@ describe("Serialization and Deserialization of wire messages", () => {
     expect(bytesRemaining.length).toEqual(0);
     expect(req.hubPubkey).toEqual(reqFromBytesConsumed.hubPubkey);
     expect(req.hubSig).toEqual(reqFromBytesConsumed.hubSig);
-    expect(req.adminSig).toEqual(reqFromBytesConsumed.adminSig);
   });
 
   test("GetMerkleProofResp", () => {

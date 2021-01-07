@@ -1,16 +1,19 @@
 import * as http from "http";
-import { PubKey } from "maci-crypto";
 import WebSocket from "ws";
 
 import { HubRegistry, HubRegistryTree } from "./";
 import { TIMEOUT } from "./configs";
 import { RequestFailed, ValueError } from "./exceptions";
 import { GetMerkleProofReq, GetMerkleProofResp } from "./serialization";
+import { TEthereumAddress } from "./types";
 import { BaseServer, request, waitForSocketOpen, connect } from "./websocket";
 
 // TODO: Persistance
 export class DataProviderServer extends BaseServer {
-  constructor(readonly adminPubkey: PubKey, readonly tree: HubRegistryTree) {
+  constructor(
+    readonly adminAddress: TEthereumAddress,
+    readonly tree: HubRegistryTree
+  ) {
     super();
   }
 
@@ -21,8 +24,7 @@ export class DataProviderServer extends BaseServer {
       const hubRegistry = new HubRegistry(
         req.hubSig,
         req.hubPubkey,
-        req.adminSig,
-        this.adminPubkey
+        this.adminAddress
       );
       if (!hubRegistry.verify()) {
         // Invalid hub registry.
@@ -62,19 +64,12 @@ export const sendGetMerkleProofReq = async (
   timeout: number = TIMEOUT
 ): Promise<GetMerkleProofResp> => {
   const c = connect(ip, port);
-  if (hubRegistry.adminSig === undefined || !hubRegistry.verify()) {
+  if (!hubRegistry.verify()) {
     throw new ValueError("invalid hub registry");
   }
   // Wait until the socket is opened.
   await waitForSocketOpen(c);
-  if (hubRegistry.adminSig === undefined) {
-    throw new Error("this SHOULD NOT happen because we checked it outside");
-  }
-  const req = new GetMerkleProofReq(
-    hubRegistry.pubkey,
-    hubRegistry.sig,
-    hubRegistry.adminSig
-  );
+  const req = new GetMerkleProofReq(hubRegistry.pubkey, hubRegistry.sig);
   const messageHandler = (data: Uint8Array) => {
     const resp = GetMerkleProofResp.deserialize(data);
     if (resp.merkleProof.leaf !== hubRegistry.hash()) {

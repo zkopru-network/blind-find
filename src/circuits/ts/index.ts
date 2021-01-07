@@ -88,23 +88,13 @@ const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
   if (!inputs.hubRegistry.verify()) {
     throw new ValueError("registry is invalid");
   }
-  if (
-    inputs.hubRegistry.adminPubkey === undefined ||
-    inputs.hubRegistry.adminSig === undefined
-  ) {
-    throw new ValueError(
-      `registry is not counter-signed: hubRegistry=${inputs.hubRegistry}`
-    );
-  }
   const args = stringifyBigInts({
     merklePathElements: inputs.proof.pathElements,
     merklePathIndices: inputs.proof.indices,
     merkleRoot: inputs.root,
     sigHubRegistryR8: inputs.hubRegistry.sig.R8,
     sigHubRegistryS: inputs.hubRegistry.sig.S,
-    sigAdminR8: inputs.hubRegistry.adminSig.R8,
-    sigAdminS: inputs.hubRegistry.adminSig.S,
-    pubkeyAdmin: inputs.hubRegistry.adminPubkey,
+    addressAdmin: inputs.hubRegistry.adminAddress,
     pubkeyC: inputs.pubkeyC,
     sigCR8: inputs.sigJoinMsgC.R8,
     sigCS: inputs.sigJoinMsgC.S,

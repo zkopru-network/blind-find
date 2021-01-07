@@ -55,16 +55,10 @@ export class GetMerkleProofReq extends BaseSerializable {
   static wireTypes = [
     Point, // hubPubkey,
     Point,
-    Scalar, // hubSig
-    Point,
-    Scalar // adminSig
+    Scalar // hubSig
   ];
 
-  constructor(
-    readonly hubPubkey: PubKey,
-    readonly hubSig: Signature,
-    readonly adminSig: Signature
-  ) {
+  constructor(readonly hubPubkey: PubKey, readonly hubSig: Signature) {
     super();
   }
 
@@ -75,17 +69,10 @@ export class GetMerkleProofReq extends BaseSerializable {
   static consume(b: Uint8Array): [GetMerkleProofReq, Uint8Array] {
     const [elements, bytesRemaining] = deserializeElements(b, this.wireTypes);
     return [
-      new GetMerkleProofReq(
-        (elements[0] as Point).point,
-        {
-          R8: (elements[1] as Point).point,
-          S: (elements[2] as BaseFixedInt).value
-        },
-        {
-          R8: (elements[3] as Point).point,
-          S: (elements[4] as BaseFixedInt).value
-        }
-      ),
+      new GetMerkleProofReq((elements[0] as Point).point, {
+        R8: (elements[1] as Point).point,
+        S: (elements[2] as BaseFixedInt).value
+      }),
       bytesRemaining
     ];
   }
@@ -94,9 +81,7 @@ export class GetMerkleProofReq extends BaseSerializable {
     return serializeElements([
       new Point(this.hubPubkey),
       new Point(this.hubSig.R8),
-      new Scalar(this.hubSig.S),
-      new Point(this.adminSig.R8),
-      new Scalar(this.adminSig.S)
+      new Scalar(this.hubSig.S)
     ]);
   }
 }
