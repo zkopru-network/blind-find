@@ -3,7 +3,6 @@ import { sha256 } from "js-sha256";
 import {
   hash11,
   hash5,
-  Keypair,
   PrivKey,
   PubKey,
   sign,
@@ -17,6 +16,7 @@ import { PREFIX_JOIN, PREFIX_REGISTER_NEW_HUB } from "./constants";
 import { ValueError } from "./smp/exceptions";
 import { bigIntMod } from "./smp/utils";
 import { LEVELS, ZERO_VALUE } from "./configs";
+import { TEthereumAddress } from "./types";
 
 const hashStringToField = (s: string): BigInt => {
   return bigIntMod(
@@ -42,16 +42,28 @@ const verifySignedMsg = (
   return verifySignature(hashedData, sig, pubkey);
 };
 
+const getRegisterNewHubHashedData = (
+  adminAddress: TEthereumAddress
+): TEthereumAddress => {
+  return hash5([
+    prefixRegisterNewHub,
+    adminAddress,
+    BigInt(0),
+    BigInt(0),
+    BigInt(0)
+  ]);
+};
+
 const getJoinHubMsgHashedData = (
   userPubkey: PubKey,
-  adminPubkey: PubKey
+  hubPubkey: PubKey
 ): BigInt => {
   return hash5([
     prefixJoinMsg,
     userPubkey[0],
     userPubkey[1],
-    adminPubkey[0],
-    adminPubkey[1]
+    hubPubkey[0],
+    hubPubkey[1]
   ]);
 };
 
@@ -66,67 +78,28 @@ const getCounterSignHashedData = (sigToBeCounterSigned: Signature): BigInt => {
 };
 
 class HubRegistry {
-  sig: Signature;
-  pubkey: PubKey;
-  adminSig?: Signature;
-  adminPubkey?: PubKey;
-
   constructor(
-    sig: Signature,
-    pubkey: PubKey,
-    adminSig?: Signature,
-    adminPubkey?: PubKey
-  ) {
-    this.sig = sig;
-    this.pubkey = pubkey;
-    this.adminSig = adminSig;
-    this.adminPubkey = adminPubkey;
-  }
+    readonly sig: Signature,
+    readonly pubkey: PubKey,
+    readonly adminAddress: TEthereumAddress
+  ) {}
 
   getSigningMsg() {
-    return prefixRegisterNewHub;
+    return getRegisterNewHubHashedData(this.adminAddress);
   }
 
   verify(): boolean {
-    if (this.adminSig === undefined || this.adminPubkey === undefined) {
-      throw new ValueError("haven't been counter signed");
-    }
-    const isSigValid = verifySignedMsg(
-      this.getSigningMsg(),
-      this.sig,
-      this.pubkey
-    );
-    const isAdminSigValid = verifySignedMsg(
-      getCounterSignHashedData(this.sig),
-      this.adminSig,
-      this.adminPubkey
-    );
-    return isSigValid && isAdminSigValid;
-  }
-
-  adminSign(keypair: Keypair) {
-    this.adminSig = signMsg(
-      keypair.privKey,
-      getCounterSignHashedData(this.sig)
-    );
-    this.adminPubkey = keypair.pubKey;
+    return verifySignedMsg(this.getSigningMsg(), this.sig, this.pubkey);
   }
 
   hash() {
-    if (this.adminSig === undefined || this.adminPubkey === undefined) {
-      throw new ValueError("haven't been counter signed");
-    }
     return hash11([
       this.sig.R8[0],
       this.sig.R8[1],
       this.sig.S,
       this.pubkey[0],
       this.pubkey[1],
-      this.adminSig.R8[0],
-      this.adminSig.R8[1],
-      this.adminSig.S,
-      this.adminPubkey[0],
-      this.adminPubkey[1]
+      this.adminAddress
     ]);
   }
 }
@@ -158,7 +131,7 @@ export {
   verifySignedMsg,
   getJoinHubMsgHashedData,
   getCounterSignHashedData,
-  prefixRegisterNewHub,
+  getRegisterNewHubHashedData,
   HubRegistryTree,
   HubRegistry
 };

@@ -1,10 +1,10 @@
-import { genKeypair, Keypair, PubKey, Signature } from "maci-crypto";
+import { genKeypair, hash5, Keypair, PubKey, Signature } from "maci-crypto";
 import {
   getCounterSignHashedData,
   getJoinHubMsgHashedData,
   HubRegistry,
   HubRegistryTree,
-  prefixRegisterNewHub,
+  getRegisterNewHubHashedData,
   signMsg
 } from "./";
 import { SMPStateMachine } from "./smp";
@@ -14,6 +14,7 @@ import {
   SMPMessage2Wire,
   SMPMessage3Wire
 } from "./smp/v4/serialization";
+import { TEthereumAddress } from "./types";
 import { hashPointToScalar } from "./utils";
 
 type SignedJoinMsg = {
@@ -48,29 +49,34 @@ export const signedJoinMsgFactory = (
   };
 };
 
+export const adminAddressFactory = () => {
+  // TODO: This should be changed to `hash(ethereumAddress)`.
+  const address = hashPointToScalar(genKeypair().pubKey);
+  return hash5([address, BigInt(0), BigInt(0), BigInt(0), BigInt(0)]);
+};
+
 export const hubRegistryFactory = (
-  adminKeypair?: Keypair,
-  hubKeypair?: Keypair
+  hubKeypair?: Keypair,
+  adminAddress?: TEthereumAddress
 ): HubRegistry => {
   if (hubKeypair === undefined) {
     hubKeypair = genKeypair();
   }
-  if (adminKeypair === undefined) {
-    adminKeypair = genKeypair();
+  if (adminAddress === undefined) {
+    adminAddress = adminAddressFactory();
   }
-  const sig = signMsg(hubKeypair.privKey, prefixRegisterNewHub);
-  const registry = new HubRegistry(sig, hubKeypair.pubKey);
-  registry.adminSign(adminKeypair);
-  return registry;
+  const dataToBeSigned = getRegisterNewHubHashedData(adminAddress);
+  const sig = signMsg(hubKeypair.privKey, dataToBeSigned);
+  return new HubRegistry(sig, hubKeypair.pubKey, adminAddress);
 };
 
 export const hubRegistryTreeFactory = (
   hubs?: Keypair[],
   levels = 5,
-  adminKeypair?: Keypair
+  adminAddress?: TEthereumAddress
 ): HubRegistryTree => {
-  if (adminKeypair === undefined) {
-    adminKeypair = genKeypair();
+  if (adminAddress === undefined) {
+    adminAddress = adminAddressFactory();
   }
   const tree = new HubRegistryTree(levels);
   if (hubs === undefined) {
@@ -83,7 +89,7 @@ export const hubRegistryTreeFactory = (
     );
   }
   for (let i = 0; i < hubs.length; i++) {
-    const registry = hubRegistryFactory(adminKeypair, hubs[i]);
+    const registry = hubRegistryFactory(hubs[i], adminAddress);
     tree.insert(registry);
   }
   return tree;
@@ -143,13 +149,13 @@ export const proofOfSMPInputsFactory = (levels: number = 32) => {
     genKeypair(),
     genKeypair()
   ];
-  const admin = genKeypair();
+  const adminAddress = adminAddressFactory();
   const keypairC = genKeypair();
   const keypairHub = hubs[hubIndex];
   const signedJoinMsg = signedJoinMsgFactory(keypairC, keypairHub);
   const sigJoinMsgC = signedJoinMsg.userSig;
   const sigJoinMsgHub = signedJoinMsg.hubSig;
-  const tree = hubRegistryTreeFactory(hubs, levels, admin);
+  const tree = hubRegistryTreeFactory(hubs, levels, adminAddress);
   const hubRegistry = tree.leaves[hubIndex];
   const root = tree.tree.root;
   const proof = tree.tree.genMerklePath(hubIndex);
@@ -168,21 +174,13 @@ export const proofOfSMPInputsFactory = (levels: number = 32) => {
   if (!hubRegistry.verify()) {
     throw new Error(`registry is invalid: hubIndex=${hubIndex}`);
   }
-  if (
-    hubRegistry.adminPubkey === undefined ||
-    hubRegistry.adminSig === undefined
-  ) {
-    throw new Error(
-      `registry is not counter-signed: hubRegistry=${hubRegistry}`
-    );
-  }
   return {
     root,
     proof: proof as any,
     hubRegistry,
     pubkeyC: keypairC.pubKey,
     pubkeyHub: keypairHub.pubKey,
-    pubkeyAdmin: admin.pubKey,
+    addressAdmin: adminAddress,
     sigJoinMsgC,
     sigJoinMsgHub,
     msg1,
@@ -245,7 +243,7 @@ export const proofIndirectConnectionInputsFactory = (levels: number = 32) => {
     pubkeyHub: inputs.pubkeyHub,
     sigJoinMsgC: inputs.sigJoinMsgC,
     sigJoinMsgHub: inputs.sigJoinMsgHub,
-    pubkeyAdmin: inputs.pubkeyAdmin,
+    addressAdmin: inputs.addressAdmin,
     pubkeyA: pubkeyA,
     sigRh: sigRh
   };
