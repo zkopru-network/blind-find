@@ -2,7 +2,7 @@ import { genKeypair } from "maci-crypto";
 import WebSocket from "ws";
 import { verifyProofIndirectConnection } from "../src/circuits/ts";
 import { LEVELS, TIMEOUT, TIMEOUT_LARGE } from "../src/configs";
-import { hubRegistryTreeFactory } from "../src/factories";
+import { adminAddressFactory, hubRegistryTreeFactory } from "../src/factories";
 import { HubServer } from "../src/hub";
 import { User } from "../src/user";
 
@@ -15,9 +15,9 @@ const timeoutTotal = timeoutBeginAndEnd + expectedNumSMPs * timeoutOneSMP;
 jest.setTimeout(timeoutTotal);
 
 describe("User", () => {
-  const admin = genKeypair();
+  const adminAddress = adminAddressFactory();
   const hubKeypair = genKeypair();
-  const tree = hubRegistryTreeFactory([hubKeypair], LEVELS, admin);
+  const tree = hubRegistryTreeFactory([hubKeypair], LEVELS, adminAddress);
   expect(tree.length).toEqual(1);
   const hubRegistry = tree.leaves[0];
   const merkleProof = tree.tree.genMerklePath(0);
@@ -25,8 +25,8 @@ describe("User", () => {
   let ip: string;
   let port: number;
 
-  const userJoined = new User(genKeypair(), admin.pubKey, merkleProof.root);
-  const userAnother = new User(genKeypair(), admin.pubKey, merkleProof.root);
+  const userJoined = new User(genKeypair(), adminAddress, merkleProof.root);
+  const userAnother = new User(genKeypair(), adminAddress, merkleProof.root);
 
   beforeAll(async () => {
     await hub.start();

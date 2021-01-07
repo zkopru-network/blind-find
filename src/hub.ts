@@ -159,7 +159,7 @@ export class HubServer extends BaseServer {
 
     for (const peer of this.userStore) {
       const [pubkey, userRegistry] = peer;
-      console.debug(`runSMPServer: running smp using ${pubkey}`);
+      console.debug(`onSearchRequest: running smp using ${pubkey}`);
       const secret = hashPointToScalar(pubkey);
       const stateMachine = new SMPStateMachine(secret);
       const h2 = (stateMachine.state as SMPState1).s2;
@@ -169,14 +169,14 @@ export class HubServer extends BaseServer {
         throw new Error("smpMsg1tlv should not be null");
       }
       const msg1 = new SearchMessage1(false, smpMsg1);
-      console.debug(`runSMPServer: sending msg1`);
+      console.debug(`onSearchRequest: sending msg1`);
       const msg2 = await request(
         socket,
         msg1.serialize(),
         data => SearchMessage2.deserialize(data),
         this.timeoutSmall
       );
-      console.debug(`runSMPServer: received msg2`);
+      console.debug(`onSearchRequest: received msg2`);
       const state2 = stateMachine.state as SMPState2;
       const smpMsg3 = stateMachine.transit(msg2);
       if (smpMsg3 === null) {
@@ -202,7 +202,7 @@ export class HubServer extends BaseServer {
         sigJoinMsgHub: userRegistry.hubSig
       });
       const msg3 = new SearchMessage3(smpMsg3, proofOfSMP);
-      console.debug(`runSMPServer: sending msg3`);
+      console.debug(`onSearchRequest: sending msg3`);
       await request(
         socket,
         msg3.serialize(),
