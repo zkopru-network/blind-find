@@ -55,7 +55,7 @@ describe("Test `genProof` and `verifyProof`", () => {
     const res = await verifyProofIndirectConnection({
       pubkeyA: inputs.pubkeyA,
       pubkeyC: inputs.pubkeyC,
-      pubkeyAdmin: inputs.pubkeyAdmin,
+      adminAddress: inputs.adminAddress,
       merkleRoot: inputs.root,
       proofOfSMP,
       proofSuccessfulSMP
@@ -64,19 +64,20 @@ describe("Test `genProof` and `verifyProof`", () => {
 
     // Fails when invalid public keys are passed.
     const anotherPubkey = factoryExclude(
-      [inputs.pubkeyA, inputs.pubkeyC, inputs.pubkeyAdmin],
+      [inputs.pubkeyA, inputs.pubkeyC],
       () => {
         return babyJubPointFactory().point;
       },
       (a, b) => a === b
     );
     const anotherRoot = bigIntFactoryExclude([inputs.root]);
+    const anotherAdminAddress = bigIntFactoryExclude([inputs.adminAddress]);
     // Wrong pubkeyA
     expect(
       await verifyProofIndirectConnection({
         pubkeyA: anotherPubkey,
         pubkeyC: inputs.pubkeyC,
-        pubkeyAdmin: inputs.pubkeyAdmin,
+        adminAddress: inputs.adminAddress,
         merkleRoot: inputs.root,
         proofOfSMP,
         proofSuccessfulSMP
@@ -87,7 +88,7 @@ describe("Test `genProof` and `verifyProof`", () => {
       await verifyProofIndirectConnection({
         pubkeyA: inputs.pubkeyA,
         pubkeyC: anotherPubkey,
-        pubkeyAdmin: inputs.pubkeyAdmin,
+        adminAddress: inputs.adminAddress,
         merkleRoot: inputs.root,
         proofOfSMP,
         proofSuccessfulSMP
@@ -98,7 +99,7 @@ describe("Test `genProof` and `verifyProof`", () => {
       await verifyProofIndirectConnection({
         pubkeyA: inputs.pubkeyA,
         pubkeyC: inputs.pubkeyC,
-        pubkeyAdmin: anotherPubkey,
+        adminAddress: anotherAdminAddress,
         merkleRoot: inputs.root,
         proofOfSMP,
         proofSuccessfulSMP
@@ -109,7 +110,7 @@ describe("Test `genProof` and `verifyProof`", () => {
       await verifyProofIndirectConnection({
         pubkeyA: inputs.pubkeyA,
         pubkeyC: inputs.pubkeyC,
-        pubkeyAdmin: inputs.pubkeyAdmin,
+        adminAddress: inputs.adminAddress,
         merkleRoot: anotherRoot,
         proofOfSMP,
         proofSuccessfulSMP

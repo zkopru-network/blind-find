@@ -78,6 +78,20 @@ template JoinMsgHash() {
     out <== hasher.hash;
 }
 
+template RegisterNewHubHash() {
+    signal input adminAddress;
+    signal output out;
+
+    component hasher = Hasher5();
+    hasher.in[0] <== 1122637059787783884121270614611449342946993875255423905974201070879309325140;
+    hasher.in[1] <== adminAddress;
+    hasher.in[2] <== 0;
+    hasher.in[3] <== 0;
+    hasher.in[4] <== 0;
+
+    out <== hasher.hash;
+}
+
 template JoinMsgSigVerifier() {
     signal input userPubkey[2];
     signal input userSigR8[2];
@@ -114,10 +128,8 @@ template HubRegistryVerifier(levels) {
     signal input pubkeyHub[2];
     signal input sigHubR8[2];
     signal input sigHubS;
-    // Assume every one knows the pubkey of admin
-    signal input pubkeyAdmin[2];
-    signal input sigAdminR8[2];
-    signal input sigAdminS;
+    // Assume every one knows admin's address.
+    signal input adminAddress;
 
     // Merkle proof of the hub's registry
     signal input merklePathElements[levels][1];
@@ -126,20 +138,17 @@ template HubRegistryVerifier(levels) {
 
     signal output valid;
 
-    // Verify signatures
-    component verifier = CounterSignedSigsVerifier();
-    // `prefixRegisterNewHub`
-    verifier.hashedData <== 1122637059787783884121270614611449342946993875255423905974201070879309325140;
-    verifier.pubkey[0] <== pubkeyHub[0];
-    verifier.pubkey[1] <== pubkeyHub[1];
-    verifier.sigR8[0] <== sigHubR8[0];
-    verifier.sigR8[1] <== sigHubR8[1];
-    verifier.sigS <== sigHubS;
-    verifier.counterSignedPubkey[0] <== pubkeyAdmin[0];
-    verifier.counterSignedPubkey[1] <== pubkeyAdmin[1];
-    verifier.counterSignedSigR8[0] <== sigAdminR8[0];
-    verifier.counterSignedSigR8[1] <== sigAdminR8[1];
-    verifier.counterSignedSigS <== sigAdminS;
+    // Get signing hash
+    component hashedData = RegisterNewHubHash();
+    hashedData.adminAddress <== adminAddress;
+    // Verify hub's signature
+    component sigVerifier = EdDSAPoseidonVerifier_patched();
+    sigVerifier.Ax <== pubkeyHub[0];
+    sigVerifier.Ay <== pubkeyHub[1];
+    sigVerifier.R8x <== sigHubR8[0];
+    sigVerifier.R8y <== sigHubR8[1];
+    sigVerifier.S <== sigHubS;
+    sigVerifier.M <== hashedData.out;
 
     // Verify that the hub entry matches its merkle proof
     component hasher = Hasher11();
@@ -148,11 +157,11 @@ template HubRegistryVerifier(levels) {
     hasher.in[2] <== sigHubS;
     hasher.in[3] <== pubkeyHub[0];
     hasher.in[4] <== pubkeyHub[1];
-    hasher.in[5] <== sigAdminR8[0];
-    hasher.in[6] <== sigAdminR8[1];
-    hasher.in[7] <== sigAdminS;
-    hasher.in[8] <== pubkeyAdmin[0];
-    hasher.in[9] <== pubkeyAdmin[1];
+    hasher.in[5] <== adminAddress;
+    hasher.in[6] <== 0;
+    hasher.in[7] <== 0;
+    hasher.in[8] <== 0;
+    hasher.in[9] <== 0;
     hasher.in[10] <== 0;
 
     component leafVerifier = LeafExists(levels);
@@ -163,7 +172,7 @@ template HubRegistryVerifier(levels) {
         leafVerifier.path_elements[i][0] <== merklePathElements[i][0];
     }
 
-    valid <== verifier.valid;
+    valid <== sigVerifier.valid;
 }
 
 // Created by H after H runs SMP with A where H is the initiator.
@@ -182,8 +191,6 @@ template ProofOfSMP(levels) {
     signal private input merklePathIndices[levels];
     signal private input sigHubRegistryR8[2];
     signal private input sigHubRegistryS;
-    signal private input sigAdminR8[2];
-    signal private input sigAdminS;
 
     signal private input h2;
     signal private input h3;
@@ -192,9 +199,9 @@ template ProofOfSMP(levels) {
     /* Public */
 
     signal input pubkeyC[2];
-    signal input pubkeyAdmin[2];
+    signal input adminAddress;
     signal input merkleRoot;
-    // 6 = 5 + 1
+    // 5 = 4 + 1
 
     // msg 1
     signal input g2h[2];
@@ -203,7 +210,7 @@ template ProofOfSMP(levels) {
     signal input g3h[2];
     signal input g3hProofC;
     signal input g3hProofD;
-    // 14 = 6 + 8
+    // 13 = 5 + 8
 
     // msg 2
     signal input g2a[2];
@@ -212,23 +219,23 @@ template ProofOfSMP(levels) {
     signal input g3a[2];
     signal input g3aProofC;
     signal input g3aProofD;
-    signal input pa[2];  // 22, 23
+    signal input pa[2];  // 21, 22
     signal input qa[2];
     signal input paqaProofC;
     signal input paqaProofD0;
     signal input paqaProofD1;
-    // 29 = 14 + 15
+    // 28 = 13 + 15
 
     // msg 3
-    signal input ph[2];  // 29, 30
+    signal input ph[2];  // 28, 29
     signal input qh[2];
     signal input phqhProofC;
     signal input phqhProofD0;
     signal input phqhProofD1;
-    signal input rh[2];  // 36, 37
+    signal input rh[2];  // 35, 36
     signal input rhProofC;
     signal input rhProofD;
-    // 40 = 29 + 11
+    // 39 = 28 + 11
 
     signal output valid;
 
@@ -260,11 +267,7 @@ template ProofOfSMP(levels) {
     hubRegistryVerifier.sigHubR8[0] <== sigHubRegistryR8[0];
     hubRegistryVerifier.sigHubR8[1] <== sigHubRegistryR8[1];
     hubRegistryVerifier.sigHubS <== sigHubRegistryS;
-    hubRegistryVerifier.pubkeyAdmin[0] <== pubkeyAdmin[0];
-    hubRegistryVerifier.pubkeyAdmin[1] <== pubkeyAdmin[1];
-    hubRegistryVerifier.sigAdminR8[0] <== sigAdminR8[0];
-    hubRegistryVerifier.sigAdminR8[1] <== sigAdminR8[1];
-    hubRegistryVerifier.sigAdminS <== sigAdminS;
+    hubRegistryVerifier.adminAddress <== adminAddress;
     for (var i = 0; i < levels; i++) {
         hubRegistryVerifier.merklePathIndices[i] <== merklePathIndices[i];
         hubRegistryVerifier.merklePathElements[i][0] <== merklePathElements[i][0];

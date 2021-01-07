@@ -9,22 +9,21 @@ import {
 import { TIMEOUT, TIMEOUT_LARGE } from "./configs";
 import { sendJoinHubReq, sendSearchReq } from "./hub";
 import { InvalidProof } from "./smp/exceptions";
+import { TEthereumAddress } from "./types";
 import { hashPointToScalar } from "./utils";
 
 export class User {
-  pubkeyAdmin: PubKey;
   // NOTE: merkleRoot should be updatable. Also, it can be a list.
   merkleRoot: BigInt;
   // TODO: Add `JoinedHub`s
 
   constructor(
     readonly keypair: Keypair,
-    pubkeyAdmin: PubKey,
+    readonly adminAddress: TEthereumAddress,
     merkleRoot: BigInt,
     readonly timeoutSmall = TIMEOUT,
     readonly timeoutLarge = TIMEOUT_LARGE
   ) {
-    this.pubkeyAdmin = pubkeyAdmin;
     this.merkleRoot = merkleRoot;
   }
 
@@ -71,7 +70,7 @@ export class User {
     const proofIndirectConnection = {
       pubkeyA: this.keypair.pubKey,
       pubkeyC: target,
-      pubkeyAdmin: this.pubkeyAdmin,
+      adminAddress: this.adminAddress,
       merkleRoot: this.merkleRoot,
       proofOfSMP: res.proofOfSMP,
       proofSuccessfulSMP

@@ -9,7 +9,10 @@ import {
   signMsg
 } from "../../src";
 import { bigIntFactoryExclude } from "../utils";
-import { hubRegistryTreeFactory } from "../../src/factories";
+import {
+  adminAddressFactory,
+  hubRegistryTreeFactory
+} from "../../src/factories";
 
 jest.setTimeout(90000);
 
@@ -142,10 +145,10 @@ describe("HubRegistry", () => {
   });
 
   test("verifySignedMsg", async () => {
-    const admin = genKeypair();
+    const adminAddress = adminAddressFactory();
     const hubs = [genKeypair(), genKeypair(), genKeypair()];
     const treeLevels = 4;
-    const tree = hubRegistryTreeFactory(hubs, treeLevels, admin);
+    const tree = hubRegistryTreeFactory(hubs, treeLevels, adminAddress);
 
     const verify = async (leafIndex: number) => {
       const root = tree.tree.root;
@@ -154,12 +157,6 @@ describe("HubRegistry", () => {
       if (!registry.verify()) {
         throw new Error(`registry is invalid: leafIndex=${leafIndex}`);
       }
-      if (
-        registry.adminPubkey === undefined ||
-        registry.adminSig === undefined
-      ) {
-        throw new Error(`registry is not counter-signed: registry=${registry}`);
-      }
       const circuitInputs = {
         pubkeyHub: registry.pubkey,
         sigHubR8: registry.sig.R8,
@@ -167,9 +164,7 @@ describe("HubRegistry", () => {
         merklePathElements: proof.pathElements,
         merklePathIndices: proof.indices,
         merkleRoot: root,
-        pubkeyAdmin: registry.adminPubkey,
-        sigAdminR8: registry.adminSig.R8,
-        sigAdminS: registry.adminSig.S
+        adminAddress: registry.adminAddress
       };
       const witness = await executeCircuit(circuit, circuitInputs);
       const isValid = getSignalByName(

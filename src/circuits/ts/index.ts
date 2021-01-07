@@ -17,6 +17,7 @@ import {
 import { HubRegistry } from "../..";
 import { BabyJubPoint } from "../../smp/v4/babyJub";
 import { MerkleProof } from "../../interfaces";
+import { TEthereumAddress } from "../../types";
 const circom = require("circom");
 
 /**
@@ -73,7 +74,7 @@ type TProof = { proof: any; publicSignals: any };
 type TProofIndirectConnection = {
   pubkeyA: PubKey;
   pubkeyC: PubKey;
-  pubkeyAdmin: PubKey;
+  adminAddress: TEthereumAddress;
   merkleRoot: BigInt;
   proofOfSMP: TProof;
   proofSuccessfulSMP: TProof;
@@ -94,7 +95,7 @@ const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
     merkleRoot: inputs.root,
     sigHubRegistryR8: inputs.hubRegistry.sig.R8,
     sigHubRegistryS: inputs.hubRegistry.sig.S,
-    addressAdmin: inputs.hubRegistry.adminAddress,
+    adminAddress: inputs.hubRegistry.adminAddress,
     pubkeyC: inputs.pubkeyC,
     sigCR8: inputs.sigJoinMsgC.R8,
     sigCS: inputs.sigJoinMsgC.S,
@@ -294,21 +295,21 @@ const verifyProofInFiles = async (
 };
 
 const parseProofOfSMPPublicSignals = (publicSignals: BigInt[]) => {
-  if (publicSignals.length !== 40) {
+  if (publicSignals.length !== 39) {
     throw new ValueError(
       `length of publicSignals is not correct: publicSignals=${publicSignals}`
     );
   }
   // Ignore the first `1n`.
   const pubkeyC = publicSignals.slice(1, 3);
-  const pubkeyAdmin = publicSignals.slice(3, 5);
-  const merkleRoot = publicSignals[5];
-  const pa = new BabyJubPoint(publicSignals.slice(22, 24));
-  const ph = new BabyJubPoint(publicSignals.slice(29, 31));
-  const rh = new BabyJubPoint(publicSignals.slice(36, 38));
+  const adminAddress = publicSignals[3];
+  const merkleRoot = publicSignals[4];
+  const pa = new BabyJubPoint(publicSignals.slice(21, 23));
+  const ph = new BabyJubPoint(publicSignals.slice(28, 30));
+  const rh = new BabyJubPoint(publicSignals.slice(35, 37));
   return {
     pubkeyC,
-    pubkeyAdmin,
+    adminAddress,
     merkleRoot,
     pa,
     ph,
@@ -363,7 +364,7 @@ const verifyProofIndirectConnection = async (
   if (!isPubkeySame(resProofOfSMP.pubkeyC, proof.pubkeyC)) {
     return false;
   }
-  if (!isPubkeySame(resProofOfSMP.pubkeyAdmin, proof.pubkeyAdmin)) {
+  if (resProofOfSMP.adminAddress !== proof.adminAddress) {
     return false;
   }
   /**

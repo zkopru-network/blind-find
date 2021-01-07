@@ -1,12 +1,13 @@
 import { genKeypair } from "maci-crypto";
 import {
   signMsg,
-  prefixRegisterNewHub,
   getCounterSignHashedData,
   verifySignedMsg,
-  getJoinHubMsgHashedData
+  getJoinHubMsgHashedData,
+  getRegisterNewHubHashedData
 } from "../src";
-import { privkeyFactoryExclude } from "./utils";
+import { adminAddressFactory } from "../src/factories";
+import { bigIntFactoryExclude, privkeyFactoryExclude } from "./utils";
 
 describe("Join hub msg", () => {
   const hub = genKeypair();
@@ -63,18 +64,17 @@ describe("Join hub msg", () => {
 
 describe("New hub msg", () => {
   const hub = genKeypair();
-  const admin = genKeypair();
-  const sigHub = signMsg(hub.privKey, prefixRegisterNewHub);
+  const adminAddress = adminAddressFactory();
+  const hashedData = getRegisterNewHubHashedData(adminAddress);
+  const sigHub = signMsg(hub.privKey, hashedData);
 
   test("`verifySignedMsg` should succeed with correct inputs", () => {
-    expect(
-      verifySignedMsg(prefixRegisterNewHub, sigHub, hub.pubKey)
-    ).toBeTruthy();
+    expect(verifySignedMsg(hashedData, sigHub, hub.pubKey)).toBeTruthy();
   });
 
   test("`verifySignedMsg` should fail when wrong signature/pubkey/msg is used", () => {
-    const anotherElement = privkeyFactoryExclude([
-      prefixRegisterNewHub,
+    const anotherElement = bigIntFactoryExclude([
+      hashedData,
       ...sigHub.R8,
       sigHub.S,
       ...hub.pubKey
@@ -84,14 +84,14 @@ describe("New hub msg", () => {
     // Wrong `sig.R8`
     expect(
       verifySignedMsg(
-        prefixRegisterNewHub,
+        hashedData,
         { R8: [sigHub.R8[0], anotherElement], S: sigHub.S },
         hub.pubKey
       )
     ).toBeFalsy();
     expect(
       verifySignedMsg(
-        prefixRegisterNewHub,
+        hashedData,
         { R8: [anotherElement, sigHub.R8[1]], S: sigHub.S },
         hub.pubKey
       )
@@ -99,25 +99,14 @@ describe("New hub msg", () => {
     // Wrong `sig.S`
     expect(
       verifySignedMsg(
-        prefixRegisterNewHub,
+        hashedData,
         { R8: sigHub.R8, S: anotherElement },
         hub.pubKey
       )
     ).toBeFalsy();
     // Wrong `pubkey`
     expect(
-      verifySignedMsg(prefixRegisterNewHub, sigHub, [
-        anotherElement,
-        anotherElement
-      ])
+      verifySignedMsg(hashedData, sigHub, [anotherElement, anotherElement])
     ).toBeFalsy();
-  });
-
-  test("`verifySignedMsg` should work with the counter signed signature", () => {
-    const counterSignedhashedData = getCounterSignHashedData(sigHub);
-    const sigCounterSigned = signMsg(admin.privKey, counterSignedhashedData);
-    expect(
-      verifySignedMsg(counterSignedhashedData, sigCounterSigned, admin.pubKey)
-    ).toBeTruthy();
   });
 });

@@ -8,7 +8,10 @@ import { BabyJubPoint } from "../../src/smp/v4/babyJub";
 import { G } from "../../src/smp/v4/state";
 import { secretFactory } from "../../src/smp/v4/factories";
 import { babyJubPointFactoryExclude } from "../utils";
-import { hubRegistryTreeFactory } from "../../src/factories";
+import {
+  adminAddressFactory,
+  hubRegistryTreeFactory
+} from "../../src/factories";
 
 jest.setTimeout(90000);
 
@@ -113,9 +116,9 @@ describe("merkle proof", () => {
   const levels = 4;
 
   test("merkle proof should be verified successfully in the circuit", async () => {
-    const admin = genKeypair();
+    const adminAddress = adminAddressFactory();
     const hubs = [genKeypair(), genKeypair(), genKeypair()];
-    const tree = hubRegistryTreeFactory(hubs, levels, admin);
+    const tree = hubRegistryTreeFactory(hubs, levels, adminAddress);
 
     const circuit = await compileCircuit("testMerkleProof.circom");
 
