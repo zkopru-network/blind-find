@@ -70,17 +70,13 @@ export const sendGetMerkleProofReq = async (
   // Wait until the socket is opened.
   await waitForSocketOpen(c);
   const req = new GetMerkleProofReq(hubRegistry.pubkey, hubRegistry.sig);
-  const messageHandler = (data: Uint8Array) => {
-    const resp = GetMerkleProofResp.deserialize(data);
-    if (resp.merkleProof.leaf !== hubRegistry.hash()) {
-      console.debug("client: mismatch");
-      throw new RequestFailed("response mismatches the request");
-    }
-    console.debug("client: succeeds");
-    return resp;
-  };
-  const resp = await request(c, req.serialize(), messageHandler, timeout);
+  const bytes = await request(c, req.serialize(), timeout);
+  const resp = GetMerkleProofResp.deserialize(bytes);
+  if (resp.merkleProof.leaf !== hubRegistry.hash()) {
+    console.debug("sendGetMerkleProofReq: mismatch");
+    throw new RequestFailed("response mismatches the request");
+  }
+  console.debug("sendGetMerkleProofReq: succeeds");
   c.close();
-  console.debug("client: closed");
   return resp;
 };

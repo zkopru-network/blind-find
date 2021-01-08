@@ -14,6 +14,8 @@ import { hashPointToScalar } from "./utils";
 
 export class User {
   // NOTE: merkleRoot should be updatable. Also, it can be a list.
+  // TODO: This should be changed to a merkleRoot service later, fetching merkleRoots
+  //  from the contract.
   merkleRoot: BigInt;
   // TODO: Add `JoinedHub`s
 

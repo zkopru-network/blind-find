@@ -78,13 +78,12 @@ export const connect = (ip: string, port: number) => {
   return new WebSocket(`${WS_PROTOCOL}://${ip}:${port}`);
 };
 
-export const request = async <TResponse>(
+export const request = async (
   s: WebSocket,
   requestData: Uint8Array | undefined,
-  messageHandler: (data: Uint8Array) => TResponse,
   timeout: number
-) => {
-  return (await new Promise((res, rej) => {
+): Promise<Uint8Array> => {
+  return await new Promise((res, rej) => {
     const t = setTimeout(() => {
       rej(new TimeoutError());
     }, timeout);
@@ -92,12 +91,7 @@ export const request = async <TResponse>(
     //  registering the listners.
     s.onmessage = event => {
       clearTimeout(t);
-      try {
-        const resp = messageHandler(event.data as Buffer);
-        res(resp);
-      } catch (e) {
-        rej(e);
-      }
+      res(event.data as Buffer);
     };
     s.onclose = event => {
       clearTimeout(t);
@@ -110,7 +104,7 @@ export const request = async <TResponse>(
     if (requestData !== undefined) {
       s.send(requestData);
     }
-  })) as TResponse;
+  });
 };
 
 export const waitForSocketOpen = async (s: WebSocket) => {

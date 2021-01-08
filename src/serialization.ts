@@ -375,17 +375,3 @@ export class SearchMessage3 extends BaseSerializable {
     ]);
   }
 }
-
-export class SearchMessage4 extends EmptyMessage {
-  static deserialize(b: Uint8Array): SearchMessage4 {
-    return super.deserialize(b) as SearchMessage4;
-  }
-
-  static consume(b: Uint8Array): [SearchMessage4, Uint8Array] {
-    return super.consume(b) as [SearchMessage4, Uint8Array];
-  }
-
-  serialize(): Uint8Array {
-    return super.serialize();
-  }
-}

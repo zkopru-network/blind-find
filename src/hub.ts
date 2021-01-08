@@ -16,7 +16,6 @@ import {
   SearchMessage1,
   SearchMessage2,
   SearchMessage3,
-  SearchMessage4,
   msgType
 } from "./serialization";
 import { TLV, Short } from "./smp/serialization";
@@ -119,12 +118,11 @@ export class UserStore implements IUserStore {
 export class HubServer extends BaseServer {
   // TODO: Add a lock to protect `userStore` from racing between tasks?
   userStore: IUserStore;
-  merkleProof: MerkleProof;
 
   constructor(
     readonly keypair: Keypair,
     readonly hubRegistry: HubRegistry,
-    merkleProof: MerkleProof,
+    readonly merkleProof: MerkleProof,
     userStore?: IUserStore,
     readonly timeoutSmall = TIMEOUT,
     readonly timeoutLarge = TIMEOUT_LARGE
@@ -135,7 +133,6 @@ export class HubServer extends BaseServer {
     } else {
       this.userStore = new UserStore();
     }
-    this.merkleProof = merkleProof;
   }
 
   onJoinRequest(socket: WebSocket, bytes: Uint8Array) {
@@ -170,12 +167,12 @@ export class HubServer extends BaseServer {
       }
       const msg1 = new SearchMessage1(false, smpMsg1);
       console.debug(`onSearchRequest: sending msg1`);
-      const msg2 = await request(
+      const msg2Bytes = await request(
         socket,
         msg1.serialize(),
-        data => SearchMessage2.deserialize(data),
         this.timeoutSmall
       );
+      const msg2 = SearchMessage2.deserialize(msg2Bytes);
       console.debug(`onSearchRequest: received msg2`);
       const state2 = stateMachine.state as SMPState2;
       const smpMsg3 = stateMachine.transit(msg2);
@@ -203,12 +200,7 @@ export class HubServer extends BaseServer {
       });
       const msg3 = new SearchMessage3(smpMsg3, proofOfSMP);
       console.debug(`onSearchRequest: sending msg3`);
-      await request(
-        socket,
-        msg3.serialize(),
-        data => SearchMessage4.deserialize(data),
-        this.timeoutSmall
-      );
+      socket.send(msg3.serialize());
     }
     const endMessage1 = new SearchMessage1(true);
     socket.send(endMessage1.serialize());
@@ -261,17 +253,12 @@ export const sendJoinHubReq = async (
   await waitForSocketOpen(c);
   const joinReq = new JoinReq(userPubkey, userSig);
   const req = new TLV(new Short(msgType.JoinReq), joinReq.serialize());
-
-  const messageHandler = (data: Uint8Array): JoinResp => {
-    const resp = JoinResp.deserialize(data);
-    const hasedData = getCounterSignHashedData(userSig);
-    if (!verifySignedMsg(hasedData, resp.hubSig, hubPubkey)) {
-      throw new RequestFailed("hub signature is invalid");
-    }
-    return resp;
-  };
-  const resp = await request(c, req.serialize(), messageHandler, timeout);
-  c.close();
+  const respBytes = await request(c, req.serialize(), timeout);
+  const resp = JoinResp.deserialize(respBytes);
+  const hasedData = getCounterSignHashedData(userSig);
+  if (!verifySignedMsg(hasedData, resp.hubSig, hubPubkey)) {
+    throw new RequestFailed("hub signature is invalid");
+  }
   return resp.hubSig;
 };
 
@@ -303,12 +290,8 @@ export const sendSearchReq = async (
     );
     const stateMachine = new SMPStateMachine(secret);
     const a3 = (stateMachine.state as SMPState1).s3;
-    const msg1 = await request(
-      c,
-      undefined,
-      data => SearchMessage1.deserialize(data),
-      timeoutSmall
-    );
+    const msg1Bytes = await request(c, undefined, timeoutSmall);
+    const msg1 = SearchMessage1.deserialize(msg1Bytes);
     console.debug("sendSearchReq: received search msg1");
     // Check if there is no more candidates.
     if (msg1.isEnd) {
@@ -324,12 +307,8 @@ export const sendSearchReq = async (
       throw new Error("this should never happen");
     }
     console.debug("sendSearchReq: sending search msg2");
-    const msg3 = await request(
-      c,
-      msg2.serialize(),
-      data => SearchMessage3.deserialize(data),
-      timeoutLarge
-    );
+    const msg3Bytes = await request(c, msg2.serialize(), timeoutLarge);
+    const msg3 = SearchMessage3.deserialize(msg3Bytes);
     stateMachine.transit(msg3.smpMsg3);
     if (!stateMachine.isFinished()) {
       throw new RequestFailed(
@@ -337,8 +316,6 @@ export const sendSearchReq = async (
       );
     }
     console.debug("sendSearchReq: msg3.proof=", msg3.proof);
-    const msg4 = new SearchMessage4();
-    c.send(msg4.serialize());
     if (stateMachine.getResult()) {
       const pa = SMPMessage2Wire.fromTLV(msg2).pb;
       const smpMsg3 = SMPMessage3Wire.fromTLV(msg3.smpMsg3);
