@@ -2,11 +2,7 @@ import * as http from "http";
 import express from "express";
 import WebSocket from "ws";
 import { AsyncEvent } from "./utils";
-import {
-  ServerNotRunning,
-  TimeoutError,
-  ConnectionClosed
-} from "./exceptions";
+import { ServerNotRunning, TimeoutError, ConnectionClosed } from "./exceptions";
 import { SOCKET_TIMEOUT, WS_PROTOCOL } from "./configs";
 
 export abstract class BaseServer {
