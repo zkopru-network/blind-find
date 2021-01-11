@@ -14,7 +14,7 @@ import { LEVELS, TIMEOUT, TIMEOUT_LARGE } from "../src/configs";
 import { HubRegistryTree } from "../src";
 import WebSocket from "ws";
 import { TimeoutError } from "../src/exceptions";
-import { waitForSocketOpen, connect } from "../src/websocket";
+import { connect } from "../src/websocket";
 import { Short, TLV } from "../src/smp/serialization";
 import { TEthereumAddress } from "../src/types";
 
@@ -113,10 +113,8 @@ describe("HubServer", () => {
   test("request fails when message has unsupported RPC type", async () => {
     // Invalid registry because of the wrong pubkey
     const expectedUnsupportedType = 5566;
-    const c = connect(ip, port);
+    const c = await connect(ip, port);
 
-    // Wait until the socket is opened.
-    await waitForSocketOpen(c);
     const task = new Promise((res, rej) => {
       const tlv = new TLV(new Short(expectedUnsupportedType), new Uint8Array());
       c.onmessage = () => {

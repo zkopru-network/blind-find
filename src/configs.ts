@@ -1,7 +1,7 @@
 export const LEVELS = 32;
 export const ZERO_VALUE = 0;
 // TODO: Derive a reasonable number here
-const SOCKET_TIMEOUT = 5000;
+export const SOCKET_TIMEOUT = 5000;
 const TIME_GEN_PROOF = 150000; // ~= 4 * time_to_generate_proof_of_smp_on_my_mac
 const TIME_VERIFY_PROOF = 2000; // // ~= 4 * time_to_verify_proof_of_smp_on_my_mac
 export const TIMEOUT = SOCKET_TIMEOUT + TIME_VERIFY_PROOF;

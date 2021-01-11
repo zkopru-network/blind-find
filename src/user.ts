@@ -14,20 +14,17 @@ import { hashPointToScalar } from "./utils";
 
 export class User {
   // NOTE: merkleRoot should be updatable. Also, it can be a list.
-  // TODO: This should be changed to a merkleRoot service later, fetching merkleRoots
+  // TODO: merkleRoot should be changed to a merkleRoot service later, fetching merkleRoots
   //  from the contract.
-  merkleRoot: BigInt;
   // TODO: Add `JoinedHub`s
 
   constructor(
     readonly keypair: Keypair,
     readonly adminAddress: TEthereumAddress,
-    merkleRoot: BigInt,
+    readonly merkleRoot: BigInt,
     readonly timeoutSmall = TIMEOUT,
     readonly timeoutLarge = TIMEOUT_LARGE
-  ) {
-    this.merkleRoot = merkleRoot;
-  }
+  ) {}
 
   async join(ip: string, port: number, hubPubkey: PubKey) {
     const joinMsg = getJoinHubMsgHashedData(this.keypair.pubKey, hubPubkey);

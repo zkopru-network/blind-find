@@ -8,7 +8,7 @@ import { genKeypair, Keypair } from "maci-crypto";
 import { LEVELS } from "../src/configs";
 import { HubRegistry, HubRegistryTree } from "../src";
 import WebSocket from "ws";
-import { RequestFailed, ValueError } from "../src/exceptions";
+import { ValueError } from "../src/exceptions";
 import { TEthereumAddress } from "../src/types";
 import { pubkeyFactoryExclude } from "./utils";
 

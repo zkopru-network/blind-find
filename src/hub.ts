@@ -20,7 +20,7 @@ import {
 } from "./serialization";
 import { TLV, Short } from "./smp/serialization";
 import { bigIntToNumber } from "./smp/utils";
-import { BaseServer, request, waitForSocketOpen, connect } from "./websocket";
+import { BaseServer, connect, WebSocketAsyncReadWriter } from "./websocket";
 import { TIMEOUT, MAXIMUM_TRIALS, TIMEOUT_LARGE } from "./configs";
 import { SMPStateMachine } from "./smp";
 import { hashPointToScalar } from "./utils";
@@ -149,6 +149,7 @@ export class HubServer extends BaseServer {
 
   async onSearchRequest(socket: WebSocket, bytes: Uint8Array) {
     console.debug("server: onSearchRequest");
+    const rwtor = new WebSocketAsyncReadWriter(socket);
     // SearchMessage0
     // TODO: Handle Message0. If it's a proof of user, disconnect
     //  right away if the proof is invalid.
@@ -167,11 +168,8 @@ export class HubServer extends BaseServer {
       }
       const msg1 = new SearchMessage1(false, smpMsg1);
       console.debug(`onSearchRequest: sending msg1`);
-      const msg2Bytes = await request(
-        socket,
-        msg1.serialize(),
-        this.timeoutSmall
-      );
+      rwtor.write(msg1.serialize());
+      const msg2Bytes = await rwtor.read(this.timeoutSmall);
       const msg2 = SearchMessage2.deserialize(msg2Bytes);
       console.debug(`onSearchRequest: received msg2`);
       const state2 = stateMachine.state as SMPState2;
@@ -200,10 +198,11 @@ export class HubServer extends BaseServer {
       });
       const msg3 = new SearchMessage3(smpMsg3, proofOfSMP);
       console.debug(`onSearchRequest: sending msg3`);
-      socket.send(msg3.serialize());
+      rwtor.write(msg3.serialize());
     }
     const endMessage1 = new SearchMessage1(true);
-    socket.send(endMessage1.serialize());
+    console.debug(`onSearchRequest: sending ending msg1`);
+    rwtor.write(endMessage1.serialize());
   }
 
   onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
@@ -247,13 +246,12 @@ export const sendJoinHubReq = async (
   hubPubkey: PubKey,
   timeout: number = TIMEOUT
 ): Promise<Signature> => {
-  const c = connect(ip, port);
-
-  // Wait until the socket is opened.
-  await waitForSocketOpen(c);
+  const c = await connect(ip, port);
+  const rwtor = new WebSocketAsyncReadWriter(c);
   const joinReq = new JoinReq(userPubkey, userSig);
   const req = new TLV(new Short(msgType.JoinReq), joinReq.serialize());
-  const respBytes = await request(c, req.serialize(), timeout);
+  rwtor.write(req.serialize());
+  const respBytes = await rwtor.read(timeout);
   const resp = JoinResp.deserialize(respBytes);
   const hasedData = getCounterSignHashedData(userSig);
   if (!verifySignedMsg(hasedData, resp.hubSig, hubPubkey)) {
@@ -270,14 +268,12 @@ export const sendSearchReq = async (
   timeoutLarge: number = TIMEOUT_LARGE,
   maximumTrial: number = MAXIMUM_TRIALS
 ): Promise<TSMPResult | null> => {
-  const c = connect(ip, port);
-
-  // Wait until the socket is opened.
-  await waitForSocketOpen(c);
+  const c = await connect(ip, port);
+  const rwtor = new WebSocketAsyncReadWriter(c);
 
   const msg0 = new SearchMessage0();
   const req = new TLV(new Short(msgType.SearchReq), msg0.serialize());
-  c.send(req.serialize());
+  rwtor.write(req.serialize());
 
   let smpRes: TSMPResult | null = null;
   let numTrials = 0;
@@ -290,9 +286,9 @@ export const sendSearchReq = async (
     );
     const stateMachine = new SMPStateMachine(secret);
     const a3 = (stateMachine.state as SMPState1).s3;
-    const msg1Bytes = await request(c, undefined, timeoutSmall);
+    const msg1Bytes = await rwtor.read(timeoutSmall);
     const msg1 = SearchMessage1.deserialize(msg1Bytes);
-    console.debug("sendSearchReq: received search msg1");
+    console.debug("sendSearchReq: received msg1");
     // Check if there is no more candidates.
     if (msg1.isEnd) {
       break;
@@ -306,8 +302,10 @@ export const sendSearchReq = async (
     if (msg2 === null) {
       throw new Error("this should never happen");
     }
-    console.debug("sendSearchReq: sending search msg2");
-    const msg3Bytes = await request(c, msg2.serialize(), timeoutLarge);
+    console.debug("sendSearchReq: sending msg2");
+    rwtor.write(msg2.serialize());
+    const msg3Bytes = await rwtor.read(timeoutLarge);
+    console.debug("sendSearchReq: received msg3");
     const msg3 = SearchMessage3.deserialize(msg3Bytes);
     stateMachine.transit(msg3.smpMsg3);
     if (!stateMachine.isFinished()) {
@@ -315,8 +313,10 @@ export const sendSearchReq = async (
         "smp should have been finished. there must be something wrong"
       );
     }
-    console.debug("sendSearchReq: msg3.proof=", msg3.proof);
     if (stateMachine.getResult()) {
+      console.debug(
+        `sendSearchReq: SMP has matched, target=${target} is found`
+      );
       const pa = SMPMessage2Wire.fromTLV(msg2).pb;
       const smpMsg3 = SMPMessage3Wire.fromTLV(msg3.smpMsg3);
       const ph = smpMsg3.pa;
@@ -331,6 +331,5 @@ export const sendSearchReq = async (
     }
     numTrials++;
   }
-  c.close();
   return smpRes;
 };

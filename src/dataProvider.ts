@@ -6,7 +6,7 @@ import { TIMEOUT } from "./configs";
 import { RequestFailed, ValueError } from "./exceptions";
 import { GetMerkleProofReq, GetMerkleProofResp } from "./serialization";
 import { TEthereumAddress } from "./types";
-import { BaseServer, request, waitForSocketOpen, connect } from "./websocket";
+import { BaseServer, connect, WebSocketAsyncReadWriter } from "./websocket";
 
 // TODO: Persistance
 export class DataProviderServer extends BaseServer {
@@ -63,14 +63,14 @@ export const sendGetMerkleProofReq = async (
   hubRegistry: HubRegistry,
   timeout: number = TIMEOUT
 ): Promise<GetMerkleProofResp> => {
-  const c = connect(ip, port);
+  const c = await connect(ip, port);
   if (!hubRegistry.verify()) {
     throw new ValueError("invalid hub registry");
   }
-  // Wait until the socket is opened.
-  await waitForSocketOpen(c);
+  const rwtor = new WebSocketAsyncReadWriter(c);
   const req = new GetMerkleProofReq(hubRegistry.pubkey, hubRegistry.sig);
-  const bytes = await request(c, req.serialize(), timeout);
+  rwtor.write(req.serialize());
+  const bytes = await rwtor.read(timeout);
   const resp = GetMerkleProofResp.deserialize(bytes);
   if (resp.merkleProof.leaf !== hubRegistry.hash()) {
     console.debug("sendGetMerkleProofReq: mismatch");

@@ -38,6 +38,14 @@ export class ServerNotRunning extends NetworkingError {
   }
 }
 
+export class ConnectionClosed extends NetworkingError {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, ConnectionClosed.prototype);
+  }
+}
+
 export class RPCError extends NetworkingError {
   constructor(m?: string) {
     super(m);
