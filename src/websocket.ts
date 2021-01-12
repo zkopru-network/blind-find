@@ -5,6 +5,50 @@ import { AsyncEvent } from "./utils";
 import { ServerNotRunning, TimeoutError, ConnectionClosed } from "./exceptions";
 import { SOCKET_TIMEOUT, WS_PROTOCOL } from "./configs";
 
+interface IIPRateLimiter {
+  allow(ip: string): boolean;
+}
+
+type TTokenBucket = { numTokens: number; timestamp: number };
+
+export class TokenBucketRateLimiter implements IIPRateLimiter {
+  buckets: Map<string, TTokenBucket>;
+
+  constructor(readonly numTokens: number, readonly refreshPeriod: number) {
+    this.buckets = new Map<string, TTokenBucket>();
+  }
+
+  /**
+   *
+   * @param ip IP address to put rate limit on.
+   * @returns if the IP address is allowed now or not.
+   */
+  allow(ip: string): boolean {
+    const bucket = this.buckets.get(ip);
+    const currentTime = Date.now();
+    // If ip is not in the map or it's time to refresh, refresh tokens and return true.
+    if (
+      bucket === undefined ||
+      currentTime - bucket.timestamp > this.refreshPeriod
+    ) {
+      this.buckets.set(ip, {
+        numTokens: this.numTokens - 1, // All tokens subtract this `allow`.
+        timestamp: currentTime
+      });
+      return true;
+    } else if (bucket.numTokens > 0) {
+      this.buckets.set(ip, {
+        numTokens: bucket.numTokens - 1,
+        timestamp: bucket.timestamp
+      });
+      return true;
+    } else {
+      // No token for the ip available.
+      return false;
+    }
+  }
+}
+
 export abstract class BaseServer {
   isRunning: boolean;
   private httpServer?: http.Server;

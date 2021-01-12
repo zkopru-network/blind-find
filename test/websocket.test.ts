@@ -4,6 +4,7 @@ import * as http from "http";
 import {
   BaseServer,
   connect,
+  TokenBucketRateLimiter,
   WebSocketAsyncReadWriter
 } from "../src/websocket";
 import { TimeoutError } from "../src/exceptions";
@@ -73,5 +74,53 @@ describe("TestServer", () => {
     await expect(s.read()).rejects.toBeTruthy();
 
     faultyServer.close();
+  });
+});
+
+describe.only("TokenBucketRateLimiter", () => {
+  const ip0 = "127.0.0.1";
+  const ip1 = "192.168.0.1";
+  const ip2 = "140.112.30.35";
+
+  test("numTokens", () => {
+    const numTokens = 2;
+    const refreshPeriod = 10000000;
+    const rl = new TokenBucketRateLimiter(numTokens, refreshPeriod);
+
+    // token left of ip0 = 1
+    expect(rl.allow(ip0)).toBeTruthy();
+    // token left of ip0 = 0
+    expect(rl.allow(ip0)).toBeTruthy();
+    // rejected
+    expect(rl.allow(ip0)).toBeFalsy();
+
+    // different IPs are independent.
+    expect(rl.allow(ip1)).toBeTruthy();
+    expect(rl.allow(ip2)).toBeTruthy();
+    expect(rl.allow(ip1)).toBeTruthy();
+    expect(rl.allow(ip2)).toBeTruthy();
+    // tokens of ip1 and ip2 are used up.
+    expect(rl.allow(ip1)).toBeFalsy();
+    expect(rl.allow(ip2)).toBeFalsy();
+  });
+
+  test("refresh period", async () => {
+    const numTokens = 2;
+    const refreshPeriod = 100;
+    const rl = new TokenBucketRateLimiter(numTokens, refreshPeriod);
+
+    expect(rl.allow(ip0)).toBeTruthy();
+    expect(rl.allow(ip0)).toBeTruthy();
+    // rejected
+    expect(rl.allow(ip0)).toBeFalsy();
+
+    // Sleep `refreshPeriod` ms.
+    await new Promise((res, rej) => {
+      setTimeout(() => {
+        res();
+      }, refreshPeriod);
+    });
+
+    expect(rl.allow(ip0)).toBeTruthy();
   });
 });
