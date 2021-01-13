@@ -1,6 +1,6 @@
 import * as http from "http";
 import { Keypair, PubKey, Signature } from "maci-crypto";
-import WebSocket from "ws";
+import WebSocket, { AddressInfo } from "ws";
 
 import {
   getCounterSignHashedData,
@@ -20,7 +20,14 @@ import {
 } from "./serialization";
 import { TLV, Short } from "./smp/serialization";
 import { bigIntToNumber } from "./smp/utils";
-import { BaseServer, connect, WebSocketAsyncReadWriter } from "./websocket";
+import {
+  BaseServer,
+  connect,
+  IIPRateLimiter,
+  TokenBucketRateLimiter,
+  TRateLimitParams,
+  WebSocketAsyncReadWriter
+} from "./websocket";
 import { TIMEOUT, MAXIMUM_TRIALS, TIMEOUT_LARGE } from "./configs";
 import { SMPStateMachine } from "./smp";
 import { hashPointToScalar } from "./utils";
@@ -119,10 +126,17 @@ export class HubServer extends BaseServer {
   // TODO: Add a lock to protect `userStore` from racing between tasks?
   userStore: IUserStore;
 
+  globalRateLimiter: IIPRateLimiter;
+  joinRateLimiter: IIPRateLimiter;
+  searchRateLimiter: IIPRateLimiter;
+
   constructor(
     readonly keypair: Keypair,
     readonly hubRegistry: HubRegistry,
     readonly merkleProof: MerkleProof,
+    globalRateLimit: TRateLimitParams,
+    joinRateLimit: TRateLimitParams,
+    searchRateLimit: TRateLimitParams,
     userStore?: IUserStore,
     readonly timeoutSmall = TIMEOUT,
     readonly timeoutLarge = TIMEOUT_LARGE
@@ -133,10 +147,17 @@ export class HubServer extends BaseServer {
     } else {
       this.userStore = new UserStore();
     }
+    this.globalRateLimiter = new TokenBucketRateLimiter(globalRateLimit);
+    this.joinRateLimiter = new TokenBucketRateLimiter(joinRateLimit);
+    this.searchRateLimiter = new TokenBucketRateLimiter(searchRateLimit);
   }
 
-  onJoinRequest(socket: WebSocket, bytes: Uint8Array) {
+  onJoinRequest(socket: WebSocket, ip: string, bytes: Uint8Array) {
     console.debug("server: onJoinRequest");
+    if (!this.joinRateLimiter.allow(ip)) {
+      socket.terminate();
+      return;
+    }
     const req = JoinReq.deserialize(bytes);
     const hashedData = getCounterSignHashedData(req.userSig);
     const hubSig = signMsg(this.keypair.privKey, hashedData);
@@ -147,8 +168,12 @@ export class HubServer extends BaseServer {
     });
   }
 
-  async onSearchRequest(socket: WebSocket, bytes: Uint8Array) {
+  async onSearchRequest(socket: WebSocket, ip: string, bytes: Uint8Array) {
     console.debug("server: onSearchRequest");
+    if (!this.searchRateLimiter.allow(ip)) {
+      socket.terminate();
+      return;
+    }
     const rwtor = new WebSocketAsyncReadWriter(socket);
     // SearchMessage0
     // TODO: Handle Message0. If it's a proof of user, disconnect
@@ -207,6 +232,11 @@ export class HubServer extends BaseServer {
 
   onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
     // Delegate to the corresponding handler
+    const ip = (request.connection.address() as AddressInfo).address;
+    if (!this.globalRateLimiter.allow(ip)) {
+      socket.terminate();
+      return;
+    }
     socket.onmessage = async event => {
       const tlv = TLV.deserialize(event.data as Buffer);
       const tlvType = bigIntToNumber(tlv.type.value);
@@ -223,11 +253,11 @@ export class HubServer extends BaseServer {
       }
       switch (tlvType) {
         case msgType.JoinReq:
-          this.onJoinRequest(socket, tlv.value);
+          this.onJoinRequest(socket, ip, tlv.value);
           socket.close();
           break;
         case msgType.SearchReq:
-          await this.onSearchRequest(socket, tlv.value);
+          await this.onSearchRequest(socket, ip, tlv.value);
           socket.close();
           break;
         default:

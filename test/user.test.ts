@@ -21,7 +21,18 @@ describe("User", () => {
   expect(tree.length).toEqual(1);
   const hubRegistry = tree.leaves[0];
   const merkleProof = tree.tree.genMerklePath(0);
-  const hub = new HubServer(hubKeypair, hubRegistry, merkleProof);
+  const rateLimit = {
+    numAccess: 1000,
+    refreshPeriod: 100000
+  };
+  const hub = new HubServer(
+    hubKeypair,
+    hubRegistry,
+    merkleProof,
+    rateLimit,
+    rateLimit,
+    rateLimit
+  );
   let ip: string;
   let port: number;
 

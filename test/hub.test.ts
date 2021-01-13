@@ -9,14 +9,12 @@ import {
   sendSearchReq,
   UserStore
 } from "../src/hub";
-import { genKeypair, Keypair, Signature } from "maci-crypto";
+import { genKeypair, Signature } from "maci-crypto";
 import { LEVELS, TIMEOUT, TIMEOUT_LARGE } from "../src/configs";
-import { HubRegistryTree } from "../src";
 import WebSocket from "ws";
 import { TimeoutError } from "../src/exceptions";
-import { connect } from "../src/websocket";
+import { connect, TRateLimitParams } from "../src/websocket";
 import { Short, TLV } from "../src/smp/serialization";
-import { TEthereumAddress } from "../src/types";
 
 const timeoutBeginAndEnd = TIMEOUT + TIMEOUT;
 // Timeout for running SMP against one peer (including time generating/verifying proofs).
@@ -81,24 +79,30 @@ describe("HubServer", () => {
   //  following tests matters. The server should be alive until the end of the final
   //  test (which should be closed in `afterAll`).
   let hub: HubServer;
-  let hubkeypair: Keypair;
-  let user1: Keypair;
-  let user2: Keypair;
-  let adminAddress: TEthereumAddress;
-  let tree: HubRegistryTree;
   let ip: string;
   let port: number;
+  const hubkeypair = genKeypair();
+  const adminAddress = adminAddressFactory();
+  const user1 = genKeypair();
+  const user2 = genKeypair();
+  const tree = hubRegistryTreeFactory([hubkeypair], LEVELS, adminAddress);
+  expect(tree.length).toEqual(1);
+  const hubRegistry = tree.leaves[0];
+  const merkleProof = tree.tree.genMerklePath(0);
 
   beforeAll(async () => {
-    hubkeypair = genKeypair();
-    adminAddress = adminAddressFactory();
-    user1 = genKeypair();
-    user2 = genKeypair();
-    tree = hubRegistryTreeFactory([hubkeypair], LEVELS, adminAddress);
-    expect(tree.length).toEqual(1);
-    const hubRegistry = tree.leaves[0];
-    const merkleProof = tree.tree.genMerklePath(0);
-    hub = new HubServer(hubkeypair, hubRegistry, merkleProof);
+    const rateLimit = {
+      numAccess: 1000,
+      refreshPeriod: 100000
+    };
+    hub = new HubServer(
+      hubkeypair,
+      hubRegistry,
+      merkleProof,
+      rateLimit,
+      rateLimit,
+      rateLimit
+    );
     await hub.start();
 
     const addr = hub.address as WebSocket.AddressInfo;
@@ -185,6 +189,88 @@ describe("HubServer", () => {
         timeoutExpectedToFail
       )
     ).rejects.toThrowError(TimeoutError);
-    // TODO: Add more tests for timeout for both server and client.
+  });
+
+  test.only("requests fail when rate limit is reached", async () => {
+    const hubkeypair = genKeypair();
+    const adminAddress = adminAddressFactory();
+    const tree = hubRegistryTreeFactory([hubkeypair], LEVELS, adminAddress);
+    expect(tree.length).toEqual(1);
+    const hubRegistry = tree.leaves[0];
+    const merkleProof = tree.tree.genMerklePath(0);
+
+    const createHub = async (
+      globalRateLimit: TRateLimitParams,
+      joinRateLimit: TRateLimitParams,
+      searchRateLimit: TRateLimitParams
+    ) => {
+      const hub = new HubServer(
+        hubkeypair,
+        hubRegistry,
+        merkleProof,
+        globalRateLimit,
+        joinRateLimit,
+        searchRateLimit
+      );
+      await hub.start();
+      const port = hub.address.port;
+      return { hub, port };
+    };
+
+    const zeroRateLimit = { numAccess: 0, refreshPeriod: 100000 };
+    const normalRateLimit = { numAccess: 1000, refreshPeriod: 100000 };
+
+    // Put zero rate limit on global, thus any request fails.
+    await (async () => {
+      const { hub, port } = await createHub(
+        zeroRateLimit,
+        normalRateLimit,
+        normalRateLimit
+      );
+      const signedMsg = signedJoinMsgFactory(user1, hubkeypair);
+      await expect(
+        sendJoinHubReq(
+          ip,
+          port,
+          signedMsg.userPubkey,
+          signedMsg.userSig,
+          signedMsg.hubPubkey
+        )
+      ).rejects.toBeTruthy();
+      await expect(sendSearchReq(ip, port, user1.pubKey)).rejects.toBeTruthy();
+      hub.close();
+    })();
+
+    // Put zero rate limit on join request, thus only join requests fail.
+    await (async () => {
+      const { hub, port } = await createHub(
+        normalRateLimit,
+        zeroRateLimit,
+        normalRateLimit
+      );
+      const signedMsg = signedJoinMsgFactory(user1, hubkeypair);
+      await expect(
+        sendJoinHubReq(
+          ip,
+          port,
+          signedMsg.userPubkey,
+          signedMsg.userSig,
+          signedMsg.hubPubkey
+        )
+      ).rejects.toBeTruthy();
+      // await expect(sendSearchReq(ip, port, user1.pubKey)).rejects.toBeTruthy();
+      hub.close();
+    })();
+
+    // Put zero rate limit on search request, thus only join requests fail.
+    await (async () => {
+      const { hub, port } = await createHub(
+        normalRateLimit,
+        normalRateLimit,
+        zeroRateLimit
+      );
+      await expect(sendSearchReq(ip, port, user1.pubKey)).rejects.toBeTruthy();
+      hub.close();
+    })();
   });
 });
