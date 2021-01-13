@@ -65,4 +65,21 @@ describe("DataProviderServer", () => {
   test("send request", async () => {
     await sendGetMerkleProofReq(ip, port, hubRegistry);
   });
+
+  test("requests fail when rate limit is reached", async () => {
+    const ip = "localhost";
+    const dataProvider = new DataProviderServer(adminAddress, tree, {
+      numAccess: 1,
+      refreshPeriod: 100000
+    });
+    await dataProvider.start();
+    const port = (dataProvider.address as WebSocket.AddressInfo).port;
+    // Use up the `numAccess`.
+    await sendGetMerkleProofReq(ip, port, hubRegistry);
+    // Fails because the rate limit is reached.
+    await expect(
+      sendGetMerkleProofReq(ip, port, hubRegistry)
+    ).rejects.toBeTruthy();
+    await dataProvider.close();
+  });
 });

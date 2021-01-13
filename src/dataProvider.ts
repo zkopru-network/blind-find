@@ -11,7 +11,8 @@ import {
   connect,
   WebSocketAsyncReadWriter,
   IIPRateLimiter,
-  TokenBucketRateLimiter
+  TokenBucketRateLimiter,
+  TRateLimitParams
 } from "./websocket";
 
 // TODO: Persistance
@@ -21,18 +22,15 @@ export class DataProviderServer extends BaseServer {
   constructor(
     readonly adminAddress: TEthereumAddress,
     readonly tree: HubRegistryTree,
-    readonly rateLimitConfig: { numAccess: number; refreshPeriod: number }
+    readonly rateLimitConfig: TRateLimitParams
   ) {
     super();
-    this.rateLimiter = new TokenBucketRateLimiter(
-      rateLimitConfig.numAccess,
-      rateLimitConfig.refreshPeriod
-    );
+    this.rateLimiter = new TokenBucketRateLimiter(rateLimitConfig);
   }
 
   onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
-    console.info(`DataProviderServer: new incoming connection`);
     const ip = (request.connection.address() as AddressInfo).address;
+    console.info(`DataProviderServer: new incoming connection from ${ip}`);
     if (!this.rateLimiter.allow(ip)) {
       socket.terminate();
       return;
