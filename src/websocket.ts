@@ -10,11 +10,12 @@ export interface IIPRateLimiter {
 }
 
 type TTokenBucket = { numTokens: number; timestamp: number };
+export type TRateLimitParams = { numAccess: number; refreshPeriod: number };
 
 export class TokenBucketRateLimiter implements IIPRateLimiter {
   buckets: Map<string, TTokenBucket>;
 
-  constructor(readonly numTokens: number, readonly refreshPeriod: number) {
+  constructor(readonly params: TRateLimitParams) {
     this.buckets = new Map<string, TTokenBucket>();
   }
 
@@ -24,19 +25,19 @@ export class TokenBucketRateLimiter implements IIPRateLimiter {
    * @returns if the IP address is allowed now or not.
    */
   allow(ip: string): boolean {
-    const bucket = this.buckets.get(ip);
+    let bucket = this.buckets.get(ip);
     const currentTime = Date.now();
     // If ip is not in the map or it's time to refresh, refresh tokens and return true.
     if (
       bucket === undefined ||
-      currentTime - bucket.timestamp > this.refreshPeriod
+      currentTime - bucket.timestamp > this.params.refreshPeriod
     ) {
-      this.buckets.set(ip, {
-        numTokens: this.numTokens - 1, // All tokens subtract this `allow`.
+      bucket = {
+        numTokens: this.params.numAccess,
         timestamp: currentTime
-      });
-      return true;
-    } else if (bucket.numTokens > 0) {
+      };
+    }
+    if (bucket.numTokens > 0) {
       this.buckets.set(ip, {
         numTokens: bucket.numTokens - 1,
         timestamp: bucket.timestamp

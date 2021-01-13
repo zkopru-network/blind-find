@@ -77,15 +77,15 @@ describe("TestServer", () => {
   });
 });
 
-describe.only("TokenBucketRateLimiter", () => {
+describe("TokenBucketRateLimiter", () => {
   const ip0 = "127.0.0.1";
   const ip1 = "192.168.0.1";
   const ip2 = "140.112.30.35";
 
   test("numTokens", () => {
-    const numTokens = 2;
+    const numAccess = 2;
     const refreshPeriod = 10000000;
-    const rl = new TokenBucketRateLimiter(numTokens, refreshPeriod);
+    const rl = new TokenBucketRateLimiter({ numAccess, refreshPeriod });
 
     // token left of ip0 = 1
     expect(rl.allow(ip0)).toBeTruthy();
@@ -105,9 +105,9 @@ describe.only("TokenBucketRateLimiter", () => {
   });
 
   test("refresh period", async () => {
-    const numTokens = 2;
+    const numAccess = 2;
     const refreshPeriod = 100;
-    const rl = new TokenBucketRateLimiter(numTokens, refreshPeriod);
+    const rl = new TokenBucketRateLimiter({ numAccess, refreshPeriod });
 
     expect(rl.allow(ip0)).toBeTruthy();
     expect(rl.allow(ip0)).toBeTruthy();
