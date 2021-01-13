@@ -1,24 +1,42 @@
 import * as http from "http";
-import WebSocket from "ws";
+import WebSocket, { AddressInfo } from "ws";
 
 import { HubRegistry, HubRegistryTree } from "./";
 import { TIMEOUT } from "./configs";
 import { RequestFailed, ValueError } from "./exceptions";
 import { GetMerkleProofReq, GetMerkleProofResp } from "./serialization";
 import { TEthereumAddress } from "./types";
-import { BaseServer, connect, WebSocketAsyncReadWriter } from "./websocket";
+import {
+  BaseServer,
+  connect,
+  WebSocketAsyncReadWriter,
+  IIPRateLimiter,
+  TokenBucketRateLimiter
+} from "./websocket";
 
 // TODO: Persistance
 export class DataProviderServer extends BaseServer {
+  rateLimiter: IIPRateLimiter;
+
   constructor(
     readonly adminAddress: TEthereumAddress,
-    readonly tree: HubRegistryTree
+    readonly tree: HubRegistryTree,
+    readonly rateLimitConfig: { numAccess: number; refreshPeriod: number }
   ) {
     super();
+    this.rateLimiter = new TokenBucketRateLimiter(
+      rateLimitConfig.numAccess,
+      rateLimitConfig.refreshPeriod
+    );
   }
 
   onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
     console.info(`DataProviderServer: new incoming connection`);
+    const ip = (request.connection.address() as AddressInfo).address;
+    if (!this.rateLimiter.allow(ip)) {
+      socket.terminate();
+      return;
+    }
     socket.onmessage = event => {
       const req = GetMerkleProofReq.deserialize(event.data as Buffer);
       const hubRegistry = new HubRegistry(

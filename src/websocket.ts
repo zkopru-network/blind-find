@@ -5,7 +5,7 @@ import { AsyncEvent } from "./utils";
 import { ServerNotRunning, TimeoutError, ConnectionClosed } from "./exceptions";
 import { SOCKET_TIMEOUT, WS_PROTOCOL } from "./configs";
 
-interface IIPRateLimiter {
+export interface IIPRateLimiter {
   allow(ip: string): boolean;
 }
 
@@ -19,7 +19,7 @@ export class TokenBucketRateLimiter implements IIPRateLimiter {
   }
 
   /**
-   *
+   * Allow an IP to access.
    * @param ip IP address to put rate limit on.
    * @returns if the IP address is allowed now or not.
    */

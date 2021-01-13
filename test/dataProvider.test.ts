@@ -27,9 +27,11 @@ describe("DataProviderServer", () => {
     tree = hubRegistryTreeFactory([hub], LEVELS, adminAddress);
     expect(tree.length).toEqual(1);
     hubRegistry = tree.leaves[0];
-    dataProvider = new DataProviderServer(adminAddress, tree);
+    dataProvider = new DataProviderServer(adminAddress, tree, {
+      numAccess: 1000,
+      refreshPeriod: 100000
+    });
     await dataProvider.start();
-
     const addr = dataProvider.address as WebSocket.AddressInfo;
     ip = "localhost";
     port = addr.port;
