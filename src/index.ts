@@ -107,10 +107,12 @@ class HubRegistry {
 class HubRegistryTree {
   leaves: HubRegistry[];
   tree: IncrementalQuinTree;
+  private mapHashToIndex: Map<BigInt, number>;
 
   constructor(levels = LEVELS) {
     this.tree = new IncrementalQuinTree(levels, ZERO_VALUE, 2);
     this.leaves = [];
+    this.mapHashToIndex = new Map<BigInt, number>();
   }
 
   public get length() {
@@ -121,8 +123,16 @@ class HubRegistryTree {
     if (!e.verify()) {
       throw new ValueError(`registry is not verified: e=${e}`);
     }
+    const registryHash = e.hash();
+    const index = this.leaves.length;
     this.leaves.push(e);
-    this.tree.insert(e.hash());
+    this.tree.insert(registryHash);
+    this.mapHashToIndex.set(registryHash, index);
+  }
+
+  getIndex(e: HubRegistry): number | undefined {
+    const key = e.hash();
+    return this.mapHashToIndex.get(key);
   }
 }
 

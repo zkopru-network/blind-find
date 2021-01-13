@@ -47,20 +47,11 @@ export class DataProviderServer extends BaseServer {
         socket.terminate();
         return;
       }
-      // TODO: Naive search. Can be optimized with a hash table.
-      const searchRegistry = (target: HubRegistry): number => {
-        for (let i = 0; i < this.tree.length; i++) {
-          if (this.tree.leaves[i].hash === target.hash) {
-            return i;
-          }
-        }
-        return -1;
-      };
-      const index = searchRegistry(hubRegistry);
+      const index = this.tree.getIndex(hubRegistry);
       console.debug(
         `DataProviderServer: received req: ${req.hubPubkey}, index=${index}`
       );
-      if (index === -1) {
+      if (index === undefined) {
         // Not Found.
         socket.terminate();
         return;
