@@ -251,27 +251,27 @@ export class DBMap<T extends object> implements IDBMap<T> {
   async getAtIndex(index: number): Promise<T> {
     await this.lock.acquireAsync();
     try {
-        const length = await this._getLength();
-        if (index >= length) {
-            throw new ValueError(
-              `index out of range: index=${index}, length=${length}`
-            );
-        }
-        return (await this._getAtIndex(index));
+      const length = await this._getLength();
+      if (index >= length) {
+        throw new ValueError(
+          `index out of range: index=${index}, length=${length}`
+        );
+      }
+      return await this._getAtIndex(index);
     } finally {
-        this.lock.release();
+      this.lock.release();
     }
   }
 
-  async* [Symbol.asyncIterator]() {
+  async *[Symbol.asyncIterator]() {
     await this.lock.acquireAsync();
     try {
-        const length = await this._getLength();
-        for (let i = 0; i < length; i++) {
-            yield (await this._getAtIndex(i));
-        }
+      const length = await this._getLength();
+      for (let i = 0; i < length; i++) {
+        yield await this._getAtIndex(i);
+      }
     } finally {
-        this.lock.release();
+      this.lock.release();
     }
   }
 
@@ -292,9 +292,9 @@ export class DBMap<T extends object> implements IDBMap<T> {
         //  - 2. Set data to key.
         const keysLength = await this._getLength();
         await this.db.batch([
-            { type: "put", key: this.getIndexKey(keysLength), value: mapKey }, // Append key to keys
-            { type: "put", key: this.getLengthKey(), value: keysLength + 1 }, // Update keys length
-            { type: "put", key: mapKey, value: encodedData } // Set data to the corresponding key
+          { type: "put", key: this.getIndexKey(keysLength), value: mapKey }, // Append key to keys
+          { type: "put", key: this.getLengthKey(), value: keysLength + 1 }, // Update keys length
+          { type: "put", key: mapKey, value: encodedData } // Set data to the corresponding key
         ]);
       }
     } finally {
@@ -306,5 +306,4 @@ export class DBMap<T extends object> implements IDBMap<T> {
     const mapKey = await this.db.get(this.getIndexKey(index));
     return this.decodeBigInts(await this.db.get(mapKey));
   }
-
 }

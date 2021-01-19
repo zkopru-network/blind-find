@@ -204,7 +204,7 @@ describe("DBMap", () => {
     // AsyncIterator
     const data: PubKey[] = [];
     for await (const i of dbMap) {
-        data.push(i);
+      data.push(i);
     }
     expect(data.length).toEqual(2);
   });
