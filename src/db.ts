@@ -87,7 +87,7 @@ interface IDBArray<T> {
   set(index: number, data: T): Promise<void>;
 }
 
-interface IDBMap<T> {
+interface IDBMap<T> extends AsyncIterable<T> {
   getLength(): Promise<number>;
   get(key: string): Promise<T | undefined>;
   set(key: string, data: T): Promise<void>;
@@ -251,35 +251,60 @@ export class DBMap<T extends object> implements IDBMap<T> {
   async getAtIndex(index: number): Promise<T> {
     await this.lock.acquireAsync();
     try {
-      const length = await this._getLength();
-      if (index >= length) {
-        throw new ValueError(
-          `index out of range: index=${index}, length=${length}`
-        );
-      }
-      const mapKey = await this.db.get(this.getIndexKey(index));
-      return this.decodeBigInts(await this.db.get(mapKey));
+        const length = await this._getLength();
+        if (index >= length) {
+            throw new ValueError(
+              `index out of range: index=${index}, length=${length}`
+            );
+        }
+        return (await this._getAtIndex(index));
     } finally {
-      this.lock.release();
+        this.lock.release();
+    }
+  }
+
+  async* [Symbol.asyncIterator]() {
+    await this.lock.acquireAsync();
+    try {
+        const length = await this._getLength();
+        for (let i = 0; i < length; i++) {
+            yield (await this._getAtIndex(i));
+        }
+    } finally {
+        this.lock.release();
     }
   }
 
   async set(key: string, data: T): Promise<void> {
     await this.lock.acquireAsync();
     try {
-      const keysLength = await this._getLength();
       const mapKey = this.getMapKey(key);
       const encodedData = this.encodeBigInts(data);
-      // Atomically execute the following operations.
-      //  - 1. Append mapKey to list.
-      //  - 2. Set data to key.
-      await this.db.batch([
-        { type: "put", key: this.getIndexKey(keysLength), value: mapKey }, // Append key to keys
-        { type: "put", key: this.getLengthKey(), value: keysLength + 1 }, // Update keys length
-        { type: "put", key: mapKey, value: encodedData } // Set data to the corresponding key
-      ]);
+      const savedData = await this.db.get(mapKey);
+      // If the key exists, just update data.
+      if (savedData !== undefined) {
+        await this.db.set(mapKey, encodedData);
+      } else {
+        // Else, append the key to key list, update the length of key list,
+        //    and set data to the key in map.
+        // Atomically, execute the following operations.
+        //  - 1. Append mapKey to list.
+        //  - 2. Set data to key.
+        const keysLength = await this._getLength();
+        await this.db.batch([
+            { type: "put", key: this.getIndexKey(keysLength), value: mapKey }, // Append key to keys
+            { type: "put", key: this.getLengthKey(), value: keysLength + 1 }, // Update keys length
+            { type: "put", key: mapKey, value: encodedData } // Set data to the corresponding key
+        ]);
+      }
     } finally {
       this.lock.release();
     }
   }
+
+  private async _getAtIndex(index: number): Promise<T> {
+    const mapKey = await this.db.get(this.getIndexKey(index));
+    return this.decodeBigInts(await this.db.get(mapKey));
+  }
+
 }

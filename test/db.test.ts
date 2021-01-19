@@ -200,5 +200,12 @@ describe("DBMap", () => {
     await dbMap.set(key1, pubkey2);
     const pubkey2Actual = await dbMap.get(key1);
     expect(isPubkeySame(pubkey2, pubkey2Actual)).toBeTruthy();
+
+    // AsyncIterator
+    const data: PubKey[] = [];
+    for await (const i of dbMap) {
+        data.push(i);
+    }
+    expect(data.length).toEqual(2);
   });
 });
