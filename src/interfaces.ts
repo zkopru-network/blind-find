@@ -1,3 +1,5 @@
+import AwaitLock from "await-lock";
+
 // Copied from maci
 export interface MerkleProof {
   pathElements: BigInt[][];
