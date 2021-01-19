@@ -46,7 +46,6 @@ export class User {
   async join(ip: string, port: number, hubPubkey: PubKey) {
     const joinMsg = getJoinHubMsgHashedData(this.keypair.pubKey, hubPubkey);
     const sig = signMsg(this.keypair.privKey, joinMsg);
-    // TODO: Store the countersigned signature from the hub.
     const hubSig = await sendJoinHubReq(
       ip,
       port,
@@ -57,6 +56,7 @@ export class User {
     await this.saveJoinedHub(ip, port, sig, hubPubkey, hubSig);
   }
 
+  // TODO: Should we save the search result?
   async search(
     ip: string,
     port: number,
