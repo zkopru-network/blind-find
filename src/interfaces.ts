@@ -1,5 +1,3 @@
-import AwaitLock from "await-lock";
-
 // Copied from maci
 export interface MerkleProof {
   pathElements: BigInt[][];
@@ -16,10 +14,10 @@ interface IDB {
 }
 
 export type TLevelDBOp = {
-  type: 'put' | 'del',
-  key: string,
-  value?: any,
-}
+  type: "put" | "del";
+  key: string;
+  value?: any;
+};
 
 export interface IAtomicDB extends IDB {
   get(key: string): Promise<any>;

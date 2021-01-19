@@ -2,6 +2,7 @@ import { genKeypair } from "maci-crypto";
 import WebSocket from "ws";
 import { verifyProofIndirectConnection } from "../src/circuits/ts";
 import { LEVELS, TIMEOUT, TIMEOUT_LARGE } from "../src/configs";
+import { MemoryDB } from "../src/db";
 import { adminAddressFactory, hubRegistryTreeFactory } from "../src/factories";
 import { HubServer } from "../src/hub";
 import { User } from "../src/user";
@@ -36,8 +37,19 @@ describe("User", () => {
   let ip: string;
   let port: number;
 
-  const userJoined = new User(genKeypair(), adminAddress, merkleProof.root);
-  const userAnother = new User(genKeypair(), adminAddress, merkleProof.root);
+  const userJoinedDB = new MemoryDB();
+  const userJoined = new User(
+    genKeypair(),
+    adminAddress,
+    merkleProof.root,
+    userJoinedDB
+  );
+  const userAnother = new User(
+    genKeypair(),
+    adminAddress,
+    merkleProof.root,
+    new MemoryDB()
+  );
 
   beforeAll(async () => {
     await hub.start();
@@ -45,11 +57,28 @@ describe("User", () => {
     const addr = hub.address as WebSocket.AddressInfo;
     ip = "localhost";
     port = addr.port;
-    await userJoined.join(ip, port, hubKeypair.pubKey);
   });
 
   afterAll(() => {
     hub.close();
+  });
+
+  test("join", async () => {
+    // Number of joinedHubs is 0 when the database is first initialized.
+    expect((await userJoined.getJoinedHubs()).length).toEqual(0);
+
+    // Number of joinedHubs is incremented after joining a hub.
+    await userJoined.join(ip, port, hubKeypair.pubKey);
+    expect((await userJoined.getJoinedHubs()).length).toEqual(1);
+
+    // Persistence: data should persist in the database
+    const userAnother2 = new User(
+      genKeypair(),
+      adminAddress,
+      merkleProof.root,
+      userJoinedDB
+    );
+    expect((await userAnother2.getJoinedHubs()).length).toEqual(1);
   });
 
   test("search", async () => {
