@@ -191,7 +191,7 @@ describe("HubServer", () => {
     ).rejects.toThrowError(TimeoutError);
   });
 
-  test.only("requests fail when rate limit is reached", async () => {
+  test("requests fail when rate limit is reached", async () => {
     const hubkeypair = genKeypair();
     const adminAddress = adminAddressFactory();
     const tree = hubRegistryTreeFactory([hubkeypair], LEVELS, adminAddress);
