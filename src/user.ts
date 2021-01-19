@@ -24,13 +24,12 @@ type TJoinedHubEntry = {
 };
 type TJoinedHubDB = DBMap<TJoinedHubEntry>;
 
-const USER_DB_PREFIX = "blind-find-user";
+const JOINED_HUBS_PREFIX = "blind-find-user-joined-hubs";
 
 export class User {
   // NOTE: merkleRoot should be updatable. Also, it can be a list.
   // TODO: merkleRoot should be changed to a merkleRoot service later, fetching merkleRoots
   //  from the contract.
-  // TODO: Add `JoinedHub`s
   joinedHubsDB: TJoinedHubDB;
 
   constructor(
@@ -41,7 +40,7 @@ export class User {
     readonly timeoutSmall = TIMEOUT,
     readonly timeoutLarge = TIMEOUT_LARGE
   ) {
-    this.joinedHubsDB = new DBMap(USER_DB_PREFIX, db);
+    this.joinedHubsDB = new DBMap(JOINED_HUBS_PREFIX, db);
   }
 
   async join(ip: string, port: number, hubPubkey: PubKey) {
@@ -105,12 +104,10 @@ export class User {
     return proofIndirectConnection;
   }
 
-  // TODO: Might have race condition here.
   async getJoinedHubs() {
     const joinedHubs: Array<TJoinedHubEntry> = [];
-    const length = await this.joinedHubsDB.getLength();
-    for (let i = 0; i < length; i++) {
-      joinedHubs.push(await this.joinedHubsDB.getAtIndex(i));
+    for await (const entry of this.joinedHubsDB) {
+      joinedHubs.push(entry);
     }
     return joinedHubs;
   }
