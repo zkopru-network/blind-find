@@ -107,7 +107,7 @@ export class User {
   async getJoinedHubs() {
     const joinedHubs: Array<TJoinedHubEntry> = [];
     for await (const entry of this.joinedHubsDB) {
-      joinedHubs.push(entry);
+      joinedHubs.push(entry.value);
     }
     return joinedHubs;
   }
