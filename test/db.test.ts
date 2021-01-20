@@ -202,9 +202,10 @@ describe("DBMap", () => {
     expect(isPubkeySame(pubkey2, pubkey2Actual)).toBeTruthy();
 
     // AsyncIterator
-    const data: PubKey[] = [];
+    const data: { key: string; value: PubKey }[] = [];
     for await (const i of dbMap) {
       data.push(i);
+      console.log(i);
     }
     expect(data.length).toEqual(2);
   });

@@ -82,14 +82,21 @@ export class LevelDB implements IAtomicDB {
 }
 
 interface IDBArray<T> {
+  getLength(): Promise<number>;
   get(index: number): Promise<T>;
   append(data: T): Promise<void>;
   set(index: number, data: T): Promise<void>;
 }
 
-interface IDBMap<T> extends AsyncIterable<T> {
+type TKeyValue<T> = {
+  key: string;
+  value: T;
+};
+
+interface IDBMap<T> extends AsyncIterable<TKeyValue<T>> {
   getLength(): Promise<number>;
   get(key: string): Promise<T | undefined>;
+  getAtIndex(index: number): Promise<T>;
   set(key: string, data: T): Promise<void>;
 }
 
@@ -98,34 +105,6 @@ export class DBObjectArray<T extends object> implements IDBArray<T> {
 
   constructor(readonly prefix: string, readonly db: IAtomicDB) {
     this.lock = new AwaitLock();
-  }
-
-  private getLengthKey() {
-    return `${this.prefix}-length`;
-  }
-
-  private getIndexKey(index: number) {
-    return `${this.prefix}-data-${index}`;
-  }
-
-  private encodeBigInts(rawObj: T): object {
-    return stringifyBigInts(rawObj);
-  }
-
-  private decodeBigInts(encodedObj: object): T {
-    return unstringifyBigInts(encodedObj);
-  }
-
-  private async _getLength(): Promise<number> {
-    const key = this.getLengthKey();
-    const length = await this.db.get(key);
-    if (length === undefined) {
-      // Store length if it's not found.
-      await this.db.set(key, 0);
-      return 0;
-    } else {
-      return length;
-    }
   }
 
   async getLength(): Promise<number> {
@@ -189,24 +168,13 @@ export class DBObjectArray<T extends object> implements IDBArray<T> {
       this.lock.release();
     }
   }
-}
-
-export class DBMap<T extends object> implements IDBMap<T> {
-  lock: AwaitLock;
-  constructor(readonly prefix: string, readonly db: IAtomicDB) {
-    this.lock = new AwaitLock();
-  }
 
   private getLengthKey() {
-    return `${this.prefix}-keys-length`;
+    return `${this.prefix}-length`;
   }
 
   private getIndexKey(index: number) {
-    return `${this.prefix}-keys-${index}`;
-  }
-
-  private getMapKey(key: string) {
-    return `${this.prefix}-values-${key}`;
+    return `${this.prefix}-data-${index}`;
   }
 
   private encodeBigInts(rawObj: T): object {
@@ -227,6 +195,13 @@ export class DBMap<T extends object> implements IDBMap<T> {
     } else {
       return length;
     }
+  }
+}
+
+export class DBMap<T extends object> implements IDBMap<T> {
+  lock: AwaitLock;
+  constructor(readonly prefix: string, readonly db: IAtomicDB) {
+    this.lock = new AwaitLock();
   }
 
   async getLength(): Promise<number> {
@@ -257,7 +232,8 @@ export class DBMap<T extends object> implements IDBMap<T> {
           `index out of range: index=${index}, length=${length}`
         );
       }
-      return await this._getAtIndex(index);
+      const mapKey = await this.db.get(this.getIndexKey(index));
+      return this.decodeBigInts(await this.db.get(mapKey));
     } finally {
       this.lock.release();
     }
@@ -268,7 +244,10 @@ export class DBMap<T extends object> implements IDBMap<T> {
     try {
       const length = await this._getLength();
       for (let i = 0; i < length; i++) {
-        yield await this._getAtIndex(i);
+        const mapKey = await this.db.get(this.getIndexKey(i));
+        const key = this.mapKeyToKey(mapKey);
+        const data = this.decodeBigInts(await this.db.get(mapKey));
+        yield { key: key, value: data };
       }
     } finally {
       this.lock.release();
@@ -302,8 +281,47 @@ export class DBMap<T extends object> implements IDBMap<T> {
     }
   }
 
-  private async _getAtIndex(index: number): Promise<T> {
-    const mapKey = await this.db.get(this.getIndexKey(index));
-    return this.decodeBigInts(await this.db.get(mapKey));
+  private getKeysKeyPrefix() {
+    return `${this.prefix}-keys`;
+  }
+
+  private getValuesKeyPrefix() {
+    return `${this.prefix}-keys`;
+  }
+
+  private getLengthKey() {
+    return `${this.getKeysKeyPrefix()}-length`;
+  }
+
+  private getIndexKey(index: number) {
+    return `${this.getKeysKeyPrefix()}-${index}`;
+  }
+
+  private getMapKey(key: string) {
+    return `${this.getValuesKeyPrefix()}-${key}`;
+  }
+
+  private mapKeyToKey(mapKey: string) {
+    return mapKey.slice(`${this.getValuesKeyPrefix()}-`.length);
+  }
+
+  private encodeBigInts(rawObj: T): object {
+    return stringifyBigInts(rawObj);
+  }
+
+  private decodeBigInts(encodedObj: object): T {
+    return unstringifyBigInts(encodedObj);
+  }
+
+  private async _getLength(): Promise<number> {
+    const key = this.getLengthKey();
+    const length = await this.db.get(key);
+    if (length === undefined) {
+      // Store length if it's not found.
+      await this.db.set(key, 0);
+      return 0;
+    } else {
+      return length;
+    }
   }
 }
