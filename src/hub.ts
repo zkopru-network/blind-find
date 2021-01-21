@@ -31,10 +31,12 @@ import {
 import { TIMEOUT, MAXIMUM_TRIALS, TIMEOUT_LARGE } from "./configs";
 import { SMPStateMachine } from "./smp";
 import { hashPointToScalar } from "./utils";
-import { MerkleProof } from "./interfaces";
+import { IAtomicDB, MerkleProof } from "./interfaces";
 import { genProofOfSMP, TProof } from "./circuits/ts";
+import { IDBMap, DBMap } from "./db";
 import { SMPState1, SMPState2 } from "./smp/state";
 import {
+  Point,
   SMPMessage1Wire,
   SMPMessage2Wire,
   SMPMessage3Wire
@@ -53,65 +55,52 @@ type TSMPResult = {
   proofOfSMP: TProof;
 };
 
-interface IUserStore extends Iterable<TIterItem> {
-  get(pubkey: PubKey): TUserRegistry | undefined;
-  set(pubkey: PubKey, registry: TUserRegistry): void;
-  size: number;
+interface IUserStore extends AsyncIterable<TIterItem> {
+  get(pubkey: PubKey): Promise<TUserRegistry | undefined>;
+  set(pubkey: PubKey, registry: TUserRegistry): Promise<void>;
+  getLength(): Promise<number>;
 }
 
+const USER_STORE_PREFIX = "blind-find-hub-users";
 /**
  * `UserStore` stores the mapping from `Pubkey` to `TUserRegistry`.
- * It is implemented because NodeJS doesn't work well with Array-typed keys.
  */
 export class UserStore implements IUserStore {
-  private mapStore: TUserStoreMap;
-  private mapPubkey: TUserStorePubkeyMap;
+  private mapStore: IDBMap<TUserRegistry>;
 
-  constructor() {
-    this.mapStore = new Map<BigInt, TUserRegistry>();
-    this.mapPubkey = new Map<BigInt, PubKey>();
+  constructor(db: IAtomicDB) {
+    this.mapStore = new DBMap<TUserRegistry>(USER_STORE_PREFIX, db);
   }
 
-  public get size() {
-    return this.mapStore.size;
+  async getLength() {
+    return await this.mapStore.getLength();
   }
 
-  *[Symbol.iterator]() {
-    // Shallow-copy the maps, to avoid race condition.
-    const mapStoreCopied = new Map(this.mapStore);
-    const mapPubkeyCopied = new Map(this.mapPubkey);
-    for (const item of mapStoreCopied) {
-      const pubkeyHash = item[0];
-      const pubkey = mapPubkeyCopied.get(pubkeyHash);
-      if (pubkey === undefined) {
-        throw new Error("pubkey should be found");
-      }
-      yield [pubkey, item[1]] as TIterItem;
+  async *[Symbol.asyncIterator]() {
+    for await (const obj of this.mapStore) {
+      const pubkey = this.decodePubkey(obj.key);
+      yield [pubkey, obj.value] as TIterItem;
     }
   }
 
-  private hash(pubkey: PubKey): BigInt {
-    return hashPointToScalar(pubkey);
+  private encodePubkey(pubkey: PubKey): string {
+    const bytes = new Point(pubkey).serialize();
+    return Buffer.from(bytes).toString("hex");
   }
 
-  get(pubkey: PubKey) {
-    return this.mapStore.get(this.hash(pubkey));
+  private decodePubkey(pubkeyHex: string): PubKey {
+    const bytesFromString = new Uint8Array(Buffer.from(pubkeyHex, "hex"));
+    return Point.deserialize(bytesFromString).point;
   }
 
-  set(pubkey: PubKey, registry: TUserRegistry) {
-    const pubkeyHash = this.hash(pubkey);
-    this.mapPubkey.set(pubkeyHash, pubkey);
-    this.mapStore.set(pubkeyHash, registry);
+  async get(pubkey: PubKey) {
+    const mapKey = this.encodePubkey(pubkey);
+    return await this.mapStore.get(mapKey);
   }
 
-  forEach(callbackFn: (value: TUserRegistry, key: PubKey) => void): void {
-    this.mapStore.forEach((value, key, map) => {
-      const pubkey = this.mapPubkey.get(key);
-      if (pubkey === undefined) {
-        throw new Error("pubkey shouldn't be undefined");
-      }
-      callbackFn(value, pubkey);
-    });
+  async set(pubkey: PubKey, registry: TUserRegistry) {
+    const mapKey = this.encodePubkey(pubkey);
+    await this.mapStore.set(mapKey, registry);
   }
 }
 
@@ -123,7 +112,6 @@ export class UserStore implements IUserStore {
  *  response to the users.
  */
 export class HubServer extends BaseServer {
-  // TODO: Add a lock to protect `userStore` from racing between tasks?
   userStore: IUserStore;
 
   globalRateLimiter: IIPRateLimiter;
@@ -137,22 +125,18 @@ export class HubServer extends BaseServer {
     globalRateLimit: TRateLimitParams,
     joinRateLimit: TRateLimitParams,
     searchRateLimit: TRateLimitParams,
-    userStore?: IUserStore,
+    db: IAtomicDB,
     readonly timeoutSmall = TIMEOUT,
     readonly timeoutLarge = TIMEOUT_LARGE
   ) {
     super();
-    if (userStore !== undefined) {
-      this.userStore = userStore;
-    } else {
-      this.userStore = new UserStore();
-    }
+    this.userStore = new UserStore(db);
     this.globalRateLimiter = new TokenBucketRateLimiter(globalRateLimit);
     this.joinRateLimiter = new TokenBucketRateLimiter(joinRateLimit);
     this.searchRateLimiter = new TokenBucketRateLimiter(searchRateLimit);
   }
 
-  onJoinRequest(socket: WebSocket, ip: string, bytes: Uint8Array) {
+  async onJoinRequest(socket: WebSocket, ip: string, bytes: Uint8Array) {
     console.debug("server: onJoinRequest");
     if (!this.joinRateLimiter.allow(ip)) {
       socket.terminate();
@@ -162,7 +146,7 @@ export class HubServer extends BaseServer {
     const hashedData = getCounterSignHashedData(req.userSig);
     const hubSig = signMsg(this.keypair.privKey, hashedData);
     socket.send(new JoinResp(hubSig).serialize());
-    this.userStore.set(req.userPubkey, {
+    await this.userStore.set(req.userPubkey, {
       userSig: req.userSig,
       hubSig: hubSig
     });
@@ -180,7 +164,7 @@ export class HubServer extends BaseServer {
     //  right away if the proof is invalid.
     SearchMessage0.deserialize(bytes);
 
-    for (const peer of this.userStore) {
+    for await (const peer of this.userStore) {
       const [pubkey, userRegistry] = peer;
       console.debug(`onSearchRequest: running smp using ${pubkey}`);
       const secret = hashPointToScalar(pubkey);
@@ -237,6 +221,7 @@ export class HubServer extends BaseServer {
       socket.terminate();
       return;
     }
+    // FIXME: Use rwtor instead, to avoid consecutive data invoking this handler.
     socket.onmessage = async event => {
       const tlv = TLV.deserialize(event.data as Buffer);
       const tlvType = bigIntToNumber(tlv.type.value);
@@ -253,7 +238,7 @@ export class HubServer extends BaseServer {
       }
       switch (tlvType) {
         case msgType.JoinReq:
-          this.onJoinRequest(socket, ip, tlv.value);
+          await this.onJoinRequest(socket, ip, tlv.value);
           socket.close();
           break;
         case msgType.SearchReq:

@@ -15,6 +15,7 @@ import WebSocket from "ws";
 import { TimeoutError } from "../src/exceptions";
 import { connect, TRateLimitParams } from "../src/websocket";
 import { Short, TLV } from "../src/smp/serialization";
+import { MemoryDB } from "../src/db";
 
 const timeoutBeginAndEnd = TIMEOUT + TIMEOUT;
 // Timeout for running SMP against one peer (including time generating/verifying proofs).
@@ -34,43 +35,44 @@ const isRegistrySignedMsgMatch = (
 };
 
 describe("UserStore", () => {
-  const userStore = new UserStore();
+  const db = new MemoryDB();
+  const userStore = new UserStore(db);
   const msgs = [signedJoinMsgFactory(), signedJoinMsgFactory()];
 
-  test("set, get, and size succeed when adding reigstry", () => {
-    userStore.set(msgs[0].userPubkey, {
+  test("set, get, and size succeed when adding reigstry", async () => {
+    await userStore.set(msgs[0].userPubkey, {
       userSig: msgs[0].userSig,
       hubSig: msgs[0].hubSig
     });
-    expect(userStore.size).toEqual(1);
-    const registry = userStore.get(msgs[0].userPubkey);
+    expect(await userStore.getLength()).toEqual(1);
+    const registry = await userStore.get(msgs[0].userPubkey);
     if (!registry) {
       throw new Error("should not be undefined");
     }
     isRegistrySignedMsgMatch(registry, msgs[0]);
-    userStore.set(msgs[1].userPubkey, {
+    await userStore.set(msgs[1].userPubkey, {
       userSig: msgs[1].userSig,
       hubSig: msgs[1].hubSig
     });
-    expect(userStore.size).toEqual(2);
-    const registryAnother = userStore.get(msgs[1].userPubkey);
+    expect(await userStore.getLength()).toEqual(2);
+    const registryAnother = await userStore.get(msgs[1].userPubkey);
     if (!registryAnother) {
       throw new Error("should not be undefined");
     }
     isRegistrySignedMsgMatch(registryAnother, msgs[1]);
   });
 
-  test("userStore is an Iterable", () => {
+  test("userStore is an Iterable", async () => {
     const a: any[] = [];
-    for (const item of userStore) {
+    for await (const item of userStore) {
       a.push(item);
     }
-    expect(a.length).toEqual(userStore.size);
+    expect(a.length).toEqual(await userStore.getLength());
   });
 
-  test("get fails when no matched entry", () => {
+  test("get fails when no matched entry", async () => {
     const anotherUser = genKeypair();
-    expect(userStore.get(anotherUser.pubKey)).toBeUndefined();
+    expect(await userStore.get(anotherUser.pubKey)).toBeUndefined();
   });
 });
 
@@ -101,7 +103,8 @@ describe("HubServer", () => {
       merkleProof,
       rateLimit,
       rateLimit,
-      rateLimit
+      rateLimit,
+      new MemoryDB()
     );
     await hub.start();
 
@@ -144,7 +147,7 @@ describe("HubServer", () => {
       signedMsg.userSig,
       signedMsg.hubPubkey
     );
-    expect(hub.userStore.size).toEqual(1);
+    expect(await hub.userStore.getLength()).toEqual(1);
     expect(hub.userStore.get(signedMsg.userPubkey)).not.toBeUndefined();
 
     // Another request
@@ -157,7 +160,7 @@ describe("HubServer", () => {
       signedMsgAnother.userSig,
       signedMsgAnother.hubPubkey
     );
-    expect(hub.userStore.size).toEqual(2);
+    expect(await hub.userStore.getLength()).toEqual(2);
     expect(hub.userStore.get(signedMsgAnother.userPubkey)).not.toBeUndefined();
   });
 
@@ -210,7 +213,8 @@ describe("HubServer", () => {
         merkleProof,
         globalRateLimit,
         joinRateLimit,
-        searchRateLimit
+        searchRateLimit,
+        new MemoryDB()
       );
       await hub.start();
       const port = hub.address.port;

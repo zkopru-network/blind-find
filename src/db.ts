@@ -81,7 +81,7 @@ export class LevelDB implements IAtomicDB {
   }
 }
 
-interface IDBArray<T> {
+interface IDBArray<T extends object> {
   getLength(): Promise<number>;
   get(index: number): Promise<T>;
   append(data: T): Promise<void>;
@@ -93,7 +93,7 @@ type TKeyValue<T> = {
   value: T;
 };
 
-interface IDBMap<T> extends AsyncIterable<TKeyValue<T>> {
+export interface IDBMap<T extends object> extends AsyncIterable<TKeyValue<T>> {
   getLength(): Promise<number>;
   get(key: string): Promise<T | undefined>;
   getAtIndex(index: number): Promise<T>;

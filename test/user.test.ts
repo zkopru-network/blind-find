@@ -32,7 +32,8 @@ describe("User", () => {
     merkleProof,
     rateLimit,
     rateLimit,
-    rateLimit
+    rateLimit,
+    new MemoryDB()
   );
   let ip: string;
   let port: number;
