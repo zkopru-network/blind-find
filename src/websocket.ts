@@ -59,10 +59,10 @@ export abstract class BaseServer {
     this.isRunning = false;
   }
 
-  abstract onIncomingConnection(
-    socket: WebSocket,
+  abstract async onIncomingConnection(
+    socket: IWebSocketReadWriter,
     request: http.IncomingMessage
-  );
+  ): Promise<void>;
 
   public get address(): WebSocket.AddressInfo {
     if (this.wsServer === undefined) {
@@ -99,7 +99,14 @@ export abstract class BaseServer {
     await event.wait();
     this.httpServer = webServer;
     this.wsServer = server;
-    this.wsServer.on("connection", this.onIncomingConnection.bind(this));
+    const handler = async (
+      socket: WebSocket,
+      request: http.IncomingMessage
+    ): Promise<void> => {
+      const rwtor = new WebSocketAsyncReadWriter(socket);
+      await this.onIncomingConnection(rwtor, request);
+    };
+    this.wsServer.on("connection", handler.bind(this));
   }
 
   close() {
@@ -118,14 +125,13 @@ export abstract class BaseServer {
   }
 }
 
-const waitForSocketOpen = async (s: WebSocket) => {
-  await new Promise(resolve => s.once("open", resolve));
-};
-
-export const connect = async (ip: string, port: number) => {
+export const connect = async (
+  ip: string,
+  port: number
+): Promise<IWebSocketReadWriter> => {
   const ws = new WebSocket(`${WS_PROTOCOL}://${ip}:${port}`);
-  await waitForSocketOpen(ws);
-  return ws;
+  await new Promise(resolve => ws.once("open", resolve));
+  return new WebSocketAsyncReadWriter(ws);
 };
 
 interface ICallback<T> {
@@ -134,14 +140,15 @@ interface ICallback<T> {
   cancelTimeout(): void;
 }
 
-interface IReadWriter {
+export interface IWebSocketReadWriter {
   read(timeout?: number): Promise<Uint8Array>;
   write(data: Uint8Array): void;
   close(): void;
+  terminate(): void;
 }
 
 // NOTE: Reference: https://github.com/jcao219/websocket-async/blob/master/src/websocket-client.js.
-export class WebSocketAsyncReadWriter implements IReadWriter {
+export class WebSocketAsyncReadWriter implements IWebSocketReadWriter {
   private closeEvent?: WebSocket.CloseEvent;
   received: Array<Uint8Array>;
   private callbackQueue: Array<ICallback<Uint8Array>>;
@@ -221,10 +228,17 @@ export class WebSocketAsyncReadWriter implements IReadWriter {
     this.socket.send(data);
   }
 
-  close() {
+  close(code?: number, data?: string): void {
     if (!this.connected) {
       return;
     }
-    this.socket.close();
+    this.socket.close(code, data);
+  }
+
+  terminate(): void {
+    if (!this.connected) {
+      return;
+    }
+    this.socket.terminate();
   }
 }

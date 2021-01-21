@@ -1,6 +1,6 @@
 import * as http from "http";
 import { Keypair, PubKey, Signature } from "maci-crypto";
-import WebSocket, { AddressInfo } from "ws";
+import { AddressInfo } from "ws";
 
 import {
   getCounterSignHashedData,
@@ -26,7 +26,7 @@ import {
   IIPRateLimiter,
   TokenBucketRateLimiter,
   TRateLimitParams,
-  WebSocketAsyncReadWriter
+  IWebSocketReadWriter
 } from "./websocket";
 import { TIMEOUT, MAXIMUM_TRIALS, TIMEOUT_LARGE } from "./configs";
 import { SMPStateMachine } from "./smp";
@@ -44,8 +44,6 @@ import {
 import { BabyJubPoint } from "./smp/v4/babyJub";
 
 type TUserRegistry = { userSig: Signature; hubSig: Signature };
-type TUserStoreMap = Map<BigInt, TUserRegistry>;
-type TUserStorePubkeyMap = Map<BigInt, PubKey>;
 type TIterItem = [PubKey, TUserRegistry];
 type TSMPResult = {
   a3: BigInt;
@@ -136,29 +134,36 @@ export class HubServer extends BaseServer {
     this.searchRateLimiter = new TokenBucketRateLimiter(searchRateLimit);
   }
 
-  async onJoinRequest(socket: WebSocket, ip: string, bytes: Uint8Array) {
+  async onJoinRequest(
+    rwtor: IWebSocketReadWriter,
+    ip: string,
+    bytes: Uint8Array
+  ) {
     console.debug("server: onJoinRequest");
     if (!this.joinRateLimiter.allow(ip)) {
-      socket.terminate();
+      rwtor.terminate();
       return;
     }
     const req = JoinReq.deserialize(bytes);
     const hashedData = getCounterSignHashedData(req.userSig);
     const hubSig = signMsg(this.keypair.privKey, hashedData);
-    socket.send(new JoinResp(hubSig).serialize());
+    rwtor.write(new JoinResp(hubSig).serialize());
     await this.userStore.set(req.userPubkey, {
       userSig: req.userSig,
       hubSig: hubSig
     });
   }
 
-  async onSearchRequest(socket: WebSocket, ip: string, bytes: Uint8Array) {
+  async onSearchRequest(
+    rwtor: IWebSocketReadWriter,
+    ip: string,
+    bytes: Uint8Array
+  ) {
     console.debug("server: onSearchRequest");
     if (!this.searchRateLimiter.allow(ip)) {
-      socket.terminate();
+      rwtor.terminate();
       return;
     }
-    const rwtor = new WebSocketAsyncReadWriter(socket);
     // SearchMessage0
     // TODO: Handle Message0. If it's a proof of user, disconnect
     //  right away if the proof is invalid.
@@ -214,42 +219,43 @@ export class HubServer extends BaseServer {
     rwtor.write(endMessage1.serialize());
   }
 
-  onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
+  async onIncomingConnection(
+    rwtor: IWebSocketReadWriter,
+    request: http.IncomingMessage
+  ) {
     // Delegate to the corresponding handler
     const ip = (request.connection.address() as AddressInfo).address;
     if (!this.globalRateLimiter.allow(ip)) {
-      socket.terminate();
+      rwtor.terminate();
       return;
     }
-    // FIXME: Use rwtor instead, to avoid consecutive data invoking this handler.
-    socket.onmessage = async event => {
-      const tlv = TLV.deserialize(event.data as Buffer);
-      const tlvType = bigIntToNumber(tlv.type.value);
+    const data = await rwtor.read();
+    const tlv = TLV.deserialize(data);
+    const tlvType = bigIntToNumber(tlv.type.value);
 
-      const remoteAddress = request.connection.remoteAddress;
-      if (remoteAddress !== undefined) {
-        console.info(
-          `server: incoming connection from ${remoteAddress}, type=${tlvType}`
-        );
-      } else {
-        console.info(
-          `server: incoming connection from unknown address, type=${tlvType}`
-        );
-      }
-      switch (tlvType) {
-        case msgType.JoinReq:
-          await this.onJoinRequest(socket, ip, tlv.value);
-          socket.close();
-          break;
-        case msgType.SearchReq:
-          await this.onSearchRequest(socket, ip, tlv.value);
-          socket.close();
-          break;
-        default:
-          console.error(`type ${tlvType} is unsupported`);
-          socket.terminate();
-      }
-    };
+    const remoteAddress = request.connection.remoteAddress;
+    if (remoteAddress !== undefined) {
+      console.info(
+        `server: incoming connection from ${remoteAddress}, type=${tlvType}`
+      );
+    } else {
+      console.info(
+        `server: incoming connection from unknown address, type=${tlvType}`
+      );
+    }
+    switch (tlvType) {
+      case msgType.JoinReq:
+        await this.onJoinRequest(rwtor, ip, tlv.value);
+        rwtor.close();
+        break;
+      case msgType.SearchReq:
+        await this.onSearchRequest(rwtor, ip, tlv.value);
+        rwtor.close();
+        break;
+      default:
+        console.error(`type ${tlvType} is unsupported`);
+        rwtor.terminate();
+    }
   }
 }
 
@@ -261,8 +267,7 @@ export const sendJoinHubReq = async (
   hubPubkey: PubKey,
   timeout: number = TIMEOUT
 ): Promise<Signature> => {
-  const c = await connect(ip, port);
-  const rwtor = new WebSocketAsyncReadWriter(c);
+  const rwtor = await connect(ip, port);
   const joinReq = new JoinReq(userPubkey, userSig);
   const req = new TLV(new Short(msgType.JoinReq), joinReq.serialize());
   rwtor.write(req.serialize());
@@ -283,8 +288,7 @@ export const sendSearchReq = async (
   timeoutLarge: number = TIMEOUT_LARGE,
   maximumTrial: number = MAXIMUM_TRIALS
 ): Promise<TSMPResult | null> => {
-  const c = await connect(ip, port);
-  const rwtor = new WebSocketAsyncReadWriter(c);
+  const rwtor = await connect(ip, port);
 
   const msg0 = new SearchMessage0();
   const req = new TLV(new Short(msgType.SearchReq), msg0.serialize());

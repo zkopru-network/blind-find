@@ -1,31 +1,37 @@
-import WebSocket from "ws";
 import * as http from "http";
 
 import {
   BaseServer,
   connect,
-  TokenBucketRateLimiter,
-  WebSocketAsyncReadWriter
+  IWebSocketReadWriter,
+  TokenBucketRateLimiter
 } from "../src/websocket";
 import { TimeoutError } from "../src/exceptions";
 
 const timeout = 100;
 
 class TestServer extends BaseServer {
-  onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
-    socket.onmessage = event => {
+  async onIncomingConnection(
+    rwtor: IWebSocketReadWriter,
+    request: http.IncomingMessage
+  ) {
+    const data = await rwtor.read();
+    await new Promise((res, rej) => {
       setTimeout(() => {
-        socket.send(event.data);
+        res();
       }, timeout + 1);
-    };
+    });
+    await rwtor.write(data);
   }
 }
 
 class FaultyServer extends BaseServer {
-  onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
-    socket.onmessage = event => {
-      socket.close();
-    };
+  async onIncomingConnection(
+    rwtor: IWebSocketReadWriter,
+    request: http.IncomingMessage
+  ) {
+    await rwtor.read();
+    rwtor.close();
   }
 }
 
@@ -45,17 +51,14 @@ describe("TestServer", () => {
   });
 
   test("Send and receive", async () => {
-    const s = new WebSocketAsyncReadWriter(await connect(ip, port));
+    const s = await connect(ip, port);
     const data1 = new Uint8Array([55, 66]);
-    const data2 = new Uint8Array([77, 88]);
     s.write(data1);
-    s.write(data2);
     expect(await s.read()).toEqual(data1);
-    expect(await s.read()).toEqual(data2);
   });
 
   test("timeout should work", async () => {
-    const s = new WebSocketAsyncReadWriter(await connect(ip, port));
+    const s = await connect(ip, port);
     const data1 = new Uint8Array([55, 66]);
     s.write(data1);
     await expect(s.read(timeout)).rejects.toThrowError(TimeoutError);
@@ -64,9 +67,7 @@ describe("TestServer", () => {
   test("read throws when no messages available and remote closed", async () => {
     const faultyServer = new FaultyServer();
     await faultyServer.start();
-    const s = new WebSocketAsyncReadWriter(
-      await connect(ip, faultyServer.address.port)
-    );
+    const s = await connect(ip, faultyServer.address.port);
     const data1 = new Uint8Array([55, 66]);
     s.write(data1);
     // `read` doesn't throw an Error. We need to check truth value instead.

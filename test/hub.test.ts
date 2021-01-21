@@ -121,21 +121,9 @@ describe("HubServer", () => {
     // Invalid registry because of the wrong pubkey
     const expectedUnsupportedType = 5566;
     const c = await connect(ip, port);
-
-    const task = new Promise((res, rej) => {
-      const tlv = new TLV(new Short(expectedUnsupportedType), new Uint8Array());
-      c.onmessage = () => {
-        res();
-      };
-      c.onclose = event => {
-        rej(new Error(event.reason));
-      };
-      c.onerror = event => {
-        rej(event.error);
-      };
-      c.send(tlv.serialize());
-    });
-    await expect(task).rejects.toThrow();
+    const tlv = new TLV(new Short(expectedUnsupportedType), new Uint8Array());
+    c.write(tlv.serialize());
+    await expect(c.read()).rejects.toBeTruthy();
   });
 
   test("`Join` request should succeed with correct request data", async () => {

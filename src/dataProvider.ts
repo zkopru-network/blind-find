@@ -1,5 +1,5 @@
 import * as http from "http";
-import WebSocket, { AddressInfo } from "ws";
+import { AddressInfo } from "ws";
 
 import { HubRegistry, HubRegistryTree } from "./";
 import { TIMEOUT } from "./configs";
@@ -9,10 +9,10 @@ import { TEthereumAddress } from "./types";
 import {
   BaseServer,
   connect,
-  WebSocketAsyncReadWriter,
   IIPRateLimiter,
   TokenBucketRateLimiter,
-  TRateLimitParams
+  TRateLimitParams,
+  IWebSocketReadWriter
 } from "./websocket";
 
 // TODO: Persistance
@@ -28,39 +28,41 @@ export class DataProviderServer extends BaseServer {
     this.rateLimiter = new TokenBucketRateLimiter(rateLimitConfig);
   }
 
-  onIncomingConnection(socket: WebSocket, request: http.IncomingMessage) {
+  async onIncomingConnection(
+    rwtor: IWebSocketReadWriter,
+    request: http.IncomingMessage
+  ) {
     const ip = (request.connection.address() as AddressInfo).address;
     console.info(`DataProviderServer: new incoming connection from ${ip}`);
     if (!this.rateLimiter.allow(ip)) {
-      socket.terminate();
+      rwtor.terminate();
       return;
     }
-    socket.onmessage = event => {
-      const req = GetMerkleProofReq.deserialize(event.data as Buffer);
-      const hubRegistry = new HubRegistry(
-        req.hubSig,
-        req.hubPubkey,
-        this.adminAddress
-      );
-      if (!hubRegistry.verify()) {
-        // Invalid hub registry.
-        socket.terminate();
-        return;
-      }
-      const index = this.tree.getIndex(hubRegistry);
-      console.debug(
-        `DataProviderServer: received req: ${req.hubPubkey}, index=${index}`
-      );
-      if (index === undefined) {
-        // Not Found.
-        socket.terminate();
-        return;
-      }
-      const merkleProof = this.tree.tree.genMerklePath(index);
-      const resp = new GetMerkleProofResp(merkleProof);
-      socket.send(resp.serialize());
-      socket.close();
-    };
+    const data = await rwtor.read();
+    const req = GetMerkleProofReq.deserialize(data as Buffer);
+    const hubRegistry = new HubRegistry(
+      req.hubSig,
+      req.hubPubkey,
+      this.adminAddress
+    );
+    if (!hubRegistry.verify()) {
+      // Invalid hub registry.
+      rwtor.terminate();
+      return;
+    }
+    const index = this.tree.getIndex(hubRegistry);
+    console.debug(
+      `DataProviderServer: received req: ${req.hubPubkey}, index=${index}`
+    );
+    if (index === undefined) {
+      // Not Found.
+      rwtor.terminate();
+      return;
+    }
+    const merkleProof = this.tree.tree.genMerklePath(index);
+    const resp = new GetMerkleProofResp(merkleProof);
+    rwtor.write(resp.serialize());
+    rwtor.close();
   }
 }
 
@@ -70,11 +72,10 @@ export const sendGetMerkleProofReq = async (
   hubRegistry: HubRegistry,
   timeout: number = TIMEOUT
 ): Promise<GetMerkleProofResp> => {
-  const c = await connect(ip, port);
   if (!hubRegistry.verify()) {
     throw new ValueError("invalid hub registry");
   }
-  const rwtor = new WebSocketAsyncReadWriter(c);
+  const rwtor = await connect(ip, port);
   const req = new GetMerkleProofReq(hubRegistry.pubkey, hubRegistry.sig);
   rwtor.write(req.serialize());
   const bytes = await rwtor.read(timeout);
@@ -84,6 +85,6 @@ export const sendGetMerkleProofReq = async (
     throw new RequestFailed("response mismatches the request");
   }
   console.debug("sendGetMerkleProofReq: succeeds");
-  c.close();
+  rwtor.close();
   return resp;
 };
