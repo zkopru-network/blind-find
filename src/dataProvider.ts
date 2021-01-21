@@ -1,9 +1,12 @@
 import * as http from "http";
+import { PubKey, Signature } from "maci-crypto";
 import { AddressInfo } from "ws";
 
 import { HubRegistry, HubRegistryTree } from "./";
-import { TIMEOUT } from "./configs";
+import { LEVELS, TIMEOUT } from "./configs";
+import { DBMap, IDBMap } from "./db";
 import { RequestFailed, ValueError } from "./exceptions";
+import { IAtomicDB } from "./interfaces";
 import { GetMerkleProofReq, GetMerkleProofResp } from "./serialization";
 import { TEthereumAddress } from "./types";
 import {
@@ -15,13 +18,62 @@ import {
   IWebSocketReadWriter
 } from "./websocket";
 
-// TODO: Persistance
+const LEAVES_PREFIX = "blind-find-data-provider-leaves";
+
+type THubRegistryObj = {
+  sig: Signature;
+  pubkey: PubKey;
+  adminAddress: TEthereumAddress;
+};
+
+const hubRegistryToObj = (e: HubRegistry) => {
+  return {
+    sig: e.sig,
+    pubkey: e.pubkey,
+    adminAddress: e.adminAddress
+  };
+};
+
+const objToHubRegistry = (obj: THubRegistryObj) => {
+  return new HubRegistry(obj.sig, obj.pubkey, obj.adminAddress);
+};
+
+export class HubRegistryTreeDB {
+  dbMap: IDBMap<THubRegistryObj>;
+
+  constructor(readonly tree: HubRegistryTree, db: IAtomicDB) {
+    this.dbMap = new DBMap<THubRegistryObj>(LEAVES_PREFIX, db);
+  }
+
+  static async fromDB(db: IAtomicDB, levels = LEVELS) {
+    const tree = new HubRegistryTree(levels);
+    const dbMap = new DBMap<THubRegistryObj>(LEAVES_PREFIX, db);
+    // Load leaves from DB.
+    for await (const l of dbMap) {
+      tree.insert(objToHubRegistry(l.value));
+    }
+    return new HubRegistryTreeDB(tree, db);
+  }
+
+  private getDBKey(e: HubRegistry) {
+    return e.hash().toString();
+  }
+
+  async insert(e: HubRegistry) {
+    await this.dbMap.set(this.getDBKey(e), hubRegistryToObj(e));
+    this.tree.insert(e);
+  }
+
+  getIndex(e: HubRegistry) {
+    return this.tree.getIndex(e);
+  }
+}
+
 export class DataProviderServer extends BaseServer {
   rateLimiter: IIPRateLimiter;
-
   constructor(
     readonly adminAddress: TEthereumAddress,
-    readonly tree: HubRegistryTree,
+    readonly treeDB: HubRegistryTreeDB,
     readonly rateLimitConfig: TRateLimitParams
   ) {
     super();
@@ -50,7 +102,7 @@ export class DataProviderServer extends BaseServer {
       rwtor.terminate();
       return;
     }
-    const index = this.tree.getIndex(hubRegistry);
+    const index = this.treeDB.getIndex(hubRegistry);
     console.debug(
       `DataProviderServer: received req: ${req.hubPubkey}, index=${index}`
     );
@@ -59,7 +111,7 @@ export class DataProviderServer extends BaseServer {
       rwtor.terminate();
       return;
     }
-    const merkleProof = this.tree.tree.genMerklePath(index);
+    const merkleProof = this.treeDB.tree.tree.genMerklePath(index);
     const resp = new GetMerkleProofResp(merkleProof);
     rwtor.write(resp.serialize());
     rwtor.close();

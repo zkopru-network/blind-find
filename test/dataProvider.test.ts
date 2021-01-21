@@ -1,9 +1,9 @@
+import { hubRegistryFactory, adminAddressFactory } from "../src/factories";
 import {
-  hubRegistryTreeFactory,
-  hubRegistryFactory,
-  adminAddressFactory
-} from "../src/factories";
-import { DataProviderServer, sendGetMerkleProofReq } from "../src/dataProvider";
+  DataProviderServer,
+  sendGetMerkleProofReq,
+  HubRegistryTreeDB
+} from "../src/dataProvider";
 import { genKeypair, Keypair } from "maci-crypto";
 import { LEVELS } from "../src/configs";
 import { HubRegistry, HubRegistryTree } from "../src";
@@ -11,23 +11,30 @@ import WebSocket from "ws";
 import { ValueError } from "../src/exceptions";
 import { TEthereumAddress } from "../src/types";
 import { pubkeyFactoryExclude } from "./utils";
+import { IAtomicDB } from "../src/interfaces";
+import { MemoryDB } from "../src/db";
 
 describe("DataProviderServer", () => {
   let dataProvider: DataProviderServer;
+  let tree: HubRegistryTree;
+  let treeDB: HubRegistryTreeDB;
   let hub: Keypair;
   let adminAddress: TEthereumAddress;
-  let tree: HubRegistryTree;
   let hubRegistry: HubRegistry;
   let ip: string;
   let port: number;
+  let atomicDB: IAtomicDB;
 
   beforeAll(async () => {
     hub = genKeypair();
     adminAddress = adminAddressFactory();
-    tree = hubRegistryTreeFactory([hub], LEVELS, adminAddress);
+    atomicDB = new MemoryDB();
+    tree = new HubRegistryTree(LEVELS);
+    treeDB = new HubRegistryTreeDB(tree, atomicDB);
+    hubRegistry = hubRegistryFactory(hub, adminAddress);
+    await treeDB.insert(hubRegistry);
     expect(tree.length).toEqual(1);
-    hubRegistry = tree.leaves[0];
-    dataProvider = new DataProviderServer(adminAddress, tree, {
+    dataProvider = new DataProviderServer(adminAddress, treeDB, {
       numAccess: 1000,
       refreshPeriod: 100000
     });
@@ -39,6 +46,16 @@ describe("DataProviderServer", () => {
 
   afterAll(() => {
     dataProvider.close();
+  });
+
+  test("treeDB persistence", async () => {
+    const treeDBFromDB = await HubRegistryTreeDB.fromDB(atomicDB, LEVELS);
+    expect(treeDBFromDB.tree.length).toEqual(treeDB.tree.length);
+    for (const index in treeDBFromDB.tree.leaves) {
+      const leafOrig = treeDB.tree.leaves[index];
+      const leafFromDB = treeDBFromDB.tree.leaves[index];
+      expect(leafOrig.hash()).toEqual(leafFromDB.hash());
+    }
   });
 
   test("request fails when registry is invalid", async () => {
@@ -68,7 +85,7 @@ describe("DataProviderServer", () => {
 
   test("requests fail when rate limit is reached", async () => {
     const ip = "localhost";
-    const dataProvider = new DataProviderServer(adminAddress, tree, {
+    const dataProvider = new DataProviderServer(adminAddress, treeDB, {
       numAccess: 1,
       refreshPeriod: 100000
     });
