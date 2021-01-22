@@ -325,16 +325,14 @@ class JSONObj extends BaseSerializable {
 
   static consume(b: Uint8Array): [JSONObj, Uint8Array] {
     const [tlv, bytesRemaining] = TLV.consume(b);
-    const decoder = new TextDecoder();
-    const objString = decoder.decode(tlv.value);
+    const objString = Buffer.from(tlv.value).toString("utf-8");
     const obj = JSON.parse(objString);
     return [new JSONObj(obj), bytesRemaining];
   }
 
   serialize(): Uint8Array {
     const objString = JSON.stringify(this.jsonObj);
-    const coder = new TextEncoder();
-    const bytes = coder.encode(objString);
+    const bytes = Buffer.from(objString, "utf-8");
     return new TLV(new Short(msgType.JSONObj), bytes).serialize();
   }
 }
