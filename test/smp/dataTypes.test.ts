@@ -2,6 +2,7 @@ import { concatUint8Array } from "../../src/smp/utils";
 import { Byte, Short, Int, MPI } from "../../src/smp/serialization";
 import { Scalar, Point } from "../../src/smp/v4/serialization";
 import { ValueError } from "../../src/smp/exceptions";
+import { expect } from 'chai';
 
 describe("Fixed types", () => {
   const types = [Byte, Short, Int, Scalar];
@@ -64,38 +65,38 @@ describe("Fixed types", () => {
     )
   ];
 
-  test("succeeds", () => {
+  it("succeeds", () => {
     for (const index in types) {
       const Type = types[index];
       const b = new Type(expectedValue[index]);
-      expect(Type.size).toEqual(expectedSize[index]);
-      expect(b.value).toEqual(expectedValue[index]);
-      expect(b.serialize()).toEqual(expectedSerialized[index]);
-      expect(b.value).toEqual(
+      expect(Type.size).to.eql(expectedSize[index]);
+      expect(b.value).to.eql(expectedValue[index]);
+      expect(b.serialize()).to.eql(expectedSerialized[index]);
+      expect(b.value).to.eql(
         Type.deserialize(expectedSerialized[index]).value
       );
     }
   });
-  test("constructor fails", () => {
+  it("constructor fails", () => {
     // Too large
     for (const index in types) {
       const Type = types[index];
       expect(() => {
         new Type(expectedInvalidValue[index]);
-      }).toThrowError(ValueError);
+      }).to.throw(ValueError);
     }
     // Negative
     const neg = BigInt(-1);
     for (const Type of types) {
       expect(() => {
         new Type(neg);
-      }).toThrowError(ValueError);
+      }).to.throw(ValueError);
     }
   });
 });
 
 describe("MPI(variable-length integer)", () => {
-  test("succeeds", () => {
+  it("succeeds", () => {
     const values = [
       BigInt(0),
       BigInt(256),
@@ -109,54 +110,54 @@ describe("MPI(variable-length integer)", () => {
     for (const index in values) {
       const mpi = new MPI(values[index]);
       const expected = expectedSerialized[index];
-      expect(mpi.serialize()).toEqual(expected);
+      expect(mpi.serialize()).to.eql(expected);
       expect(MPI.deserialize(expected).value === mpi.value);
     }
   });
-  test("consume", () => {
+  it("consume", () => {
     const bytes = concatUint8Array(
       new Uint8Array([0, 0, 0, 1, 0]),
       new Uint8Array([0, 0, 0, 2, 1, 0])
     );
     const [mpi1, bytesRemaining] = MPI.consume(bytes);
-    expect(mpi1.value === BigInt(0)).toBeTruthy();
+    expect(mpi1.value === BigInt(0)).to.be.true;
     const [mpi2, bytesRemaining2] = MPI.consume(bytesRemaining);
-    expect(mpi2.value === BigInt(256)).toBeTruthy();
+    expect(mpi2.value === BigInt(256)).to.be.true;
     expect(() => {
       MPI.consume(bytesRemaining2);
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
     // We can consume only the prefix, i.e. [0, 0, 0, 1, 1].
     const b = new Uint8Array([0, 0, 0, 1, 1, 1]);
     const [mpi3, bRemaining] = MPI.consume(b);
     expect(() => {
-      expect(mpi3.value === BigInt(1)).toBeTruthy();
-      expect(bRemaining).toEqual(new Uint8Array([1]));
+      expect(mpi3.value === BigInt(1)).to.be.true;
+      expect(bRemaining).to.eql(new Uint8Array([1]));
     });
   });
-  test("constructor fails", () => {
+  it("constructor fails", () => {
     // Negative
     expect(() => {
       new MPI(BigInt(-1));
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
   });
-  test("deserialize fails", () => {
+  it("deserialize fails", () => {
     // Empty
     expect(() => {
       MPI.deserialize(new Uint8Array([]));
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
     // Length too short
     expect(() => {
       MPI.deserialize(new Uint8Array([0, 0, 0, 1, 1, 1]));
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
     // Length too long
     expect(() => {
       MPI.deserialize(new Uint8Array([0, 0, 0, 2, 0]));
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
   });
 });
 
 describe("Point", () => {
-  test("succeeds", () => {
+  it("succeeds", () => {
     const points = [
       [BigInt(0), BigInt(1)],
       [
@@ -283,16 +284,16 @@ describe("Point", () => {
     for (const index in points) {
       const point = points[index];
       const p = new Point(point);
-      expect(p.serialize()).toEqual(expectedSerialized[index]);
-      expect(Point.deserialize(p.serialize())).toEqual(p);
+      expect(p.serialize()).to.eql(expectedSerialized[index]);
+      expect(Point.deserialize(p.serialize())).to.eql(p);
     }
   });
 
-  test("deserialize fails", () => {
+  it("deserialize fails", () => {
     // Length too short
     expect(() => {
       Point.deserialize(new Uint8Array([0, 0, 0, 2, 0]));
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
     // Length too long
     expect(() => {
       Point.deserialize(
@@ -332,6 +333,6 @@ describe("Point", () => {
           0
         ])
       );
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
   });
 });

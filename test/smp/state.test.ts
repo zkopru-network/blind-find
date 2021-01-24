@@ -9,8 +9,10 @@ import {
 } from "../../src/smp/v4/factories";
 import { BaseSMPMessage } from "../../src/smp/msgs";
 
+import { expect } from 'chai';
+
 describe("test `SMPStateMachine`", () => {
-  test("secret types", () => {
+  it("secret types", () => {
     expect(() => {
       // A `number` is fine to be a secret
       new SMPStateMachine(1);
@@ -27,11 +29,11 @@ describe("test `SMPStateMachine`", () => {
 describe("test `SMPStateMachine` succeeds", () => {
   const string0 = "string0";
   const string1 = "string1";
-  test("same secrets", () => {
-    expect(smp(string0, string0)).toBeTruthy();
+  it("same secrets", () => {
+    expect(smp(string0, string0)).to.be.true;
   });
-  test("different secrets", () => {
-    expect(smp(string0, string1)).toBeFalsy();
+  it("different secrets", () => {
+    expect(smp(string0, string1)).to.be.false;
   });
 });
 
@@ -39,12 +41,12 @@ function expectToThrowWhenReceive(s: SMPStateMachine, msgs: BaseSMPMessage[]) {
   for (const msg of msgs) {
     expect(() => {
       s.transit(msg.toTLV());
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
   }
 }
 
 describe("test `SMPStateMachine` fails", () => {
-  test("transit fails when wrong messages are received", () => {
+  it("transit fails when wrong messages are received", () => {
     const x = "x";
     const y = "y";
     const aliceState1 = new SMPStateMachine(x);
@@ -53,7 +55,7 @@ describe("test `SMPStateMachine` fails", () => {
     // Fails when `SMPMessage` is of wrong format
     expect(() => {
       aliceState1.transit(tlvFactory());
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
     // Fails when `SMPState1` receives messages other than `null` and `SMPMessage1`.
     expectToThrowWhenReceive(aliceState1, [
       smpMessage2Factory(),
@@ -67,7 +69,7 @@ describe("test `SMPStateMachine` fails", () => {
     // Fails when `SMPMessage` is of wrong format
     expect(() => {
       aliceState2.transit(tlvFactory());
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
     // Fails when `SMPState2` receives messages other than `SMPMessage2`.
     expectToThrowWhenReceive(aliceState2, [
       smpMessage1Factory(),
@@ -81,7 +83,7 @@ describe("test `SMPStateMachine` fails", () => {
     // Fails when `SMPMessage` is of wrong format
     expect(() => {
       bobState3.transit(tlvFactory());
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
     // Fails when `SMPState3` receives messages other than `SMPMessage3`.
     expectToThrowWhenReceive(bobState3, [
       smpMessage1Factory(),
@@ -95,7 +97,7 @@ describe("test `SMPStateMachine` fails", () => {
     // Fails when `SMPMessage` is of wrong format
     expect(() => {
       aliceState4.transit(tlvFactory());
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
     // Fails when `SMPState4` receives messages other than `SMPMessage4`.
     expectToThrowWhenReceive(aliceState4, [
       smpMessage1Factory(),
@@ -114,18 +116,18 @@ function expectSMPFinished(
   isFinished: boolean,
   result?: boolean
 ): void {
-  expect(stateMachine.isFinished()).toEqual(isFinished);
+  expect(stateMachine.isFinished()).equal(isFinished);
   if (isFinished) {
     if (result === undefined) {
       throw new Error(
         "`stateMachine` has finished, the expected result should be provided."
       );
     }
-    expect(stateMachine.getResult()).toEqual(result);
+    expect(stateMachine.getResult()).equal(result);
   } else {
     expect(() => {
       stateMachine.getResult();
-    }).toThrowError(SMPNotFinished);
+    }).to.throw(SMPNotFinished);
   }
 }
 

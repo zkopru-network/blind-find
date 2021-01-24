@@ -1,6 +1,8 @@
 import { BabyJubPoint } from "../../src/smp/v4/babyJub";
 import { G } from "../../src/smp/v4/state";
 
+import { expect } from 'chai';
+
 const gIdentity = new BabyJubPoint([BigInt(0), BigInt(1)]);
 const gBase = new BabyJubPoint(G);
 const g1 = new BabyJubPoint([
@@ -53,72 +55,72 @@ const g3Squared = new BabyJubPoint([
 ]);
 
 describe("equal", () => {
-  test("should be equal if both `n` and `value` are the same", () => {
-    expect(g1.equal(g1)).toBeTruthy();
+  it("should be equal if both `n` and `value` are the same", () => {
+    expect(g1.equal(g1)).to.be.true;
   });
-  test("should not be equal if `value`s are not the same", () => {
-    expect(g1.equal(g2)).toBeFalsy();
+  it("should not be equal if `value`s are not the same", () => {
+    expect(g1.equal(g2)).to.be.false;
   });
 });
 
 describe("isValid", () => {
-  test("should be invalid if the value and modulus are not co-prime", () => {
+  it("should be invalid if the value and modulus are not co-prime", () => {
     const gInvalid = new BabyJubPoint([BigInt(1), BigInt(0)]);
-    expect(gInvalid.isValid()).toBeFalsy();
+    expect(gInvalid.isValid()).to.be.false;
   });
-  test("should be valid if the value and modulus are co-prime", () => {
-    expect(gIdentity.isValid()).toBeTruthy();
-    expect(gBase.isValid()).toBeTruthy();
-    expect(g1.isValid()).toBeTruthy();
-    expect(g2.isValid()).toBeTruthy();
-    expect(g1Add2.isValid()).toBeTruthy();
-    expect(g3.isValid()).toBeTruthy();
-    expect(g3Inverse.isValid()).toBeTruthy();
-    expect(g3Squared.isValid()).toBeTruthy();
+  it("should be valid if the value and modulus are co-prime", () => {
+    expect(gIdentity.isValid()).to.be.true;
+    expect(gBase.isValid()).to.be.true;
+    expect(g1.isValid()).to.be.true;
+    expect(g2.isValid()).to.be.true;
+    expect(g1Add2.isValid()).to.be.true;
+    expect(g3.isValid()).to.be.true;
+    expect(g3Inverse.isValid()).to.be.true;
+    expect(g3Squared.isValid()).to.be.true;
   });
 });
 
 describe("identity", () => {
-  test("hardcoded test", () => {
-    expect(g1.identity().equal(gIdentity)).toBeTruthy();
+  it("hardcoded test", () => {
+    expect(g1.identity().equal(gIdentity)).to.be.true;
   });
-  test("every group element with the same modulus shares the same identity", () => {
-    expect(g1.identity().equal(g2.identity())).toBeTruthy();
+  it("every group element with the same modulus shares the same identity", () => {
+    expect(g1.identity().equal(g2.identity())).to.be.true;
   });
 });
 
 describe("inverse", () => {
-  test("hardcoded test", () => {
-    expect(g3.inverse().equal(g3Inverse)).toBeTruthy();
+  it("hardcoded test", () => {
+    expect(g3.inverse().equal(g3Inverse)).to.be.true;
   });
 });
 
 describe("operate", () => {
-  test("operate with identity", () => {
-    expect(g1.operate(g1.identity()).equal(g1)).toBeTruthy();
+  it("operate with identity", () => {
+    expect(g1.operate(g1.identity()).equal(g1)).to.be.true;
   });
-  test("operate with inverse", () => {
-    expect(g3.operate(g3.inverse()).equal(g3.identity())).toBeTruthy();
+  it("operate with inverse", () => {
+    expect(g3.operate(g3.inverse()).equal(g3.identity())).to.be.true;
   });
-  test("hardcoded test", () => {
-    expect(g1.operate(g2).equal(g1Add2)).toBeTruthy();
+  it("hardcoded test", () => {
+    expect(g1.operate(g2).equal(g1Add2)).to.be.true;
   });
 });
 
 describe("exponentiate", () => {
-  test("hardcoded test", () => {
-    expect(g3.exponentiate(BigInt(2)).equal(g3Squared)).toBeTruthy();
+  it("hardcoded test", () => {
+    expect(g3.exponentiate(BigInt(2)).equal(g3Squared)).to.be.true;
   });
-  test("exponentiate 0", () => {
-    expect(g3.exponentiate(BigInt(0)).equal(g3.identity())).toBeTruthy();
+  it("exponentiate 0", () => {
+    expect(g3.exponentiate(BigInt(0)).equal(g3.identity())).to.be.true;
   });
-  test("exponentiation equals continuous multiplications", () => {
-    expect(g3.exponentiate(BigInt(1)).equal(g3)).toBeTruthy();
-    expect(g3.exponentiate(BigInt(2)).equal(g3.operate(g3))).toBeTruthy();
+  it("exponentiation equals continuous multiplications", () => {
+    expect(g3.exponentiate(BigInt(1)).equal(g3)).to.be.true;
+    expect(g3.exponentiate(BigInt(2)).equal(g3.operate(g3))).to.be.true;
   });
-  test("exponentiate negative integers", () => {
+  it("exponentiate negative integers", () => {
     expect(
       g3.exponentiate(BigInt(-2)).equal(g3.exponentiate(BigInt(2)).inverse())
-    ).toBeTruthy();
+    ).to.be.true;
   });
 });

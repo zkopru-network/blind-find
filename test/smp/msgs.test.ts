@@ -20,8 +20,10 @@ import {
 import { ValueError } from "../../src/smp/exceptions";
 import { BabyJubPoint } from "../../src/smp/v4/babyJub";
 
+import { expect } from 'chai';
+
 describe("TLV", () => {
-  test("succeeds", () => {
+  it("succeeds", () => {
     const types = [new Short(3), new Short(5), new Short(7)];
     const values = [
       new Uint8Array([5566, 5577]),
@@ -38,21 +40,21 @@ describe("TLV", () => {
       const value = values[index];
       const tlv = new TLV(type, value);
       const expected = expectedSerialized[index];
-      expect(tlv.serialize()).toEqual(expected);
+      expect(tlv.serialize()).to.eql(expected);
       const tlvFromExpected = TLV.deserialize(expected);
-      expect(tlvFromExpected.type.value).toEqual(tlv.type.value);
-      expect(tlvFromExpected.value).toEqual(tlv.value);
+      expect(tlvFromExpected.type.value).to.eql(tlv.type.value);
+      expect(tlvFromExpected.value).to.eql(tlv.value);
     }
   });
-  test("deserialize fails", () => {
+  it("deserialize fails", () => {
     // Empty
     expect(() => {
       TLV.deserialize(new Uint8Array([]));
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
     // Wrong length
     expect(() => {
       TLV.deserialize(new Uint8Array([0, 0, 0, 3, 1, 1]));
-    }).toThrowError(ValueError);
+    }).to.throw(ValueError);
   });
 });
 
@@ -88,25 +90,25 @@ describe("tlv and elements", () => {
     BigInt
   ];
 
-  test("fromTLVToElements", () => {
+  it("fromTLVToElements", () => {
     const values = fromTLVToElements(t, wireFormats, tlv);
-    expect(values).toEqual(elements);
+    expect(values).to.eql(elements);
   });
 
-  test("fromElementsToTLV", () => {
+  it("fromElementsToTLV", () => {
     const tlv2 = fromElementsToTLV(t, wireFormats, elements);
-    expect(tlv2.type.value).toEqual(tlv.type.value);
-    expect(tlv2.value).toEqual(tlv.value);
+    expect(tlv2.type.value).to.eql(tlv.type.value);
+    expect(tlv2.value).to.eql(tlv.value);
   });
 
-  test("fromElementsToTLV(fromTLVToElements(tlv))", () => {
+  it("fromElementsToTLV(fromTLVToElements(tlv))", () => {
     const tlv2 = fromElementsToTLV(
       t,
       wireFormats,
       fromTLVToElements(t, wireFormats, tlv)
     );
-    expect(tlv2.type.value).toEqual(tlv.type.value);
-    expect(tlv2.value).toEqual(tlv.value);
+    expect(tlv2.type.value).to.eql(tlv.type.value);
+    expect(tlv2.value).to.eql(tlv.value);
   });
 });
 
@@ -114,25 +116,25 @@ describe("SMPMessages", () => {
   const areSMPMessagesEqual = (a: BaseSMPMessage, b: BaseSMPMessage): void => {
     const tlvA = a.toTLV();
     const tlvB = b.toTLV();
-    expect(tlvA.type.value).toEqual(tlvB.type.value);
-    expect(tlvA.value).toEqual(tlvB.value);
+    expect(tlvA.type.value).to.eql(tlvB.type.value);
+    expect(tlvA.value).to.eql(tlvB.value);
   };
 
-  test("SMPMessage1 succeeds", () => {
+  it("SMPMessage1 succeeds", () => {
     const msg = smpMessage1Factory();
     areSMPMessagesEqual(msg, SMPMessage1Wire.fromTLV(msg.toTLV()));
   });
 
-  test("SMPMessage2 succeeds", () => {
+  it("SMPMessage2 succeeds", () => {
     const msg = smpMessage2Factory();
     areSMPMessagesEqual(msg, SMPMessage2Wire.fromTLV(msg.toTLV()));
   });
 
-  test("SMPMessage3 succeeds", () => {
+  it("SMPMessage3 succeeds", () => {
     const msg = smpMessage3Factory();
     areSMPMessagesEqual(msg, SMPMessage3Wire.fromTLV(msg.toTLV()));
   });
-  test("SMPMessage4 succeeds", () => {
+  it("SMPMessage4 succeeds", () => {
     const msg = smpMessage4Factory();
     areSMPMessagesEqual(msg, SMPMessage4Wire.fromTLV(msg.toTLV()));
   });

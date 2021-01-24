@@ -12,6 +12,8 @@ import { secretFactory, babyJubPointFactory } from "../../src/smp/v4/factories";
 import { hash } from "../../src/smp/v4/factories";
 import { babyJubPointFactoryExclude } from "../utils";
 
+import { expect } from 'chai';
+
 describe("ProofDiscreteLog", () => {
   const g = babyJubPointFactory();
   const x = secretFactory();
@@ -19,14 +21,14 @@ describe("ProofDiscreteLog", () => {
   const r = secretFactory();
   const pf = makeProofDiscreteLog(hash, g, x, r, q);
   const gAnother = babyJubPointFactoryExclude([g, y]);
-  test("make and verify", () => {
-    expect(verifyProofDiscreteLog(hash, pf, g, y)).toBeTruthy();
+  it("make and verify", () => {
+    expect(verifyProofDiscreteLog(hash, pf, g, y)).to.be.true;
   });
-  test("given wrong g", () => {
-    expect(verifyProofDiscreteLog(hash, pf, gAnother, y)).toBeFalsy();
+  it("given wrong g", () => {
+    expect(verifyProofDiscreteLog(hash, pf, gAnother, y)).to.be.false;
   });
-  test("given wrong y", () => {
-    expect(verifyProofDiscreteLog(hash, pf, g, gAnother)).toBeFalsy();
+  it("given wrong y", () => {
+    expect(verifyProofDiscreteLog(hash, pf, g, gAnother)).to.be.false;
   });
 });
 
@@ -52,35 +54,35 @@ describe("ProofEqualDiscreteCoordinates", () => {
     q
   );
   const gAnother = babyJubPointFactoryExclude([g0, g1, g2, y0, y1]);
-  test("make and verify", () => {
+  it("make and verify", () => {
     expect(
       verifyProofEqualDiscreteCoordinates(hash, g0, g1, g2, y0, y1, proof)
-    ).toBeTruthy();
+    ).to.be.true;
   });
-  test("wrong g0", () => {
+  it("wrong g0", () => {
     expect(
       verifyProofEqualDiscreteCoordinates(hash, gAnother, g1, g2, y0, y1, proof)
-    ).toBeFalsy();
+    ).to.be.false;
   });
-  test("wrong g1", () => {
+  it("wrong g1", () => {
     expect(
       verifyProofEqualDiscreteCoordinates(hash, g0, gAnother, g2, y0, y1, proof)
-    ).toBeFalsy();
+    ).to.be.false;
   });
-  test("wrong g2", () => {
+  it("wrong g2", () => {
     expect(
       verifyProofEqualDiscreteCoordinates(hash, g0, g1, gAnother, y0, y1, proof)
-    ).toBeFalsy();
+    ).to.be.false;
   });
-  test("wrong y0", () => {
+  it("wrong y0", () => {
     expect(
       verifyProofEqualDiscreteCoordinates(hash, g0, g1, g2, gAnother, y1, proof)
-    ).toBeFalsy();
+    ).to.be.false;
   });
-  test("wrong y1", () => {
+  it("wrong y1", () => {
     expect(
       verifyProofEqualDiscreteCoordinates(hash, g0, g1, g2, y0, gAnother, proof)
-    ).toBeFalsy();
+    ).to.be.false;
   });
 });
 
@@ -93,29 +95,29 @@ describe("ProofEqualDiscreteLogs", () => {
   const y1 = g1.exponentiate(x);
   const proof = makeProofEqualDiscreteLogs(hash, g0, g1, x, r, q);
   const gAnother = babyJubPointFactoryExclude([g0, g1, y0, y1]);
-  test("make and verify", () => {
+  it("make and verify", () => {
     expect(
       verifyProofEqualDiscreteLogs(hash, g0, g1, y0, y1, proof)
-    ).toBeTruthy();
+    ).to.be.true;
   });
-  test("wrong g0", () => {
+  it("wrong g0", () => {
     expect(
       verifyProofEqualDiscreteLogs(hash, gAnother, g1, y0, y1, proof)
-    ).toBeFalsy();
+    ).to.be.false;
   });
-  test("wrong g1", () => {
+  it("wrong g1", () => {
     expect(
       verifyProofEqualDiscreteLogs(hash, g0, gAnother, y0, y1, proof)
-    ).toBeFalsy();
+    ).to.be.false;
   });
-  test("wrong y0", () => {
+  it("wrong y0", () => {
     expect(
       verifyProofEqualDiscreteLogs(hash, g0, g1, gAnother, y1, proof)
-    ).toBeFalsy();
+    ).to.be.false;
   });
-  test("wrong y1", () => {
+  it("wrong y1", () => {
     expect(
       verifyProofEqualDiscreteLogs(hash, g0, g1, y0, gAnother, proof)
-    ).toBeFalsy();
+    ).to.be.false;
   });
 });
