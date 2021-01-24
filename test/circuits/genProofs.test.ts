@@ -10,48 +10,54 @@ import { proofIndirectConnectionInputsFactory } from "../../src/factories";
 import { babyJubPointFactory } from "../../src/smp/v4/factories";
 import { bigIntFactoryExclude, factoryExclude } from "../utils";
 
-jest.setTimeout(300000);
+import chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
 
-describe("Test `genProof` and `verifyProof`", () => {
+chai.use(chaiAsPromised);
+const expect = chai.expect;
+
+describe("Test `genProof` and `verifyProof`", function() {
+  this.timeout(300000);
+
   const inputs = proofIndirectConnectionInputsFactory(32);
   let proofOfSMP: TProof;
   let proofSuccessfulSMP: TProof;
 
-  beforeAll(async () => {
+  before(async () => {
     proofOfSMP = await genProofOfSMP(inputs);
     proofSuccessfulSMP = await genProofSuccessfulSMP(inputs);
   });
 
-  test("proofOfSMP succeeds", async () => {
+  it("proofOfSMP succeeds", async () => {
     const res = await verifyProofOfSMP(proofOfSMP);
-    expect(res).toBeTruthy();
+    expect(res).to.be.true;
     // Invalid public
     const invalidPublicSignals = [...proofOfSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
-    await expect(
+    expect(
       verifyProofOfSMP({
         proof: proofOfSMP.proof,
         publicSignals: invalidPublicSignals
       })
-    ).rejects.toThrow();
+    ).to.be.rejected;
   });
 
-  test("proofSuccessfulSMP succeeds", async () => {
+  it("proofSuccessfulSMP succeeds", async () => {
     const res = await verifyProofSuccessfulSMP(proofSuccessfulSMP);
-    expect(res).toBeTruthy();
+    expect(res).to.be.true;
 
     // Invalid public
     const invalidPublicSignals = [...proofSuccessfulSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
-    await expect(
+    expect(
       verifyProofSuccessfulSMP({
         proof: proofSuccessfulSMP.proof,
         publicSignals: invalidPublicSignals
       })
-    ).rejects.toThrow();
+      ).to.be.rejected;
   });
 
-  test("proof indirect connection (proofOfSMP and proofSuccessfulSMP)", async () => {
+  it("proof indirect connection (proofOfSMP and proofSuccessfulSMP)", async () => {
     const res = await verifyProofIndirectConnection({
       pubkeyA: inputs.pubkeyA,
       pubkeyC: inputs.pubkeyC,
@@ -60,7 +66,7 @@ describe("Test `genProof` and `verifyProof`", () => {
       proofOfSMP,
       proofSuccessfulSMP
     });
-    expect(res).toBeTruthy();
+    expect(res).to.be.true;
 
     // Fails when invalid public keys are passed.
     const anotherPubkey = factoryExclude(
@@ -82,7 +88,7 @@ describe("Test `genProof` and `verifyProof`", () => {
         proofOfSMP,
         proofSuccessfulSMP
       })
-    ).toBeFalsy();
+    ).to.be.false;
     // Wrong pubkeyC
     expect(
       await verifyProofIndirectConnection({
@@ -93,7 +99,7 @@ describe("Test `genProof` and `verifyProof`", () => {
         proofOfSMP,
         proofSuccessfulSMP
       })
-    ).toBeFalsy();
+    ).to.be.false;
     // Wrong pubkeyAdmin
     expect(
       await verifyProofIndirectConnection({
@@ -104,7 +110,7 @@ describe("Test `genProof` and `verifyProof`", () => {
         proofOfSMP,
         proofSuccessfulSMP
       })
-    ).toBeFalsy();
+    ).to.be.false;
     // Wrong root
     expect(
       await verifyProofIndirectConnection({
@@ -115,6 +121,6 @@ describe("Test `genProof` and `verifyProof`", () => {
         proofOfSMP,
         proofSuccessfulSMP
       })
-    ).toBeFalsy();
+    ).to.be.false;
   });
 });

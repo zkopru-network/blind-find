@@ -13,13 +13,14 @@ import {
   adminAddressFactory,
   hubRegistryTreeFactory
 } from "../../src/factories";
+import { expect } from 'chai';
 
-jest.setTimeout(90000);
+describe("join msg signatures", function () {
+  this.timeout(90000);
 
-describe("join msg signatures", () => {
   let circuit;
 
-  beforeAll(async () => {
+  before(async () => {
     circuit = await compileCircuit("testJoinMsgSigVerifier.circom");
   });
 
@@ -42,7 +43,7 @@ describe("join msg signatures", () => {
     return isValid === "1";
   };
 
-  test("verifySignedMsg", async () => {
+  it("verifySignedMsg", async () => {
     const hub = genKeypair();
     const userA = genKeypair();
     const joinMsg = getJoinHubMsgHashedData(userA.pubKey, hub.pubKey);
@@ -50,7 +51,7 @@ describe("join msg signatures", () => {
     /* Counter signed join-hub msg */
     const counterSignedhashedData = getCounterSignHashedData(sigA);
     const sigHub = signMsg(hub.privKey, counterSignedhashedData);
-    expect(verifySignedMsg(joinMsg, sigA, userA.pubKey)).toBeTruthy();
+    expect(verifySignedMsg(joinMsg, sigA, userA.pubKey)).to.be.true;
 
     // In circuits
 
@@ -58,7 +59,7 @@ describe("join msg signatures", () => {
     // Succeeds
     expect(
       await verifySigInCircuit(userA.pubKey, sigA, hub.pubKey, sigHub)
-    ).toBeTruthy();
+    ).to.be.true;
 
     // Fails
 
@@ -78,7 +79,7 @@ describe("join msg signatures", () => {
         hub.pubKey,
         sigHub
       )
-    ).toBeFalsy();
+    ).to.be.false;
     expect(
       await verifySigInCircuit(
         userA.pubKey,
@@ -86,7 +87,7 @@ describe("join msg signatures", () => {
         hub.pubKey,
         sigHub
       )
-    ).toBeFalsy();
+    ).to.be.false;
     // Wrong `sigA.S`
     expect(
       await verifySigInCircuit(
@@ -95,7 +96,7 @@ describe("join msg signatures", () => {
         hub.pubKey,
         sigHub
       )
-    ).toBeFalsy();
+    ).to.be.false;
     // Wrong `userPubkey`
     expect(
       await verifySigInCircuit(
@@ -104,7 +105,7 @@ describe("join msg signatures", () => {
         hub.pubKey,
         sigHub
       )
-    ).toBeFalsy();
+    ).to.be.false;
     // Wrong `hubPubkey`
     expect(
       await verifySigInCircuit(
@@ -113,38 +114,38 @@ describe("join msg signatures", () => {
         [anotherElement, anotherElement],
         sigHub
       )
-    ).toBeFalsy();
+    ).to.be.false;
     // Wrong `sigHub.R8`
     expect(
       await verifySigInCircuit(userA.pubKey, sigA, hub.pubKey, {
         R8: [anotherElement, sigHub.R8[1]],
         S: sigHub.S
       })
-    ).toBeFalsy();
+    ).to.be.false;
     expect(
       await verifySigInCircuit(userA.pubKey, sigA, hub.pubKey, {
         R8: [sigHub.R8[0], anotherElement],
         S: sigHub.S
       })
-    ).toBeFalsy();
+    ).to.be.false;
     // Wrong `sigHub.S`
     expect(
       await verifySigInCircuit(userA.pubKey, sigA, hub.pubKey, {
         R8: [sigHub.R8[0], sigHub.R8[0]],
         S: anotherElement
       })
-    ).toBeFalsy();
+    ).to.be.false;
   });
 });
 
-describe("HubRegistry", () => {
+describe("HubRegistry", function() {
   let circuit;
 
-  beforeAll(async () => {
+  before(async () => {
     circuit = await compileCircuit("testHubRegistryVerifier.circom");
   });
 
-  test("verifySignedMsg", async () => {
+  it("verifySignedMsg", async () => {
     const adminAddress = adminAddressFactory();
     const hubs = [genKeypair(), genKeypair(), genKeypair()];
     const treeLevels = 4;
@@ -176,6 +177,6 @@ describe("HubRegistry", () => {
     };
 
     // Succeeds
-    expect(await verify(1)).toBeTruthy();
+    expect(await verify(1)).to.be.true;
   });
 });

@@ -5,11 +5,17 @@ import { babyJubPointFactoryExclude, bigIntFactoryExclude } from "../utils";
 import { proofSuccessfulSMPInputsFactory } from "../../src/factories";
 import { proofSuccessfulSMPInputsToCircuitArgs } from "../../src/circuits/ts";
 
-jest.setTimeout(90000);
+import chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
 
-describe("Circuit of the Proof of Successful SMP", () => {
+chai.use(chaiAsPromised);
+const expect = chai.expect;
+
+describe("Circuit of the Proof of Successful SMP", function() {
+  this.timeout(90000);
+
   const inputs = proofSuccessfulSMPInputsFactory();
-  test("", async () => {
+  it("", async () => {
     const circuit = await compileCircuit("testProofSuccessfulSMP.circom");
 
     const verifyProofSuccessfulSMP = async inputs => {
@@ -20,7 +26,7 @@ describe("Circuit of the Proof of Successful SMP", () => {
     };
 
     // Succeeds
-    expect(await verifyProofSuccessfulSMP(inputs)).toBeTruthy();
+    expect(await verifyProofSuccessfulSMP(inputs)).to.be.true;
 
     // Fails when wrong arguments are given.
     const sAnother = bigIntFactoryExclude([inputs.a3]);
@@ -29,37 +35,37 @@ describe("Circuit of the Proof of Successful SMP", () => {
       inputs.ph,
       inputs.rh
     ]);
-    await expect(
+    expect(
       verifyProofSuccessfulSMP({
         a3: sAnother,
         pa: inputs.pa,
         ph: inputs.ph,
         rh: inputs.rh
       })
-    ).rejects.toThrow();
-    await expect(
+    ).to.be.rejected;
+    expect(
       verifyProofSuccessfulSMP({
         a3: inputs.a3,
         pa: gAnother,
         ph: inputs.ph,
         rh: inputs.rh
       })
-    ).rejects.toThrow();
-    await expect(
+    ).to.be.rejected;
+    expect(
       verifyProofSuccessfulSMP({
         a3: inputs.a3,
         pa: inputs.pa,
         ph: gAnother,
         rh: inputs.rh
       })
-    ).rejects.toThrow();
-    await expect(
+    ).to.be.rejected;
+    expect(
       verifyProofSuccessfulSMP({
         a3: inputs.a3,
         pa: inputs.pa,
         ph: inputs.ph,
         rh: gAnother
       })
-    ).rejects.toThrow();
+    ).to.be.rejected;
   });
 });

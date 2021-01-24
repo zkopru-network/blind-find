@@ -25,12 +25,13 @@ import { compileCircuit } from "./utils";
 import { babyJubPointFactoryExclude } from "../utils";
 import { BabyJubPoint } from "../../src/smp/v4/babyJub";
 
-jest.setTimeout(90000);
+import { expect } from 'chai';
 
 const version = 1;
 
-describe("proof of discrete log", () => {
-  test("should be verified in circuit", async () => {
+describe("proof of discrete log", function () {
+  this.timeout(90000);
+  it("should be verified in circuit", async () => {
     const g = babyJubBase8Factory();
     const x = secretFactory();
     const y = g.exponentiate(x);
@@ -38,7 +39,7 @@ describe("proof of discrete log", () => {
     const pf = makeProofDiscreteLog(hash, g, x, r, q);
     const gAnother = babyJubPointFactoryExclude([g, y]);
 
-    expect(verifyProofDiscreteLog(hash, pf, g, y)).toBeTruthy();
+    expect(verifyProofDiscreteLog(hash, pf, g, y)).to.be.true;
 
     const circuit = await compileCircuit(
       "testProofOfDiscreteLogVerifier.circom"
@@ -60,16 +61,18 @@ describe("proof of discrete log", () => {
       return res === "1";
     };
     // Succeeds
-    expect(await verifyPfCircuit(pf, g, y)).toBeTruthy();
+    expect(await verifyPfCircuit(pf, g, y)).to.be.true;
     // Fails: wrong g
-    expect(await verifyPfCircuit(pf, gAnother, y)).toBeFalsy();
+    expect(await verifyPfCircuit(pf, gAnother, y)).to.be.false;
     // Fails: wrong y
-    expect(await verifyPfCircuit(pf, g, gAnother)).toBeFalsy();
+    expect(await verifyPfCircuit(pf, g, gAnother)).to.be.false;
   });
 });
 
-describe("ProofEqualDiscreteCoordinates", () => {
-  test("should be verified in circuit", async () => {
+describe("ProofEqualDiscreteCoordinates", function() {
+  this.timeout(90000);
+
+  it("should be verified in circuit", async () => {
     const g0 = babyJubPointFactory();
     const g1 = babyJubPointFactory();
     const g2 = babyJubPointFactory();
@@ -93,7 +96,7 @@ describe("ProofEqualDiscreteCoordinates", () => {
     );
     expect(
       verifyProofEqualDiscreteCoordinates(hash, g0, g1, g2, y0, y1, pf)
-    ).toBeTruthy();
+    ).to.be.true;
 
     const circuit = await compileCircuit(
       "testProofEqualDiscreteCoordinatesVerifier.circom"
@@ -124,22 +127,24 @@ describe("ProofEqualDiscreteCoordinates", () => {
     };
 
     // Succeeds
-    expect(await verifyPfCircuit(pf, g0, g1, g2, y0, y1)).toBeTruthy();
+    expect(await verifyPfCircuit(pf, g0, g1, g2, y0, y1)).to.be.true;
     // Wrong g0
-    expect(await verifyPfCircuit(pf, gAnother, g1, g2, y0, y1)).toBeFalsy();
+    expect(await verifyPfCircuit(pf, gAnother, g1, g2, y0, y1)).to.be.false;
     // Wrong g1
-    expect(await verifyPfCircuit(pf, g0, gAnother, g2, y0, y1)).toBeFalsy();
+    expect(await verifyPfCircuit(pf, g0, gAnother, g2, y0, y1)).to.be.false;
     // Wrong g2
-    expect(await verifyPfCircuit(pf, g0, g1, gAnother, y0, y1)).toBeFalsy();
+    expect(await verifyPfCircuit(pf, g0, g1, gAnother, y0, y1)).to.be.false;
     // Wrong y0
-    expect(await verifyPfCircuit(pf, g0, g1, g2, gAnother, y1)).toBeFalsy();
+    expect(await verifyPfCircuit(pf, g0, g1, g2, gAnother, y1)).to.be.false;
     // Wrong y1
-    expect(await verifyPfCircuit(pf, g0, g1, g2, y0, gAnother)).toBeFalsy();
+    expect(await verifyPfCircuit(pf, g0, g1, g2, y0, gAnother)).to.be.false;
   });
 });
 
-describe("ProofEqualDiscreteLogs", () => {
-  test("should be verified in circuit", async () => {
+describe("ProofEqualDiscreteLogs", function () {
+  this.timeout(90000);
+
+  it("should be verified in circuit", async () => {
     const g0 = babyJubPointFactory();
     const g1 = babyJubPointFactory();
     const x = secretFactory();
@@ -148,7 +153,7 @@ describe("ProofEqualDiscreteLogs", () => {
     const y1 = g1.exponentiate(x);
     const pf = makeProofEqualDiscreteLogs(hash, g0, g1, x, r, q);
     const gAnother = babyJubPointFactoryExclude([g0, g1, y0, y1]);
-    expect(verifyProofEqualDiscreteLogs(hash, g0, g1, y0, y1, pf)).toBeTruthy();
+    expect(verifyProofEqualDiscreteLogs(hash, g0, g1, y0, y1, pf)).to.be.true;
 
     const circuit = await compileCircuit(
       "testProofEqualDiscreteLogsVerifier.circom"
@@ -175,14 +180,14 @@ describe("ProofEqualDiscreteLogs", () => {
       return res === "1";
     };
     // Succeeds
-    expect(await verifyPfCircuit(pf, g0, g1, y0, y1)).toBeTruthy();
+    expect(await verifyPfCircuit(pf, g0, g1, y0, y1)).to.be.true;
     // Fails: wrong g0
-    expect(await verifyPfCircuit(pf, gAnother, g1, y0, y1)).toBeFalsy();
+    expect(await verifyPfCircuit(pf, gAnother, g1, y0, y1)).to.be.false;
     // Fails: wrong g1
-    expect(await verifyPfCircuit(pf, g0, gAnother, y0, y1)).toBeFalsy();
+    expect(await verifyPfCircuit(pf, g0, gAnother, y0, y1)).to.be.false;
     // Fails: wrong y0
-    expect(await verifyPfCircuit(pf, g0, g1, gAnother, y1)).toBeFalsy();
+    expect(await verifyPfCircuit(pf, g0, g1, gAnother, y1)).to.be.false;
     // Fails: wrong y1
-    expect(await verifyPfCircuit(pf, g0, g1, y0, gAnother)).toBeFalsy();
+    expect(await verifyPfCircuit(pf, g0, g1, y0, gAnother)).to.be.false;
   });
 });

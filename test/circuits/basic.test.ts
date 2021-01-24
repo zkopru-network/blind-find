@@ -13,12 +13,15 @@ import {
   hubRegistryTreeFactory
 } from "../../src/factories";
 
-jest.setTimeout(90000);
+import chai from 'chai';
+const expect = chai.expect;
 
-describe("smpHash", () => {
+describe("smpHash", function () {
+  this.timeout(90000);
+
   const version = 1;
 
-  test("result from circuit is correct", async () => {
+  it("result from circuit is correct", async () => {
     const args = [secretFactory(), secretFactory()];
     const resJs = smpHash(version, ...args);
 
@@ -29,18 +32,17 @@ describe("smpHash", () => {
     });
     const witness = await executeCircuit(circuit, circuitInputs);
     const output = getSignalByName(circuit, witness, "main.hash");
-    expect(output.toString()).toEqual(resJs.toString());
+    expect(output.toString()).equal(resJs.toString());
   });
 });
 
 describe("point computation", () => {
-  test("result from circuit is the same as the output calculated outside", async () => {
+  it("result from circuit is the same as the output calculated outside", async () => {
     const privkey = secretFactory();
     const point = new BabyJubPoint(G).exponentiate(privkey);
-    // const point = new BabyJubPoint(pubkey);
     const scalar = secretFactory();
     const res = point.exponentiate(scalar);
-    expect(res.isValid()).toBeTruthy();
+    expect(res.isValid()).to.be.true;
 
     const circuit = await compileCircuit("testBabyMulScalar.circom");
 
@@ -59,11 +61,11 @@ describe("point computation", () => {
       witness,
       "main.out[1]"
     ).toString();
-    expect(resCircuitX).toEqual(res.point[0].toString());
-    expect(resCircuitY).toEqual(res.point[1].toString());
+    expect(resCircuitX).equal(res.point[0].toString());
+    expect(resCircuitY).equal(res.point[1].toString());
   });
 
-  test("point inverse should work in circuit", async () => {
+  it("point inverse should work in circuit", async () => {
     const privkey = secretFactory();
     const pubkey = genPubKey(privkey);
     const point = new BabyJubPoint(pubkey);
@@ -83,18 +85,18 @@ describe("point computation", () => {
       witness,
       "main.out[1]"
     ).toString();
-    expect(resCircuitX).toEqual(out.point[0].toString());
-    expect(resCircuitY).toEqual(out.point[1].toString());
+    expect(resCircuitX).equal(out.point[0].toString());
+    expect(resCircuitY).equal(out.point[1].toString());
   });
 });
 
 describe("point equal", () => {
-  test("result from circuit is the same as the output calculated outside", async () => {
+  it("result from circuit is the same as the output calculated outside", async () => {
     const privkey = secretFactory();
     const point = new BabyJubPoint(G).exponentiate(privkey);
     const pointAnother = babyJubPointFactoryExclude([point]);
-    expect(point.equal(point)).toBeTruthy();
-    expect(point.equal(pointAnother)).toBeFalsy();
+    expect(point.equal(point)).to.be.true;
+    expect(point.equal(pointAnother)).to.be.false;
     const circuit = await compileCircuit("testPointEqual.circom");
 
     const verifyAEqualToB = async (a: BabyJubPoint, b: BabyJubPoint) => {
@@ -107,15 +109,15 @@ describe("point equal", () => {
       return res === "1";
     };
 
-    expect(await verifyAEqualToB(point, point)).toBeTruthy();
-    expect(await verifyAEqualToB(point, pointAnother)).toBeFalsy();
+    expect(await verifyAEqualToB(point, point)).to.be.true;
+    expect(await verifyAEqualToB(point, pointAnother)).to.be.false;
   });
 });
 
 describe("merkle proof", () => {
   const levels = 4;
 
-  test("merkle proof should be verified successfully in the circuit", async () => {
+  it("merkle proof should be verified successfully in the circuit", async () => {
     const adminAddress = adminAddressFactory();
     const hubs = [genKeypair(), genKeypair(), genKeypair()];
     const tree = hubRegistryTreeFactory(hubs, levels, adminAddress);
@@ -139,6 +141,6 @@ describe("merkle proof", () => {
       ).toString();
       return circuitRoot === root.toString();
     };
-    expect(await verifyMerkleProof(0)).toBeTruthy();
+    expect(await verifyMerkleProof(0)).to.be.true;
   });
 });
