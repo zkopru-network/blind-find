@@ -35,7 +35,7 @@ describe("Circuit of the Proof of Successful SMP", function() {
       inputs.ph,
       inputs.rh
     ]);
-    expect(
+    await expect(
       verifyProofSuccessfulSMP({
         a3: sAnother,
         pa: inputs.pa,
@@ -43,7 +43,7 @@ describe("Circuit of the Proof of Successful SMP", function() {
         rh: inputs.rh
       })
     ).to.be.rejected;
-    expect(
+    await expect(
       verifyProofSuccessfulSMP({
         a3: inputs.a3,
         pa: gAnother,
@@ -51,7 +51,7 @@ describe("Circuit of the Proof of Successful SMP", function() {
         rh: inputs.rh
       })
     ).to.be.rejected;
-    expect(
+    await expect(
       verifyProofSuccessfulSMP({
         a3: inputs.a3,
         pa: inputs.pa,
@@ -59,7 +59,7 @@ describe("Circuit of the Proof of Successful SMP", function() {
         rh: inputs.rh
       })
     ).to.be.rejected;
-    expect(
+    await expect(
       verifyProofSuccessfulSMP({
         a3: inputs.a3,
         pa: inputs.pa,

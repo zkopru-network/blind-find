@@ -7,19 +7,21 @@ import { adminAddressFactory, hubRegistryTreeFactory } from "../src/factories";
 import { HubServer } from "../src/hub";
 import { User } from "../src/user";
 
+import { expect } from 'chai';
+
 const timeoutBeginAndEnd = TIMEOUT + TIMEOUT;
 // Timeout for running SMP against one peer (including time generating/verifying proofs).
 const timeoutOneSMP = TIMEOUT + TIMEOUT + TIMEOUT + TIMEOUT_LARGE + TIMEOUT;
 const expectedNumSMPs = 2;
 const timeoutTotal = timeoutBeginAndEnd + expectedNumSMPs * timeoutOneSMP;
 
-jest.setTimeout(timeoutTotal);
+describe("User", function () {
+  this.timeout(timeoutTotal);
 
-describe("User", () => {
   const adminAddress = adminAddressFactory();
   const hubKeypair = genKeypair();
   const tree = hubRegistryTreeFactory([hubKeypair], LEVELS, adminAddress);
-  expect(tree.length).toEqual(1);
+  expect(tree.length).to.eql(1);
   const hubRegistry = tree.leaves[0];
   const merkleProof = tree.tree.genMerklePath(0);
   const rateLimit = {
@@ -52,7 +54,7 @@ describe("User", () => {
     new MemoryDB()
   );
 
-  beforeAll(async () => {
+  before(async () => {
     await hub.start();
 
     const addr = hub.address as WebSocket.AddressInfo;
@@ -60,17 +62,17 @@ describe("User", () => {
     port = addr.port;
   });
 
-  afterAll(() => {
+  after(() => {
     hub.close();
   });
 
-  test("join", async () => {
+  it("join", async () => {
     // Number of joinedHubs is 0 when the database is first initialized.
-    expect((await userJoined.getJoinedHubs()).length).toEqual(0);
+    expect((await userJoined.getJoinedHubs()).length).to.eql(0);
 
     // Number of joinedHubs is incremented after joining a hub.
     await userJoined.join(ip, port, hubKeypair.pubKey);
-    expect((await userJoined.getJoinedHubs()).length).toEqual(1);
+    expect((await userJoined.getJoinedHubs()).length).to.eql(1);
 
     // Persistence: data should persist in the database
     const userAnother2 = new User(
@@ -79,22 +81,22 @@ describe("User", () => {
       merkleProof.root,
       userJoinedDB
     );
-    expect((await userAnother2.getJoinedHubs()).length).toEqual(1);
+    expect((await userAnother2.getJoinedHubs()).length).to.eql(1);
   });
 
-  test("search", async () => {
+  it("search", async () => {
     // Search succeeds
     const proof = await userAnother.search(ip, port, userJoined.keypair.pubKey);
-    expect(proof).not.toBeNull();
+    expect(proof).not.to.be.null;
     if (proof === null) {
       // Makes compiler happy
       throw new Error();
     }
-    expect(await verifyProofIndirectConnection(proof)).toBeTruthy();
+    expect(await verifyProofIndirectConnection(proof)).to.be.true;
     // Search fails
     const keypairNotFound = genKeypair();
     expect(
       await userAnother.search(ip, port, keypairNotFound.pubKey)
-    ).toBeFalsy();
+    ).to.be.null;
   });
 });

@@ -7,34 +7,40 @@ import { HubRegistryTree } from "../src";
 import { secretFactory } from "../src/smp/v4/factories";
 import { genKeypair } from "maci-crypto";
 
+import chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
+
+chai.use(chaiAsPromised);
+const expect = chai.expect;
+
 describe("HubRegistry", () => {
   const registry = hubRegistryFactory();
 
-  test("`verify` succeeds", () => {
-    expect(registry.verify()).toBeTruthy();
+  it("`verify` succeeds", () => {
+    expect(registry.verify()).to.be.true;
   });
 
-  test("`verify` fails if the signature is wrong", () => {
+  it("`verify` fails if the signature is wrong", () => {
     registry.sig.S = secretFactory();
-    expect(registry.verify()).toBeFalsy();
+    expect(registry.verify()).to.be.false;
   });
 });
 
 describe("HubRegistryTree", () => {
-  test("constructor", () => {
+  it("constructor", () => {
     new HubRegistryTree();
   });
-  test("factory", () => {
+  it("factory", () => {
     const adminAddress = adminAddressFactory();
     const hubs = [genKeypair(), genKeypair(), genKeypair()];
     const tree = hubRegistryTreeFactory(hubs, 5, adminAddress);
     for (let i = 0; i < tree.length; i++) {
-      expect(tree.leaves[i].verify()).toBeTruthy();
-      expect(tree.leaves[i].adminAddress).toEqual(adminAddress);
+      expect(tree.leaves[i].verify()).to.be.true;
+      expect(tree.leaves[i].adminAddress).to.eql(adminAddress);
     }
     // Fails when `hubs.length > 2 ** levels`
     expect(() => {
       hubRegistryTreeFactory(hubs, 1);
-    }).toThrow();
+    }).to.throw;
   });
 });

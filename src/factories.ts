@@ -125,9 +125,9 @@ export const successfulSMPMessagesFactory = (secret: BigInt = BigInt(1)) => {
     const r4h = hubState2.r4;
     // Get `r4` after hub transits from state 2 to state 4.
     alice.transit(msg3TLV);
-    expect(alice.isFinished()).toBeTruthy();
-    expect(alice.getResult()).toBeTruthy();
-    expect(hub.isFinished()).toBeFalsy();
+    if (!alice.isFinished() || !alice.getResult() || hub.isFinished()) {
+      throw new Error();
+    }
 
     if (msg1TLV === null || msg2TLV === null || msg3TLV === null) {
       throw new Error();

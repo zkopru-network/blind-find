@@ -10,13 +10,13 @@ describe("smpHash", () => {
 
   it("hardcoded test", () => {
     // empty args
-    expect(smpHash(version1)).equal(
+    expect(smpHash(version1)).to.eq(
       BigInt(
         "1231546096371168494082113088531506742407339160233558919701883037413902805264"
       )
     );
     // with args
-    expect(smpHash(version1, ...args1)).equal(
+    expect(smpHash(version1, ...args1)).to.eql(
       BigInt(
         "6431233368660948447398021585791581974263666768886972060586608603232799868977"
       )
@@ -26,24 +26,24 @@ describe("smpHash", () => {
   it("same versions and args", () => {
     const res1 = smpHash(version1, ...args1);
     const res2 = smpHash(version1, ...args1);
-    expect(res1).equal(res2);
+    expect(res1).to.eql(res2);
   });
 
   it("same versions but different args", () => {
     const res1 = smpHash(version1, ...args1);
     const res2 = smpHash(version1, ...args2);
-    expect(res1).not.equal(res2);
+    expect(res1).not.to.eql(res2);
   });
 
   it("different versions and same args", () => {
     const res1 = smpHash(version1, ...args1);
     const res2 = smpHash(version2, ...args1);
-    expect(res1).not.equal(res2);
+    expect(res1).not.to.eql(res2);
   });
 
   it("different versions and different args", () => {
     const res1 = smpHash(version1, ...args1);
     const res2 = smpHash(version2, ...args2);
-    expect(res1).not.equal(res2);
+    expect(res1).not.to.eql(res2);
   });
 });

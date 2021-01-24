@@ -14,6 +14,12 @@ import { pubkeyFactoryExclude } from "./utils";
 import { IAtomicDB } from "../src/interfaces";
 import { MemoryDB } from "../src/db";
 
+import chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
+
+chai.use(chaiAsPromised);
+const expect = chai.expect;
+
 describe("DataProviderServer", () => {
   let dataProvider: DataProviderServer;
   let tree: HubRegistryTree;
@@ -25,7 +31,7 @@ describe("DataProviderServer", () => {
   let port: number;
   let atomicDB: IAtomicDB;
 
-  beforeAll(async () => {
+  before(async () => {
     hub = genKeypair();
     adminAddress = adminAddressFactory();
     atomicDB = new MemoryDB();
@@ -33,7 +39,7 @@ describe("DataProviderServer", () => {
     treeDB = new HubRegistryTreeDB(tree, atomicDB);
     hubRegistry = hubRegistryFactory(hub, adminAddress);
     await treeDB.insert(hubRegistry);
-    expect(tree.length).toEqual(1);
+    expect(tree.length).to.eql(1);
     dataProvider = new DataProviderServer(adminAddress, treeDB, {
       numAccess: 1000,
       refreshPeriod: 100000
@@ -44,21 +50,21 @@ describe("DataProviderServer", () => {
     port = addr.port;
   });
 
-  afterAll(() => {
+  after(() => {
     dataProvider.close();
   });
 
-  test("treeDB persistence", async () => {
+  it("treeDB persistence", async () => {
     const treeDBFromDB = await HubRegistryTreeDB.fromDB(atomicDB, LEVELS);
-    expect(treeDBFromDB.tree.length).toEqual(treeDB.tree.length);
+    expect(treeDBFromDB.tree.length).to.eql(treeDB.tree.length);
     for (const index in treeDBFromDB.tree.leaves) {
       const leafOrig = treeDB.tree.leaves[index];
       const leafFromDB = treeDBFromDB.tree.leaves[index];
-      expect(leafOrig.hash()).toEqual(leafFromDB.hash());
+      expect(leafOrig.hash()).to.eql(leafFromDB.hash());
     }
   });
 
-  test("request fails when registry is invalid", async () => {
+  it("request fails when registry is invalid", async () => {
     // Invalid registry because of the wrong pubkey
     const validRegistry = hubRegistryFactory();
     const anotherPubkey = pubkeyFactoryExclude([validRegistry.pubkey]);
@@ -67,23 +73,23 @@ describe("DataProviderServer", () => {
       anotherPubkey,
       validRegistry.adminAddress
     );
-    await expect(
+    expect(
       sendGetMerkleProofReq(ip, port, invalidHubRegistry)
-    ).rejects.toThrowError(ValueError);
+    ).to.be.rejectedWith(ValueError);
   });
 
-  test("request fails when no registry matches", async () => {
+  it("request fails when no registry matches", async () => {
     const randomValidRegistry = hubRegistryFactory();
     await expect(
       sendGetMerkleProofReq(ip, port, randomValidRegistry)
-    ).rejects.toBeTruthy();
+    ).to.be.rejected;
   });
 
-  test("send request", async () => {
+  it("send request", async () => {
     await sendGetMerkleProofReq(ip, port, hubRegistry);
   });
 
-  test("requests fail when rate limit is reached", async () => {
+  it("requests fail when rate limit is reached", async () => {
     const ip = "localhost";
     const dataProvider = new DataProviderServer(adminAddress, treeDB, {
       numAccess: 1,
@@ -96,7 +102,8 @@ describe("DataProviderServer", () => {
     // Fails because the rate limit is reached.
     await expect(
       sendGetMerkleProofReq(ip, port, hubRegistry)
-    ).rejects.toBeTruthy();
-    await dataProvider.close();
+    ).to.be.rejected;
+
+    dataProvider.close();
   });
 });

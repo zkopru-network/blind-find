@@ -116,14 +116,14 @@ function expectSMPFinished(
   isFinished: boolean,
   result?: boolean
 ): void {
-  expect(stateMachine.isFinished()).equal(isFinished);
+  expect(stateMachine.isFinished()).to.eql(isFinished);
   if (isFinished) {
     if (result === undefined) {
       throw new Error(
         "`stateMachine` has finished, the expected result should be provided."
       );
     }
-    expect(stateMachine.getResult()).equal(result);
+    expect(stateMachine.getResult()).to.eql(result);
   } else {
     expect(() => {
       stateMachine.getResult();

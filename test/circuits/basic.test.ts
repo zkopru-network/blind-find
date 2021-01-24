@@ -32,7 +32,7 @@ describe("smpHash", function () {
     });
     const witness = await executeCircuit(circuit, circuitInputs);
     const output = getSignalByName(circuit, witness, "main.hash");
-    expect(output.toString()).equal(resJs.toString());
+    expect(output.toString()).to.eql(resJs.toString());
   });
 });
 
@@ -61,8 +61,8 @@ describe("point computation", () => {
       witness,
       "main.out[1]"
     ).toString();
-    expect(resCircuitX).equal(res.point[0].toString());
-    expect(resCircuitY).equal(res.point[1].toString());
+    expect(resCircuitX).to.eql(res.point[0].toString());
+    expect(resCircuitY).to.eql(res.point[1].toString());
   });
 
   it("point inverse should work in circuit", async () => {
@@ -85,8 +85,8 @@ describe("point computation", () => {
       witness,
       "main.out[1]"
     ).toString();
-    expect(resCircuitX).equal(out.point[0].toString());
-    expect(resCircuitY).equal(out.point[1].toString());
+    expect(resCircuitX).to.eql(out.point[0].toString());
+    expect(resCircuitY).to.eql(out.point[1].toString());
   });
 });
 

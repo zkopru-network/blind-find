@@ -17,21 +17,25 @@ import { connect, TRateLimitParams } from "../src/websocket";
 import { Short, TLV } from "../src/smp/serialization";
 import { MemoryDB } from "../src/db";
 
+import chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
+
+chai.use(chaiAsPromised);
+const expect = chai.expect;
+
 const timeoutBeginAndEnd = TIMEOUT + TIMEOUT;
 // Timeout for running SMP against one peer (including time generating/verifying proofs).
 const timeoutOneSMP = TIMEOUT + TIMEOUT + TIMEOUT + TIMEOUT_LARGE + TIMEOUT;
 const expectedNumSMPs = 4;
 const timeoutTotal = timeoutBeginAndEnd + expectedNumSMPs * timeoutOneSMP;
 
-jest.setTimeout(timeoutTotal);
-
 type TRegistry = { userSig: Signature; hubSig: Signature };
 const isRegistrySignedMsgMatch = (
   registry: TRegistry,
   signedMsg: TRegistry
 ) => {
-  expect(registry.userSig).toEqual(signedMsg.userSig);
-  expect(registry.hubSig).toEqual(signedMsg.hubSig);
+  expect(registry.userSig).to.eql(signedMsg.userSig);
+  expect(registry.hubSig).to.eql(signedMsg.hubSig);
 };
 
 describe("UserStore", () => {
@@ -39,12 +43,12 @@ describe("UserStore", () => {
   const userStore = new UserStore(db);
   const msgs = [signedJoinMsgFactory(), signedJoinMsgFactory()];
 
-  test("set, get, and size succeed when adding reigstry", async () => {
+  it("set, get, and size succeed when adding reigstry", async () => {
     await userStore.set(msgs[0].userPubkey, {
       userSig: msgs[0].userSig,
       hubSig: msgs[0].hubSig
     });
-    expect(await userStore.getLength()).toEqual(1);
+    expect(await userStore.getLength()).to.eql(1);
     const registry = await userStore.get(msgs[0].userPubkey);
     if (!registry) {
       throw new Error("should not be undefined");
@@ -54,7 +58,7 @@ describe("UserStore", () => {
       userSig: msgs[1].userSig,
       hubSig: msgs[1].hubSig
     });
-    expect(await userStore.getLength()).toEqual(2);
+    expect(await userStore.getLength()).to.eql(2);
     const registryAnother = await userStore.get(msgs[1].userPubkey);
     if (!registryAnother) {
       throw new Error("should not be undefined");
@@ -62,24 +66,26 @@ describe("UserStore", () => {
     isRegistrySignedMsgMatch(registryAnother, msgs[1]);
   });
 
-  test("userStore is an Iterable", async () => {
+  it("userStore is an Iterable", async () => {
     const a: any[] = [];
     for await (const item of userStore) {
       a.push(item);
     }
-    expect(a.length).toEqual(await userStore.getLength());
+    expect(a.length).to.eql(await userStore.getLength());
   });
 
-  test("get fails when no matched entry", async () => {
+  it("get fails when no matched entry", async () => {
     const anotherUser = genKeypair();
-    expect(await userStore.get(anotherUser.pubKey)).toBeUndefined();
+    expect(await userStore.get(anotherUser.pubKey)).to.be.undefined;
   });
 });
 
-describe("HubServer", () => {
+describe("HubServer", function () {
+  this.timeout(timeoutTotal);
+
   // NOTE: We only have **one** hub server in our tests. This means the order of the
   //  following tests matters. The server should be alive until the end of the final
-  //  test (which should be closed in `afterAll`).
+  //  test (which should be closed in `after`).
   let hub: HubServer;
   let ip: string;
   let port: number;
@@ -88,11 +94,11 @@ describe("HubServer", () => {
   const user1 = genKeypair();
   const user2 = genKeypair();
   const tree = hubRegistryTreeFactory([hubkeypair], LEVELS, adminAddress);
-  expect(tree.length).toEqual(1);
+  expect(tree.length).to.eql(1);
   const hubRegistry = tree.leaves[0];
   const merkleProof = tree.tree.genMerklePath(0);
 
-  beforeAll(async () => {
+  before(async () => {
     const rateLimit = {
       numAccess: 1000,
       refreshPeriod: 100000
@@ -113,20 +119,20 @@ describe("HubServer", () => {
     port = addr.port;
   });
 
-  afterAll(() => {
+  after(() => {
     hub.close();
   });
 
-  test("request fails when message has unsupported RPC type", async () => {
+  it("request fails when message has unsupported RPC type", async () => {
     // Invalid registry because of the wrong pubkey
     const expectedUnsupportedType = 5566;
     const c = await connect(ip, port);
     const tlv = new TLV(new Short(expectedUnsupportedType), new Uint8Array());
     c.write(tlv.serialize());
-    await expect(c.read()).rejects.toBeTruthy();
+    await expect(c.read()).to.be.rejected;
   });
 
-  test("`Join` request should succeed with correct request data", async () => {
+  it("`Join` request should succeed with correct request data", async () => {
     const signedMsg = signedJoinMsgFactory(user1, hubkeypair);
     await sendJoinHubReq(
       ip,
@@ -135,8 +141,8 @@ describe("HubServer", () => {
       signedMsg.userSig,
       signedMsg.hubPubkey
     );
-    expect(await hub.userStore.getLength()).toEqual(1);
-    expect(hub.userStore.get(signedMsg.userPubkey)).not.toBeUndefined();
+    expect(await hub.userStore.getLength()).to.eql(1);
+    expect(hub.userStore.get(signedMsg.userPubkey)).not.to.be.undefined;
 
     // Another request
 
@@ -148,22 +154,22 @@ describe("HubServer", () => {
       signedMsgAnother.userSig,
       signedMsgAnother.hubPubkey
     );
-    expect(await hub.userStore.getLength()).toEqual(2);
-    expect(hub.userStore.get(signedMsgAnother.userPubkey)).not.toBeUndefined();
+    expect(await hub.userStore.getLength()).to.eql(2);
+    expect(hub.userStore.get(signedMsgAnother.userPubkey)).not.to.be.undefined;
   });
 
-  test("search succeeds", async () => {
+  it("search succeeds", async () => {
     const searchRes = await sendSearchReq(ip, port, user1.pubKey);
-    expect(searchRes).not.toBeNull();
+    expect(searchRes).not.to.be.null;
   });
 
-  test("search fails when target is not found", async () => {
+  it("search fails when target is not found", async () => {
     const anotherUser = genKeypair();
     const searchRes = await sendSearchReq(ip, port, anotherUser.pubKey);
-    expect(searchRes).toBeNull();
+    expect(searchRes).to.be.null;
   });
 
-  test("request fails when timeout", async () => {
+  it("request fails when timeout", async () => {
     // NOTE: Server still possibly adds the registry in `userStore` because
     //  the request is indeed valid. We can let the server revert if timeout happens.
     //  However, it requires additional designs.
@@ -179,14 +185,14 @@ describe("HubServer", () => {
         signedMsg.hubPubkey,
         timeoutExpectedToFail
       )
-    ).rejects.toThrowError(TimeoutError);
+    ).to.be.rejectedWith(TimeoutError);
   });
 
-  test("requests fail when rate limit is reached", async () => {
+  it("requests fail when rate limit is reached", async () => {
     const hubkeypair = genKeypair();
     const adminAddress = adminAddressFactory();
     const tree = hubRegistryTreeFactory([hubkeypair], LEVELS, adminAddress);
-    expect(tree.length).toEqual(1);
+    expect(tree.length).to.eql(1);
     const hubRegistry = tree.leaves[0];
     const merkleProof = tree.tree.genMerklePath(0);
 
@@ -228,12 +234,12 @@ describe("HubServer", () => {
           signedMsg.userSig,
           signedMsg.hubPubkey
         )
-      ).rejects.toBeTruthy();
-      await expect(sendSearchReq(ip, port, user1.pubKey)).rejects.toBeTruthy();
+      ).to.be.rejected;
+      await expect(sendSearchReq(ip, port, user1.pubKey)).to.be.rejected;
       hub.close();
     })();
 
-    // Put zero rate limit on join request, thus only join requests fail.
+    // Put zero rate limit on join requests, thus only join requests fail.
     await (async () => {
       const { hub, port } = await createHub(
         normalRateLimit,
@@ -249,19 +255,20 @@ describe("HubServer", () => {
           signedMsg.userSig,
           signedMsg.hubPubkey
         )
-      ).rejects.toBeTruthy();
-      // await expect(sendSearchReq(ip, port, user1.pubKey)).rejects.toBeTruthy();
+      ).to.be.rejected;
+      // Search succeeds: temporarily comment it out since it's too slow.
+      // await sendSearchReq(ip, port, user1.pubKey);
       hub.close();
     })();
 
-    // Put zero rate limit on search request, thus only join requests fail.
+    // Put zero rate limit on search requests, thus only search requests fail.
     await (async () => {
       const { hub, port } = await createHub(
         normalRateLimit,
         normalRateLimit,
         zeroRateLimit
       );
-      await expect(sendSearchReq(ip, port, user1.pubKey)).rejects.toBeTruthy();
+      await expect(sendSearchReq(ip, port, user1.pubKey)).to.be.rejected;
       hub.close();
     })();
   });

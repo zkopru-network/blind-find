@@ -36,7 +36,7 @@ describe("proof of smp", function() {
   it("fails if msg1 is malformed", async () => {
     const argsInvalidMsg1 = deepcopyRawObj(args);
     argsInvalidMsg1.g2hProofC = bigIntFactoryExclude([args.g2hProofC]);
-    expect(verifyProofOfSMP(argsInvalidMsg1)).to.be.rejected;
+    await expect(verifyProofOfSMP(argsInvalidMsg1)).to.be.rejected;
   });
 
 
