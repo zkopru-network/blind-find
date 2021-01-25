@@ -134,8 +134,8 @@ const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
   return args;
 };
 
-const verifyProofOfSMP = async (proof: TProof) => {
-  return await verifyProof(proofOfSMPPath, proof);
+const verifyProofOfSMP = (proof: TProof) => {
+  return verifyProof(proofOfSMPPath, proof);
 };
 
 const proofSuccessfulSMPInputsToCircuitArgs = (
@@ -159,8 +159,8 @@ const genProofSuccessfulSMP = async (inputs: ProofSuccessfulSMPInput) => {
   );
 };
 
-const verifyProofSuccessfulSMP = async (proof: TProof) => {
-  return await verifyProof(proofSuccessfulSMPPath, proof);
+const verifyProofSuccessfulSMP = (proof: TProof) => {
+  return verifyProof(proofSuccessfulSMPPath, proof);
 };
 
 const getCircuitName = (circomFile: string): string => {
@@ -210,11 +210,12 @@ const genProofAndPublicSignals = async (
   const paramsPath = path.join(buildDir, paramsFilename);
   const circuitR1csPath = path.join(buildDir, circuitR1csFilename);
   const circuitWasmPath = path.join(buildDir, circuitWasmFilename);
-  const inputJsonPath = path.join(buildDir, date + ".input.json");
-  const witnessPath = path.join(buildDir, date + ".witness.wtns");
-  const witnessJsonPath = path.join(buildDir, date + ".witness.json");
-  const proofPath = path.join(buildDir, date + ".proof.json");
-  const publicJsonPath = path.join(buildDir, date + ".publicSignals.json");
+  const pathPrefix = path.join(buildDir, date.toString());
+  const inputJsonPath = `${pathPrefix}.input.json`;
+  const witnessPath = `${pathPrefix}.witness.wtns`;
+  const witnessJsonPath = `${pathPrefix}.witness.json`;
+  const proofPath = `${pathPrefix}.proof.json`;
+  const publicJsonPath = `${pathPrefix}.publicSignals.json`;
 
   fs.writeFileSync(inputJsonPath, JSON.stringify(stringifyBigInts(inputs)));
 
@@ -226,7 +227,7 @@ const genProofAndPublicSignals = async (
   const witnessCmd = `${snarkjsCmd} wc ${circuitWasmPath} ${inputJsonPath} ${witnessPath}`;
 
   shell.config.fatal = true;
-  // console.log(`witnessCmd="${witnessCmd}"`);
+  console.debug(`witnessCmd="${witnessCmd}"`);
   shell.exec(witnessCmd);
 
   const witnessJsonCmd = `${snarkjsCmd} wej ${witnessPath} ${witnessJsonPath}`;
@@ -277,11 +278,11 @@ const verifyProof = (circomFile: string, proof: TProof) => {
   );
 };
 
-const verifyProofInFiles = async (
+const verifyProofInFiles = (
   paramsFilename: string,
   proofFilename: string,
   publicSignalsFilename: string
-): Promise<boolean> => {
+): boolean => {
   const paramsPath = path.join(buildDir, paramsFilename);
   const proofPath = path.join(buildDir, proofFilename);
   const publicSignalsPath = path.join(buildDir, publicSignalsFilename);
@@ -340,16 +341,14 @@ const isPubkeySame = (a: PubKey, b: PubKey) => {
   return a.length === b.length && a[0] === b[0] && a[1] === b[1];
 };
 
-const verifyProofIndirectConnection = async (
-  proof: TProofIndirectConnection
-) => {
-  if (!(await verifyProofOfSMP(proof.proofOfSMP))) {
+const verifyProofIndirectConnection = (proof: TProofIndirectConnection) => {
+  if (!verifyProofOfSMP(proof.proofOfSMP)) {
     return false;
   }
   const resProofOfSMP = parseProofOfSMPPublicSignals(
     proof.proofOfSMP.publicSignals
   );
-  if (!(await verifyProofSuccessfulSMP(proof.proofSuccessfulSMP))) {
+  if (!verifyProofSuccessfulSMP(proof.proofSuccessfulSMP)) {
     return false;
   }
   const resProofSuccessfulSMP = parseProofSuccessfulSMPPublicSignals(
