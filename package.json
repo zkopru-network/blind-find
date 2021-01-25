@@ -6,8 +6,8 @@
     "build_all_circuits": "make",
     "build_proof_smp": "make proof-smp",
     "build_proof_successful_smp": "make proof-successful-smp",
-    "test": "tsdx test",
-    "lint": "tsdx lint"
+    "test": "hardhat test",
+    "lint": "tsdx lint src"
   },
   "repository": {
     "type": "git",
