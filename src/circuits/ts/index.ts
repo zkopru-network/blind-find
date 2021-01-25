@@ -152,11 +152,14 @@ const proofSuccessfulSMPInputsToCircuitArgs = (
   });
 };
 
-const genProofSuccessfulSMP = async (inputs: ProofSuccessfulSMPInput, circuit?: any) => {
+const genProofSuccessfulSMP = async (
+  inputs: ProofSuccessfulSMPInput,
+  circuit?: any
+) => {
   return await genProof(
     proofSuccessfulSMPPath,
     proofSuccessfulSMPInputsToCircuitArgs(inputs),
-    circuit,
+    circuit
   );
 };
 
