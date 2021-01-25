@@ -80,9 +80,9 @@ type TProofIndirectConnection = {
   proofSuccessfulSMP: TProof;
 };
 
-const genProofOfSMP = async (inputs: ProofOfSMPInput) => {
+const genProofOfSMP = async (inputs: ProofOfSMPInput, circuit?: any) => {
   const args = proofOfSMPInputsToCircuitArgs(inputs);
-  return await genProof(proofOfSMPPath, args);
+  return await genProof(proofOfSMPPath, args, circuit);
 };
 
 const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
@@ -152,10 +152,11 @@ const proofSuccessfulSMPInputsToCircuitArgs = (
   });
 };
 
-const genProofSuccessfulSMP = async (inputs: ProofSuccessfulSMPInput) => {
+const genProofSuccessfulSMP = async (inputs: ProofSuccessfulSMPInput, circuit?: any) => {
   return await genProof(
     proofSuccessfulSMPPath,
-    proofSuccessfulSMPInputsToCircuitArgs(inputs)
+    proofSuccessfulSMPInputsToCircuitArgs(inputs),
+    circuit,
   );
 };
 
@@ -182,13 +183,13 @@ const getCircuitName = (circomFile: string): string => {
  * @param inputs
  * @param circuit
  */
-const genProof = (circomFile: string, inputs: any, circuit?: any) => {
+const genProof = async (circomFile: string, inputs: any, circuit?: any) => {
   const circuitName = getCircuitName(circomFile);
   const circomFullPath = path.join(circomDir, circomFile);
   const circuitR1csPath = `${circuitName}.r1cs`;
   const wasmPath = `${circuitName}.wasm`;
   const paramsPath = `${circuitName}.params`;
-  return genProofAndPublicSignals(
+  return await genProofAndPublicSignals(
     inputs,
     circomFullPath,
     circuitR1csPath,

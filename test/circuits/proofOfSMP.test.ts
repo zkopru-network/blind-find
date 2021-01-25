@@ -14,7 +14,7 @@ const expect = chai.expect;
 describe("proof of smp", function() {
   this.timeout(300000);
   let circuit;
-  const s = proofOfSMPInputsFactory(4);
+  const s = proofOfSMPInputsFactory();
   const args = proofOfSMPInputsToCircuitArgs(s);
 
   before(async () => {
@@ -42,12 +42,12 @@ describe("proof of smp", function() {
   it("fails if msg2 is malformed", async () => {
     const argsInvalidMsg2 = deepcopyRawObj(args);
     argsInvalidMsg2.g2bProofD = bigIntFactoryExclude([args.g2bProofD]);
-    expect(verifyProofOfSMP(argsInvalidMsg2)).to.be.rejected;
+    await expect(verifyProofOfSMP(argsInvalidMsg2)).to.be.rejected;
   });
 
   it("fails if msg3 is malformed", async () => {
     const argsInvalidMsg3 = deepcopyRawObj(args);
     argsInvalidMsg3.paqaProofD1 = bigIntFactoryExclude([args.paqaProofD1]);
-    expect(verifyProofOfSMP(argsInvalidMsg3)).to.be.eventually.rejected;
+    await expect(verifyProofOfSMP(argsInvalidMsg3)).to.be.rejected;
   });
 });

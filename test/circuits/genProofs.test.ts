@@ -12,6 +12,7 @@ import { bigIntFactoryExclude, factoryExclude } from "../utils";
 
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
+import { compileCircuit } from "./utils";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -19,7 +20,7 @@ const expect = chai.expect;
 describe("Test `genProof` and `verifyProof`", function() {
   this.timeout(300000);
 
-  const inputs = proofIndirectConnectionInputsFactory(32);
+  const inputs = proofIndirectConnectionInputsFactory();
   let proofOfSMP: TProof;
   let proofSuccessfulSMP: TProof;
 
@@ -36,10 +37,12 @@ describe("Test `genProof` and `verifyProof`", function() {
     const invalidPublicSignals = [...proofOfSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
     expect(
-      verifyProofOfSMP({
-        proof: proofOfSMP.proof,
-        publicSignals: invalidPublicSignals
-      })
+      () => {
+        verifyProofOfSMP({
+          proof: proofOfSMP.proof,
+          publicSignals: invalidPublicSignals
+        });
+      }
     ).to.throw;
   });
 
@@ -50,10 +53,12 @@ describe("Test `genProof` and `verifyProof`", function() {
     const invalidPublicSignals = [...proofSuccessfulSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
     expect(
-      verifyProofSuccessfulSMP({
-        proof: proofSuccessfulSMP.proof,
-        publicSignals: invalidPublicSignals
-      })
+      () => {
+        verifyProofSuccessfulSMP({
+          proof: proofSuccessfulSMP.proof,
+          publicSignals: invalidPublicSignals
+        });
+      }
     ).to.throw;
   });
 
