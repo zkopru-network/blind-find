@@ -1,7 +1,7 @@
 import { BabyJubPoint } from "../../src/smp/v4/babyJub";
 import { G } from "../../src/smp/v4/state";
 
-import { expect } from 'chai';
+import { expect } from "chai";
 
 const gIdentity = new BabyJubPoint([BigInt(0), BigInt(1)]);
 const gBase = new BabyJubPoint(G);

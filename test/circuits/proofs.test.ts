@@ -25,11 +25,11 @@ import { compileCircuit } from "./utils";
 import { babyJubPointFactoryExclude } from "../utils";
 import { BabyJubPoint } from "../../src/smp/v4/babyJub";
 
-import { expect } from 'chai';
+import { expect } from "chai";
 
 const version = 1;
 
-describe("proof of discrete log", function () {
+describe("proof of discrete log", function() {
   this.timeout(90000);
   it("should be verified in circuit", async () => {
     const g = babyJubBase8Factory();
@@ -94,9 +94,8 @@ describe("ProofEqualDiscreteCoordinates", function() {
       r1,
       q
     );
-    expect(
-      verifyProofEqualDiscreteCoordinates(hash, g0, g1, g2, y0, y1, pf)
-    ).to.be.true;
+    expect(verifyProofEqualDiscreteCoordinates(hash, g0, g1, g2, y0, y1, pf)).to
+      .be.true;
 
     const circuit = await compileCircuit(
       "testProofEqualDiscreteCoordinatesVerifier.circom"
@@ -141,7 +140,7 @@ describe("ProofEqualDiscreteCoordinates", function() {
   });
 });
 
-describe("ProofEqualDiscreteLogs", function () {
+describe("ProofEqualDiscreteLogs", function() {
   this.timeout(90000);
 
   it("should be verified in circuit", async () => {

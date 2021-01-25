@@ -5,8 +5,8 @@ import { babyJubPointFactoryExclude, bigIntFactoryExclude } from "../utils";
 import { proofSuccessfulSMPInputsFactory } from "../../src/factories";
 import { proofSuccessfulSMPInputsToCircuitArgs } from "../../src/circuits/ts";
 
-import chai from 'chai';
-import chaiAsPromised from 'chai-as-promised';
+import chai from "chai";
+import chaiAsPromised from "chai-as-promised";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;

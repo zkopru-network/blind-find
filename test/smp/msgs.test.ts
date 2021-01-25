@@ -20,7 +20,7 @@ import {
 import { ValueError } from "../../src/smp/exceptions";
 import { BabyJubPoint } from "../../src/smp/v4/babyJub";
 
-import { expect } from 'chai';
+import { expect } from "chai";
 
 describe("TLV", () => {
   it("succeeds", () => {

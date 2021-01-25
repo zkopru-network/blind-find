@@ -10,8 +10,8 @@ import { proofIndirectConnectionInputsFactory } from "../../src/factories";
 import { babyJubPointFactory } from "../../src/smp/v4/factories";
 import { bigIntFactoryExclude, factoryExclude } from "../utils";
 
-import chai from 'chai';
-import chaiAsPromised from 'chai-as-promised';
+import chai from "chai";
+import chaiAsPromised from "chai-as-promised";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -34,7 +34,7 @@ describe("Test `genProof` and `verifyProof`", function() {
     // Invalid public
     const invalidPublicSignals = [...proofOfSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
-    expect(
+    await expect(
       verifyProofOfSMP({
         proof: proofOfSMP.proof,
         publicSignals: invalidPublicSignals
@@ -49,12 +49,12 @@ describe("Test `genProof` and `verifyProof`", function() {
     // Invalid public
     const invalidPublicSignals = [...proofSuccessfulSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
-    expect(
+    await expect(
       verifyProofSuccessfulSMP({
         proof: proofSuccessfulSMP.proof,
         publicSignals: invalidPublicSignals
       })
-      ).to.be.rejected;
+    ).to.be.rejected;
   });
 
   it("proof indirect connection (proofOfSMP and proofSuccessfulSMP)", async () => {

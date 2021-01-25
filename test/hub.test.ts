@@ -17,8 +17,8 @@ import { connect, TRateLimitParams } from "../src/websocket";
 import { Short, TLV } from "../src/smp/serialization";
 import { MemoryDB } from "../src/db";
 
-import chai from 'chai';
-import chaiAsPromised from 'chai-as-promised';
+import chai from "chai";
+import chaiAsPromised from "chai-as-promised";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -80,7 +80,7 @@ describe("UserStore", () => {
   });
 });
 
-describe("HubServer", function () {
+describe("HubServer", function() {
   this.timeout(timeoutTotal);
 
   // NOTE: We only have **one** hub server in our tests. This means the order of the

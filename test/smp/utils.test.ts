@@ -5,7 +5,7 @@ import {
   bigIntToNumber
 } from "../../src/smp/utils";
 
-import { expect } from 'chai';
+import { expect } from "chai";
 
 describe("concatUint8Array", () => {
   it("hardcoded", () => {

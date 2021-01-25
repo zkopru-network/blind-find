@@ -7,8 +7,8 @@ import { HubRegistryTree } from "../src";
 import { secretFactory } from "../src/smp/v4/factories";
 import { genKeypair } from "maci-crypto";
 
-import chai from 'chai';
-import chaiAsPromised from 'chai-as-promised';
+import chai from "chai";
+import chaiAsPromised from "chai-as-promised";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;

@@ -8,8 +8,8 @@ import {
 } from "../src/websocket";
 import { TimeoutError } from "../src/exceptions";
 
-import chai from 'chai';
-import chaiAsPromised from 'chai-as-promised';
+import chai from "chai";
+import chaiAsPromised from "chai-as-promised";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -67,7 +67,7 @@ describe("TestServer", () => {
     const s = await connect(ip, port);
     const data1 = new Uint8Array([55, 66]);
     s.write(data1);
-    expect(s.read(timeout)).to.be.rejectedWith(TimeoutError);
+    await expect(s.read(timeout)).to.be.rejectedWith(TimeoutError);
   });
 
   it("read throws when no messages available and remote closed", async () => {
@@ -112,7 +112,7 @@ describe("TokenBucketRateLimiter", () => {
 
   it("refresh period", async () => {
     const numAccess = 2;
-    const refreshPeriod = 100;
+    const refreshPeriod = 200;
     const rl = new TokenBucketRateLimiter({ numAccess, refreshPeriod });
 
     expect(rl.allow(ip0)).to.be.true;
@@ -120,11 +120,11 @@ describe("TokenBucketRateLimiter", () => {
     // rejected
     expect(rl.allow(ip0)).to.be.false;
 
-    // Sleep `refreshPeriod` ms.
+    // Sleep 2* `refreshPeriod` ms, to ensure the limit is refreshed.
     await new Promise((res, rej) => {
       setTimeout(() => {
         res();
-      }, refreshPeriod);
+      }, refreshPeriod * 2);
     });
 
     expect(rl.allow(ip0)).to.be.true;

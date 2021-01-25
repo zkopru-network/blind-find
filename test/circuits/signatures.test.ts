@@ -13,9 +13,9 @@ import {
   adminAddressFactory,
   hubRegistryTreeFactory
 } from "../../src/factories";
-import { expect } from 'chai';
+import { expect } from "chai";
 
-describe("join msg signatures", function () {
+describe("join msg signatures", function() {
   this.timeout(90000);
 
   let circuit;
@@ -57,9 +57,8 @@ describe("join msg signatures", function () {
 
     /* join-hub msg */
     // Succeeds
-    expect(
-      await verifySigInCircuit(userA.pubKey, sigA, hub.pubKey, sigHub)
-    ).to.be.true;
+    expect(await verifySigInCircuit(userA.pubKey, sigA, hub.pubKey, sigHub)).to
+      .be.true;
 
     // Fails
 

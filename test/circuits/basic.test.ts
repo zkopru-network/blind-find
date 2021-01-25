@@ -13,10 +13,10 @@ import {
   hubRegistryTreeFactory
 } from "../../src/factories";
 
-import chai from 'chai';
+import chai from "chai";
 const expect = chai.expect;
 
-describe("smpHash", function () {
+describe("smpHash", function() {
   this.timeout(90000);
 
   const version = 1;

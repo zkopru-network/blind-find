@@ -9,7 +9,7 @@ import {
 } from "../../src/smp/v4/factories";
 import { BaseSMPMessage } from "../../src/smp/msgs";
 
-import { expect } from 'chai';
+import { expect } from "chai";
 
 describe("test `SMPStateMachine`", () => {
   it("secret types", () => {

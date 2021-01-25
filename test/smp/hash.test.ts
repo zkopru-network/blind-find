@@ -1,6 +1,6 @@
 import { smpHash } from "../../src/smp/v4/hash";
 
-import { expect } from 'chai';
+import { expect } from "chai";
 
 describe("smpHash", () => {
   const version1 = 1;

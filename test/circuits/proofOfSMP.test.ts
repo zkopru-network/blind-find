@@ -5,8 +5,8 @@ import { bigIntFactoryExclude, deepcopyRawObj } from "../utils";
 import { proofOfSMPInputsFactory } from "../../src/factories";
 import { proofOfSMPInputsToCircuitArgs } from "../../src/circuits/ts";
 
-import chai from 'chai';
-import chaiAsPromised from 'chai-as-promised';
+import chai from "chai";
+import chaiAsPromised from "chai-as-promised";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -38,7 +38,6 @@ describe("proof of smp", function() {
     argsInvalidMsg1.g2hProofC = bigIntFactoryExclude([args.g2hProofC]);
     await expect(verifyProofOfSMP(argsInvalidMsg1)).to.be.rejected;
   });
-
 
   it("fails if msg2 is malformed", async () => {
     const argsInvalidMsg2 = deepcopyRawObj(args);

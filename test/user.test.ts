@@ -7,7 +7,7 @@ import { adminAddressFactory, hubRegistryTreeFactory } from "../src/factories";
 import { HubServer } from "../src/hub";
 import { User } from "../src/user";
 
-import { expect } from 'chai';
+import { expect } from "chai";
 
 const timeoutBeginAndEnd = TIMEOUT + TIMEOUT;
 // Timeout for running SMP against one peer (including time generating/verifying proofs).
@@ -15,7 +15,7 @@ const timeoutOneSMP = TIMEOUT + TIMEOUT + TIMEOUT + TIMEOUT_LARGE + TIMEOUT;
 const expectedNumSMPs = 2;
 const timeoutTotal = timeoutBeginAndEnd + expectedNumSMPs * timeoutOneSMP;
 
-describe("User", function () {
+describe("User", function() {
   this.timeout(timeoutTotal);
 
   const adminAddress = adminAddressFactory();
@@ -95,8 +95,7 @@ describe("User", function () {
     expect(await verifyProofIndirectConnection(proof)).to.be.true;
     // Search fails
     const keypairNotFound = genKeypair();
-    expect(
-      await userAnother.search(ip, port, keypairNotFound.pubKey)
-    ).to.be.null;
+    expect(await userAnother.search(ip, port, keypairNotFound.pubKey)).to.be
+      .null;
   });
 });

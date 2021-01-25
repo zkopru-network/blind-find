@@ -14,8 +14,8 @@ import { pubkeyFactoryExclude } from "./utils";
 import { IAtomicDB } from "../src/interfaces";
 import { MemoryDB } from "../src/db";
 
-import chai from 'chai';
-import chaiAsPromised from 'chai-as-promised';
+import chai from "chai";
+import chaiAsPromised from "chai-as-promised";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -73,16 +73,15 @@ describe("DataProviderServer", () => {
       anotherPubkey,
       validRegistry.adminAddress
     );
-    expect(
+    await expect(
       sendGetMerkleProofReq(ip, port, invalidHubRegistry)
     ).to.be.rejectedWith(ValueError);
   });
 
   it("request fails when no registry matches", async () => {
     const randomValidRegistry = hubRegistryFactory();
-    await expect(
-      sendGetMerkleProofReq(ip, port, randomValidRegistry)
-    ).to.be.rejected;
+    await expect(sendGetMerkleProofReq(ip, port, randomValidRegistry)).to.be
+      .rejected;
   });
 
   it("send request", async () => {
@@ -100,9 +99,7 @@ describe("DataProviderServer", () => {
     // Use up the `numAccess`.
     await sendGetMerkleProofReq(ip, port, hubRegistry);
     // Fails because the rate limit is reached.
-    await expect(
-      sendGetMerkleProofReq(ip, port, hubRegistry)
-    ).to.be.rejected;
+    await expect(sendGetMerkleProofReq(ip, port, hubRegistry)).to.be.rejected;
 
     dataProvider.close();
   });

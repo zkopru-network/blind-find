@@ -2,7 +2,7 @@ import { concatUint8Array } from "../../src/smp/utils";
 import { Byte, Short, Int, MPI } from "../../src/smp/serialization";
 import { Scalar, Point } from "../../src/smp/v4/serialization";
 import { ValueError } from "../../src/smp/exceptions";
-import { expect } from 'chai';
+import { expect } from "chai";
 
 describe("Fixed types", () => {
   const types = [Byte, Short, Int, Scalar];
@@ -72,9 +72,7 @@ describe("Fixed types", () => {
       expect(Type.size).to.eql(expectedSize[index]);
       expect(b.value).to.eql(expectedValue[index]);
       expect(b.serialize()).to.eql(expectedSerialized[index]);
-      expect(b.value).to.eql(
-        Type.deserialize(expectedSerialized[index]).value
-      );
+      expect(b.value).to.eql(Type.deserialize(expectedSerialized[index]).value);
     }
   });
   it("constructor fails", () => {

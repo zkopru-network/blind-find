@@ -9,7 +9,7 @@ import {
 import { adminAddressFactory } from "../src/factories";
 import { bigIntFactoryExclude, privkeyFactoryExclude } from "./utils";
 
-import { expect } from 'chai';
+import { expect } from "chai";
 
 describe("Join hub msg", () => {
   const hub = genKeypair();
@@ -50,9 +50,8 @@ describe("Join hub msg", () => {
       verifySignedMsg(joinMsg, { R8: sigA.R8, S: anotherElement }, userA.pubKey)
     ).to.be.false;
     // Wrong `pubkey`
-    expect(
-      verifySignedMsg(joinMsg, sigA, [anotherElement, anotherElement])
-    ).to.be.false;
+    expect(verifySignedMsg(joinMsg, sigA, [anotherElement, anotherElement])).to
+      .be.false;
   });
 
   it("`verifySignedMsg` should work with the counter signed signature", () => {

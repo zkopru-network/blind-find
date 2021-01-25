@@ -4,8 +4,8 @@ import { PubKey } from "maci-crypto";
 import { pubkeyFactoryExclude } from "./utils";
 import { ValueError } from "../src/exceptions";
 
-import chai from 'chai';
-import chaiAsPromised from 'chai-as-promised';
+import chai from "chai";
+import chaiAsPromised from "chai-as-promised";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -58,7 +58,7 @@ describe("LevelDB", () => {
 
     // `del` fails with the key=null and thus put fails as well.
     // NOTE: Use db.db to avoid type check on `key`.
-    expect(
+    await expect(
       db.db.batch([
         { type: "del", key: null },
         { type: "put", key: "key2", value: "value2" }
@@ -149,7 +149,7 @@ describe("DBArray", () => {
     expect(await dbArray.getLength()).to.eql(2);
 
     // Fails when trying to set data to a out-of-range position.
-    expect(dbArray.set(2, pubkey2)).to.be.rejectedWith(ValueError);
+    await expect(dbArray.set(2, pubkey2)).to.be.rejectedWith(ValueError);
 
     // Succeeds when modifying existing data in-range.
     await dbArray.set(0, pubkey2);
@@ -211,7 +211,6 @@ describe("DBMap", () => {
     const data: { key: string; value: PubKey }[] = [];
     for await (const i of dbMap) {
       data.push(i);
-      console.log(i);
     }
     expect(data.length).to.eql(2);
   });

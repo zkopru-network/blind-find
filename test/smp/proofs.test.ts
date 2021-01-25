@@ -12,7 +12,7 @@ import { secretFactory, babyJubPointFactory } from "../../src/smp/v4/factories";
 import { hash } from "../../src/smp/v4/factories";
 import { babyJubPointFactoryExclude } from "../utils";
 
-import { expect } from 'chai';
+import { expect } from "chai";
 
 describe("ProofDiscreteLog", () => {
   const g = babyJubPointFactory();
@@ -55,9 +55,8 @@ describe("ProofEqualDiscreteCoordinates", () => {
   );
   const gAnother = babyJubPointFactoryExclude([g0, g1, g2, y0, y1]);
   it("make and verify", () => {
-    expect(
-      verifyProofEqualDiscreteCoordinates(hash, g0, g1, g2, y0, y1, proof)
-    ).to.be.true;
+    expect(verifyProofEqualDiscreteCoordinates(hash, g0, g1, g2, y0, y1, proof))
+      .to.be.true;
   });
   it("wrong g0", () => {
     expect(
@@ -96,28 +95,23 @@ describe("ProofEqualDiscreteLogs", () => {
   const proof = makeProofEqualDiscreteLogs(hash, g0, g1, x, r, q);
   const gAnother = babyJubPointFactoryExclude([g0, g1, y0, y1]);
   it("make and verify", () => {
-    expect(
-      verifyProofEqualDiscreteLogs(hash, g0, g1, y0, y1, proof)
-    ).to.be.true;
+    expect(verifyProofEqualDiscreteLogs(hash, g0, g1, y0, y1, proof)).to.be
+      .true;
   });
   it("wrong g0", () => {
-    expect(
-      verifyProofEqualDiscreteLogs(hash, gAnother, g1, y0, y1, proof)
-    ).to.be.false;
+    expect(verifyProofEqualDiscreteLogs(hash, gAnother, g1, y0, y1, proof)).to
+      .be.false;
   });
   it("wrong g1", () => {
-    expect(
-      verifyProofEqualDiscreteLogs(hash, g0, gAnother, y0, y1, proof)
-    ).to.be.false;
+    expect(verifyProofEqualDiscreteLogs(hash, g0, gAnother, y0, y1, proof)).to
+      .be.false;
   });
   it("wrong y0", () => {
-    expect(
-      verifyProofEqualDiscreteLogs(hash, g0, g1, gAnother, y1, proof)
-    ).to.be.false;
+    expect(verifyProofEqualDiscreteLogs(hash, g0, g1, gAnother, y1, proof)).to
+      .be.false;
   });
   it("wrong y1", () => {
-    expect(
-      verifyProofEqualDiscreteLogs(hash, g0, g1, y0, gAnother, proof)
-    ).to.be.false;
+    expect(verifyProofEqualDiscreteLogs(hash, g0, g1, y0, gAnother, proof)).to
+      .be.false;
   });
 });
