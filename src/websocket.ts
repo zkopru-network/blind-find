@@ -86,7 +86,7 @@ export abstract class BaseServer {
         throw new Error("address shouldn't be null");
       }
       const port = (webServer.address() as WebSocket.AddressInfo).port;
-      console.log(`Listening on port ${port}`);
+      console.info(`Listening on port ${port}`);
       event.set();
     };
     if (port === undefined) {

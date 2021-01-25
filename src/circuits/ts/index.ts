@@ -248,7 +248,6 @@ const genProofAndPublicSignals = async (
     JSON.parse(fs.readFileSync(publicJsonPath).toString())
   );
   const proof = JSON.parse(fs.readFileSync(proofPath).toString());
-
   await circuit.checkConstraints(witness);
 
   shell.rm("-f", witnessPath);
