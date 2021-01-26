@@ -12,7 +12,6 @@ import { bigIntFactoryExclude, factoryExclude } from "../utils";
 
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
-import { compileCircuit } from "./utils";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;

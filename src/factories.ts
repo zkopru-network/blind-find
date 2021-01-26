@@ -95,49 +95,34 @@ export const hubRegistryTreeFactory = (
   return tree;
 };
 
-// Should be only initialized once, to avoid redundant expensive SMP calculations.
-let sueccessfulSMPMessages: {
-  msg1: SMPMessage1Wire;
-  msg2: SMPMessage2Wire;
-  msg3: SMPMessage3Wire;
-  h2: BigInt;
-  h3: BigInt;
-  a2: BigInt;
-  a3: BigInt;
-  r4h: BigInt;
-} | null = null;
-
 export const successfulSMPMessagesFactory = (secret: BigInt = BigInt(1)) => {
-  if (sueccessfulSMPMessages === null) {
-    const alice = new SMPStateMachine(secret);
-    const hub = new SMPStateMachine(secret);
-    const a2 = (alice.state as SMPState1).s2;
-    const a3 = (alice.state as SMPState1).s3;
-    const h2 = (hub.state as SMPState1).s2;
-    const h3 = (hub.state as SMPState1).s3;
-    const msg1TLV = hub.transit(null);
-    const msg2TLV = alice.transit(msg1TLV);
-    const hubState2 = hub.state as SMPState2;
-    const msg3TLV = hub.transit(msg2TLV);
-    if (hubState2.r4 === undefined) {
-      throw new Error("r4 should have been generated to compute Ph and Qh");
-    }
-    const r4h = hubState2.r4;
-    // Get `r4` after hub transits from state 2 to state 4.
-    alice.transit(msg3TLV);
-    if (!alice.isFinished() || !alice.getResult() || hub.isFinished()) {
-      throw new Error();
-    }
-
-    if (msg1TLV === null || msg2TLV === null || msg3TLV === null) {
-      throw new Error();
-    }
-    const msg1 = SMPMessage1Wire.fromTLV(msg1TLV);
-    const msg2 = SMPMessage2Wire.fromTLV(msg2TLV);
-    const msg3 = SMPMessage3Wire.fromTLV(msg3TLV);
-    sueccessfulSMPMessages = { msg1, msg2, msg3, h2, h3, a2, a3, r4h };
+  const alice = new SMPStateMachine(secret);
+  const hub = new SMPStateMachine(secret);
+  const a2 = (alice.state as SMPState1).s2;
+  const a3 = (alice.state as SMPState1).s3;
+  const h2 = (hub.state as SMPState1).s2;
+  const h3 = (hub.state as SMPState1).s3;
+  const msg1TLV = hub.transit(null);
+  const msg2TLV = alice.transit(msg1TLV);
+  const hubState2 = hub.state as SMPState2;
+  const msg3TLV = hub.transit(msg2TLV);
+  if (hubState2.r4 === undefined) {
+    throw new Error("r4 should have been generated to compute Ph and Qh");
   }
-  return sueccessfulSMPMessages;
+  const r4h = hubState2.r4;
+  // Get `r4` after hub transits from state 2 to state 4.
+  alice.transit(msg3TLV);
+  if (!alice.isFinished() || !alice.getResult() || hub.isFinished()) {
+    throw new Error();
+  }
+
+  if (msg1TLV === null || msg2TLV === null || msg3TLV === null) {
+    throw new Error();
+  }
+  const msg1 = SMPMessage1Wire.fromTLV(msg1TLV);
+  const msg2 = SMPMessage2Wire.fromTLV(msg2TLV);
+  const msg3 = SMPMessage3Wire.fromTLV(msg3TLV);
+  return { msg1, msg2, msg3, h2, h3, a2, a3, r4h };
 };
 
 export const proofOfSMPInputsFactory = (levels: number = 32) => {
