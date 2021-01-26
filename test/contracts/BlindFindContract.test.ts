@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 
 import { ethers } from "hardhat";
-import { BigNumber, Signer, BigNumberish, Contract } from "ethers";
+import { BigNumber, Signer, BigNumberish, Contract, Event } from "ethers";
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 const bigNumberToBigInt = (n: BigNumber) => {
@@ -60,10 +60,18 @@ describe("BlindFindContract", function() {
     // Update second time.
     await contract.updateMerkleRoot(secondMerkleRoot);
     expect(bigNumberToBigInt(await contract.latestMerkleRoot())).to.eql(secondMerkleRoot);
+    // Ensure all events are emitted and parsed correctly.
     const events = await contract.queryFilter(eventFilter);
     expect(events.length).to.eql(2);
-
-    console.log(events[0]);
+    const parseEvent = (event: Event) => {
+      if (event.args === undefined) {
+        throw new Error();
+      }
+      const merkleRoot = event.args.merkleRoot;
+      return bigNumberToBigInt(merkleRoot);
+    }
+    expect(parseEvent(events[0])).to.eql(firstMerkleRoot);
+    expect(parseEvent(events[1])).to.eql(secondMerkleRoot);
   });
 
 });
