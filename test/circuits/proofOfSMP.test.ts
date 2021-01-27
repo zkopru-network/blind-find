@@ -1,7 +1,7 @@
 import { executeCircuit, getSignalByName } from "maci-circuits";
 
 import { compileCircuit } from "./utils";
-import { bigIntFactoryExclude, deepcopyRawObj } from "../utils"
+import { bigIntFactoryExclude, deepcopyRawObj } from "../utils";
 import { proofOfSMPInputsFactory } from "../../src/factories";
 import { proofOfSMPInputsToCircuitArgs } from "../../src/circuits/ts";
 

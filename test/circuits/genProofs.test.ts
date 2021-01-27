@@ -58,13 +58,16 @@ describe("Test `genProof` and `verifyProof`", function() {
   });
 
   it("proof indirect connection (proofOfSMP and proofSuccessfulSMP)", async () => {
-    const res = verifyProofIndirectConnection({
-      pubkeyA: inputs.pubkeyA,
-      pubkeyC: inputs.pubkeyC,
-      adminAddress: inputs.adminAddress,
-      proofOfSMP,
-      proofSuccessfulSMP
-    }, new Set([inputs.root]));
+    const res = verifyProofIndirectConnection(
+      {
+        pubkeyA: inputs.pubkeyA,
+        pubkeyC: inputs.pubkeyC,
+        adminAddress: inputs.adminAddress,
+        proofOfSMP,
+        proofSuccessfulSMP
+      },
+      new Set([inputs.root])
+    );
     expect(res).to.be.true;
 
     // Fails when invalid public keys are passed.
@@ -79,43 +82,55 @@ describe("Test `genProof` and `verifyProof`", function() {
     const anotherAdminAddress = bigIntFactoryExclude([inputs.adminAddress]);
     // Wrong pubkeyA
     expect(
-      verifyProofIndirectConnection({
-        pubkeyA: anotherPubkey,
-        pubkeyC: inputs.pubkeyC,
-        adminAddress: inputs.adminAddress,
-        proofOfSMP,
-        proofSuccessfulSMP
-      }, new Set([inputs.root]))
+      verifyProofIndirectConnection(
+        {
+          pubkeyA: anotherPubkey,
+          pubkeyC: inputs.pubkeyC,
+          adminAddress: inputs.adminAddress,
+          proofOfSMP,
+          proofSuccessfulSMP
+        },
+        new Set([inputs.root])
+      )
     ).to.be.false;
     // Wrong pubkeyC
     expect(
-      verifyProofIndirectConnection({
-        pubkeyA: inputs.pubkeyA,
-        pubkeyC: anotherPubkey,
-        adminAddress: inputs.adminAddress,
-        proofOfSMP,
-        proofSuccessfulSMP
-      }, new Set([inputs.root]))
+      verifyProofIndirectConnection(
+        {
+          pubkeyA: inputs.pubkeyA,
+          pubkeyC: anotherPubkey,
+          adminAddress: inputs.adminAddress,
+          proofOfSMP,
+          proofSuccessfulSMP
+        },
+        new Set([inputs.root])
+      )
     ).to.be.false;
     // Wrong pubkeyAdmin
     expect(
-      verifyProofIndirectConnection({
-        pubkeyA: inputs.pubkeyA,
-        pubkeyC: inputs.pubkeyC,
-        adminAddress: anotherAdminAddress,
-        proofOfSMP,
-        proofSuccessfulSMP
-      }, new Set([inputs.root]))
+      verifyProofIndirectConnection(
+        {
+          pubkeyA: inputs.pubkeyA,
+          pubkeyC: inputs.pubkeyC,
+          adminAddress: anotherAdminAddress,
+          proofOfSMP,
+          proofSuccessfulSMP
+        },
+        new Set([inputs.root])
+      )
     ).to.be.false;
     // Wrong root
     expect(
-      verifyProofIndirectConnection({
-        pubkeyA: inputs.pubkeyA,
-        pubkeyC: inputs.pubkeyC,
-        adminAddress: inputs.adminAddress,
-        proofOfSMP,
-        proofSuccessfulSMP
-      }, new Set([anotherRoot]))
+      verifyProofIndirectConnection(
+        {
+          pubkeyA: inputs.pubkeyA,
+          pubkeyC: inputs.pubkeyC,
+          adminAddress: inputs.adminAddress,
+          proofOfSMP,
+          proofSuccessfulSMP
+        },
+        new Set([anotherRoot])
+      )
     ).to.be.false;
   });
 });

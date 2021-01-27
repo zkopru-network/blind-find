@@ -30,7 +30,7 @@ describe("User", function() {
   let userJoinedDB: IAtomicDB;
   let userJoined: User;
   let userAnother: User;
-  let adminAddress: BigInt
+  let adminAddress: BigInt;
   const rateLimit = {
     numAccess: 1000,
     refreshPeriod: 100000
@@ -114,7 +114,8 @@ describe("User", function() {
     }
     // Ensure the output proof is valid
     const validMerkleRoots = await blindFindContract.getAllMerkleRoots();
-    expect(await verifyProofIndirectConnection(proof, validMerkleRoots)).to.be.true;
+    expect(await verifyProofIndirectConnection(proof, validMerkleRoots)).to.be
+      .true;
     // Search fails
     const keypairNotFound = genKeypair();
     expect(await userAnother.search(ip, port, keypairNotFound.pubKey)).to.be

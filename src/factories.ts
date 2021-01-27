@@ -238,9 +238,11 @@ export const proofIndirectConnectionInputsFactory = (levels: number = 32) => {
 };
 
 export const blindFindContractFactory = async (): Promise<BlindFindContract> => {
-    const BlindFindContractFactory = await ethers.getContractFactory("BlindFindContract");
-    const c = await BlindFindContractFactory.deploy();
-    await c.deployed();
-    const contract = new BlindFindContract(c, 0);
-    return contract;
-}
+  const BlindFindContractFactory = await ethers.getContractFactory(
+    "BlindFindContract"
+  );
+  const c = await BlindFindContractFactory.deploy();
+  await c.deployed();
+  const contract = new BlindFindContract(c, 0);
+  return contract;
+};

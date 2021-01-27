@@ -1,8 +1,8 @@
-import { expect } from 'chai';
+import { expect } from "chai";
 
 import { ethers } from "hardhat";
 import { Contract } from "ethers";
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { BlindFindContract } from "../../src/web3";
 
 describe("Blind Find Contract", function() {
@@ -13,7 +13,9 @@ describe("Blind Find Contract", function() {
 
   before(async () => {
     accounts = await ethers.getSigners();
-    const BlindFindContractFactory = await ethers.getContractFactory("BlindFindContract");
+    const BlindFindContractFactory = await ethers.getContractFactory(
+      "BlindFindContract"
+    );
     const c = await BlindFindContractFactory.deploy();
     await c.deployed();
     contract = new BlindFindContract(c, 0);
@@ -26,20 +28,26 @@ describe("Blind Find Contract", function() {
     expect(await contract.getAdmin()).to.equal(BigInt(admin.address));
   });
 
-  it('should be 0x00 as the default latestMerkleRoot', async () => {
+  it("should be 0x00 as the default latestMerkleRoot", async () => {
     expect(await contract.getLatestMerkleRoot()).to.eql(BigInt(0));
   });
 
-  it('should fail when non admin tries to update merkle root', async () => {
+  it("should fail when non admin tries to update merkle root", async () => {
     const newMerkleRoot = BigInt(1);
     const callByNonAdmin = async () => {
-      const contractCallByNonAdmin = new Contract(contract.address, contract.interface, nonAdmin);
+      const contractCallByNonAdmin = new Contract(
+        contract.address,
+        contract.interface,
+        nonAdmin
+      );
       await contractCallByNonAdmin.updateMerkleRoot(newMerkleRoot);
-    }
-    await expect(callByNonAdmin()).to.be.revertedWith("only admin can update the latest merkle root");
+    };
+    await expect(callByNonAdmin()).to.be.revertedWith(
+      "only admin can update the latest merkle root"
+    );
   });
 
-  it('should succeed when admin update the merkle root', async () => {
+  it("should succeed when admin update the merkle root", async () => {
     const firstMerkleRoot = BigInt(1);
     const secondMerkleRoot = BigInt(2);
     // No `updateMerkleRoot` event before calling `updateMerkleRoot`.
@@ -57,5 +65,4 @@ describe("Blind Find Contract", function() {
     expect(merkleRoots.has(firstMerkleRoot)).to.be.true;
     expect(merkleRoots.has(secondMerkleRoot)).to.be.true;
   });
-
 });
