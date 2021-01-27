@@ -13,6 +13,7 @@ import { IAtomicDB } from "./interfaces";
 import { InvalidProof } from "./smp/exceptions";
 import { TEthereumAddress } from "./types";
 import { hashPointToScalar } from "./utils";
+import { BlindFindContract } from "./web3";
 
 type TJoinedHubEntry = {
   ip: string;
@@ -27,15 +28,12 @@ type TJoinedHubDB = DBMap<TJoinedHubEntry>;
 const JOINED_HUBS_PREFIX = "blind-find-user-joined-hubs";
 
 export class User {
-  // NOTE: merkleRoot should be updatable. Also, it can be a list.
-  // TODO: merkleRoot should be changed to a merkleRoot service later, fetching merkleRoots
-  //  from the contract.
   joinedHubsDB: TJoinedHubDB;
 
   constructor(
     readonly keypair: Keypair,
     readonly adminAddress: TEthereumAddress,
-    readonly merkleRoot: BigInt,
+    readonly contract: BlindFindContract,
     db: IAtomicDB,
     readonly timeoutSmall = TIMEOUT,
     readonly timeoutLarge = TIMEOUT_LARGE
@@ -94,11 +92,16 @@ export class User {
       pubkeyA: this.keypair.pubKey,
       pubkeyC: target,
       adminAddress: this.adminAddress,
-      merkleRoot: this.merkleRoot,
       proofOfSMP: res.proofOfSMP,
       proofSuccessfulSMP
     };
-    if (!(await verifyProofIndirectConnection(proofIndirectConnection))) {
+    const validMerkleRoots = await this.contract.getAllMerkleRoots();
+    if (
+      !(await verifyProofIndirectConnection(
+        proofIndirectConnection,
+        validMerkleRoots
+      ))
+    ) {
       throw new InvalidProof("proof of indirect connection is invalid");
     }
     return proofIndirectConnection;

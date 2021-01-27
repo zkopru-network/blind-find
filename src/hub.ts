@@ -202,7 +202,6 @@ export class HubServer extends BaseServer {
         msg1: SMPMessage1Wire.fromTLV(smpMsg1),
         msg2: SMPMessage2Wire.fromTLV(msg2),
         msg3: SMPMessage3Wire.fromTLV(smpMsg3),
-        root: this.merkleProof.root,
         proof: this.merkleProof,
         hubRegistry: this.hubRegistry,
         pubkeyC: pubkey,

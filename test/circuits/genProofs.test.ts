@@ -62,10 +62,9 @@ describe("Test `genProof` and `verifyProof`", function() {
       pubkeyA: inputs.pubkeyA,
       pubkeyC: inputs.pubkeyC,
       adminAddress: inputs.adminAddress,
-      merkleRoot: inputs.root,
       proofOfSMP,
       proofSuccessfulSMP
-    });
+    }, new Set([inputs.root]));
     expect(res).to.be.true;
 
     // Fails when invalid public keys are passed.
@@ -84,10 +83,9 @@ describe("Test `genProof` and `verifyProof`", function() {
         pubkeyA: anotherPubkey,
         pubkeyC: inputs.pubkeyC,
         adminAddress: inputs.adminAddress,
-        merkleRoot: inputs.root,
         proofOfSMP,
         proofSuccessfulSMP
-      })
+      }, new Set([inputs.root]))
     ).to.be.false;
     // Wrong pubkeyC
     expect(
@@ -95,10 +93,9 @@ describe("Test `genProof` and `verifyProof`", function() {
         pubkeyA: inputs.pubkeyA,
         pubkeyC: anotherPubkey,
         adminAddress: inputs.adminAddress,
-        merkleRoot: inputs.root,
         proofOfSMP,
         proofSuccessfulSMP
-      })
+      }, new Set([inputs.root]))
     ).to.be.false;
     // Wrong pubkeyAdmin
     expect(
@@ -106,10 +103,9 @@ describe("Test `genProof` and `verifyProof`", function() {
         pubkeyA: inputs.pubkeyA,
         pubkeyC: inputs.pubkeyC,
         adminAddress: anotherAdminAddress,
-        merkleRoot: inputs.root,
         proofOfSMP,
         proofSuccessfulSMP
-      })
+      }, new Set([inputs.root]))
     ).to.be.false;
     // Wrong root
     expect(
@@ -117,10 +113,9 @@ describe("Test `genProof` and `verifyProof`", function() {
         pubkeyA: inputs.pubkeyA,
         pubkeyC: inputs.pubkeyC,
         adminAddress: inputs.adminAddress,
-        merkleRoot: anotherRoot,
         proofOfSMP,
         proofSuccessfulSMP
-      })
+      }, new Set([anotherRoot]))
     ).to.be.false;
   });
 });

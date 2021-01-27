@@ -52,7 +52,6 @@ type ProofOfSMPInput = {
   msg1: SMPMessage1Wire;
   msg2: SMPMessage2Wire;
   msg3: SMPMessage3Wire;
-  root: BigInt; // Already inside `MerkleProof`
   proof: MerkleProof;
   hubRegistry: HubRegistry;
   pubkeyC: PubKey;
@@ -75,7 +74,6 @@ type TProofIndirectConnection = {
   pubkeyA: PubKey;
   pubkeyC: PubKey;
   adminAddress: TEthereumAddress;
-  merkleRoot: BigInt;
   proofOfSMP: TProof;
   proofSuccessfulSMP: TProof;
 };
@@ -92,7 +90,7 @@ const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
   const args = stringifyBigInts({
     merklePathElements: inputs.proof.pathElements,
     merklePathIndices: inputs.proof.indices,
-    merkleRoot: inputs.root,
+    merkleRoot: inputs.proof.root,
     sigHubRegistryR8: inputs.hubRegistry.sig.R8,
     sigHubRegistryS: inputs.hubRegistry.sig.S,
     adminAddress: inputs.hubRegistry.adminAddress,
@@ -221,6 +219,7 @@ const genProofAndPublicSignals = async (
   const proofPath = `${pathPrefix}.proof.json`;
   const publicJsonPath = `${pathPrefix}.publicSignals.json`;
 
+  // TODO: should be changed to async later
   fs.writeFileSync(inputJsonPath, JSON.stringify(stringifyBigInts(inputs)));
 
   if (!circuit) {
@@ -241,15 +240,20 @@ const genProofAndPublicSignals = async (
 
   shell.exec(proveCmd);
 
+  // TODO: should be changed to async later
   const witness = unstringifyBigInts(
     JSON.parse(fs.readFileSync(witnessJsonPath).toString())
   );
+  // TODO: should be changed to async later
   const publicSignals = unstringifyBigInts(
     JSON.parse(fs.readFileSync(publicJsonPath).toString())
   );
+  // TODO: should be changed to async later
   const proof = JSON.parse(fs.readFileSync(proofPath).toString());
   await circuit.checkConstraints(witness);
 
+  // TODO: can be combined to single command?
+  // TODO: `shell` can be changed to async
   shell.rm("-f", witnessPath);
   shell.rm("-f", witnessJsonPath);
   shell.rm("-f", proofPath);
@@ -265,10 +269,12 @@ const verifyProof = (circomFile: string, proof: TProof) => {
   const paramsFilename = `${circuitName}.params`;
   const proofFilename = `${date}.${circuitName}.proof.json`;
   const publicSignalsFilename = `${date}.${circuitName}.publicSignals.json`;
+  // TODO: can be combined to single command?
   fs.writeFileSync(
     path.join(buildDir, proofFilename),
     JSON.stringify(stringifyBigInts(proof.proof))
   );
+  // TODO: can be combined to single command?
   fs.writeFileSync(
     path.join(buildDir, publicSignalsFilename),
     JSON.stringify(stringifyBigInts(proof.publicSignals))
@@ -292,6 +298,7 @@ const verifyProofInFiles = (
   const verifyCmd = `${zkutilPath} verify -p ${paramsPath} -r ${proofPath} -i ${publicSignalsPath}`;
   const output = shell.exec(verifyCmd).stdout.trim();
 
+  // TODO: can be combined to single command?
   shell.rm("-f", proofPath);
   shell.rm("-f", publicSignalsPath);
 
@@ -344,7 +351,10 @@ const isPubkeySame = (a: PubKey, b: PubKey) => {
   return a.length === b.length && a[0] === b[0] && a[1] === b[1];
 };
 
-const verifyProofIndirectConnection = (proof: TProofIndirectConnection) => {
+const verifyProofIndirectConnection = (
+  proof: TProofIndirectConnection,
+  validMerkleRoots: Set<BigInt>
+) => {
   if (!verifyProofOfSMP(proof.proofOfSMP)) {
     return false;
   }
@@ -372,7 +382,7 @@ const verifyProofIndirectConnection = (proof: TProofIndirectConnection) => {
   /**
    * Check merkle root
    */
-  if (resProofOfSMP.merkleRoot !== proof.merkleRoot) {
+  if (!validMerkleRoots.has(resProofOfSMP.merkleRoot)) {
     return false;
   }
   /**

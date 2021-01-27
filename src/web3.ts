@@ -23,8 +23,8 @@ export class BlindFindContract {
     return bigNumberToBigInt(await this.contract.latestMerkleRoot());
   }
 
-  async getAdmin(): Promise<string> {
-    return await this.contract.admin();
+  async getAdmin(): Promise<BigInt> {
+    return BigInt(await this.contract.admin());
   }
 
   private parseEvent(event: Event) {
@@ -38,12 +38,12 @@ export class BlindFindContract {
   // NOTE: The easiest way is to fetch 'em all.
   //  To make it more efficient, we can cache and listen to new events.
   //  But this is a tradeoff between event maintainence due to reorg and efficiency.
-  async getAllMerkleRoots(): Promise<BigInt[]> {
+  async getAllMerkleRoots(): Promise<Set<BigInt>> {
     const eventFilter = this.contract.filters.UpdateMerkleRoot();
     const events = await this.contract.queryFilter(
       eventFilter,
       this.startBlock
     );
-    return events.map(this.parseEvent);
+    return new Set<BigInt>(events.map(this.parseEvent));
   }
 }
