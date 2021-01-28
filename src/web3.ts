@@ -1,4 +1,5 @@
 import { BigNumber, Contract, Event } from "ethers";
+import { SNARK_FIELD_SIZE } from "maci-crypto";
 
 const bigNumberToBigInt = (n: BigNumber) => {
   return BigInt(n.toString());
@@ -24,7 +25,11 @@ export class BlindFindContract {
   }
 
   async getAdmin(): Promise<BigInt> {
-    return BigInt(await this.contract.admin());
+    const address = BigInt(await this.contract.admin());
+    if (address >= SNARK_FIELD_SIZE) {
+      throw new Error("ethereum address should be smaller than field size");
+    }
+    return address;
   }
 
   private parseEvent(event: Event) {

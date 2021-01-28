@@ -42,7 +42,6 @@ describe("User", function() {
     // Admin and contract
     blindFindContract = await blindFindContractFactory();
     adminAddress = await blindFindContract.getAdmin();
-    expect(BigInt(adminAddress) < SNARK_FIELD_SIZE).to.be.true;
     // Hub
     hubKeypair = genKeypair();
     tree = hubRegistryTreeFactory([hubKeypair], LEVELS, adminAddress);
