@@ -9,7 +9,8 @@ import {
   Signature,
   SNARK_FIELD_SIZE,
   verifySignature,
-  IncrementalQuinTree
+  IncrementalQuinTree,
+  Keypair
 } from "maci-crypto";
 
 import { PREFIX_JOIN, PREFIX_REGISTER_NEW_HUB } from "./constants";
@@ -84,12 +85,17 @@ class HubRegistry {
     readonly adminAddress: TEthereumAddress
   ) {}
 
-  getSigningMsg() {
-    return getRegisterNewHubHashedData(this.adminAddress);
+  static fromKeypair(keypair: Keypair, adminAddress: TEthereumAddress) {
+    const sig = signMsg(
+      keypair.privKey,
+      getRegisterNewHubHashedData(adminAddress)
+    );
+    return new HubRegistry(sig, keypair.pubKey, adminAddress);
   }
 
   verify(): boolean {
-    return verifySignedMsg(this.getSigningMsg(), this.sig, this.pubkey);
+    const signingMsg = getRegisterNewHubHashedData(this.adminAddress);
+    return verifySignedMsg(signingMsg, this.sig, this.pubkey);
   }
 
   hash() {

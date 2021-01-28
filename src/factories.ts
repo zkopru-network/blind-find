@@ -1,10 +1,15 @@
-import { genKeypair, hash5, Keypair, PubKey, Signature } from "maci-crypto";
+import {
+  genKeypair,
+  genPrivKey,
+  Keypair,
+  PubKey,
+  Signature
+} from "maci-crypto";
 import {
   getCounterSignHashedData,
   getJoinHubMsgHashedData,
   HubRegistry,
   HubRegistryTree,
-  getRegisterNewHubHashedData,
   signMsg
 } from "./";
 import { SMPStateMachine } from "./smp";
@@ -53,9 +58,7 @@ export const signedJoinMsgFactory = (
 };
 
 export const adminAddressFactory = () => {
-  // TODO: This should be changed to `hash(ethereumAddress)`.
-  const address = hashPointToScalar(genKeypair().pubKey);
-  return hash5([address, BigInt(0), BigInt(0), BigInt(0), BigInt(0)]);
+  return genPrivKey();
 };
 
 export const hubRegistryFactory = (
@@ -68,9 +71,7 @@ export const hubRegistryFactory = (
   if (adminAddress === undefined) {
     adminAddress = adminAddressFactory();
   }
-  const dataToBeSigned = getRegisterNewHubHashedData(adminAddress);
-  const sig = signMsg(hubKeypair.privKey, dataToBeSigned);
-  return new HubRegistry(sig, hubKeypair.pubKey, adminAddress);
+  return HubRegistry.fromKeypair(hubKeypair, adminAddress);
 };
 
 export const hubRegistryTreeFactory = (
