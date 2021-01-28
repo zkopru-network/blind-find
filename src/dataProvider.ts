@@ -69,6 +69,9 @@ export class HubRegistryTreeDB {
   }
 }
 
+/**
+ * Read-only merkle path provider
+ */
 export class DataProviderServer extends BaseServer {
   rateLimiter: IIPRateLimiter;
   constructor(
