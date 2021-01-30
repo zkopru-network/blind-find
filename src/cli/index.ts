@@ -1,17 +1,15 @@
 import { Command } from "commander";
 import { buildCommandAdmin } from "./admin";
-import { buildCommandGeneral } from './general';
-
+import { buildCommandGeneral } from "./general";
 
 async function main() {
-
-    const program = new Command();
-    await program
-        .version('0.0.1')
-        .description('Blind Find v1')
-        .addCommand(buildCommandGeneral())
-        .addCommand(buildCommandAdmin())
-        .parseAsync();
+  const program = new Command();
+  await program
+    .version("0.0.1")
+    .description("Blind Find v1")
+    .addCommand(buildCommandGeneral())
+    .addCommand(buildCommandAdmin())
+    .parseAsync();
 }
 
 main()

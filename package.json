@@ -31,7 +31,8 @@
     "maci-circuits": "^0.3.8",
     "maci-config": "^0.3.8",
     "maci-crypto": "^0.3.8",
-    "ws": "^7.4.1"
+    "ws": "^7.4.1",
+    "yaml": "^1.10.0"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.1",
