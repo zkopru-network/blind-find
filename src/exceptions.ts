@@ -6,15 +6,15 @@
  *    - https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
  */
 
-export class BaseBlindFind extends Error {
+export class BaseBlindFindError extends Error {
   constructor(m?: string) {
     super(m);
     // Set the prototype explicitly.
-    Object.setPrototypeOf(this, BaseBlindFind.prototype);
+    Object.setPrototypeOf(this, BaseBlindFindError.prototype);
   }
 }
 
-export class ValueError extends BaseBlindFind {
+export class ValueError extends BaseBlindFindError {
   constructor(m?: string) {
     super(m);
     // Set the prototype explicitly.
@@ -22,7 +22,7 @@ export class ValueError extends BaseBlindFind {
   }
 }
 
-export class NetworkingError extends BaseBlindFind {
+export class NetworkingError extends BaseBlindFindError {
   constructor(m?: string) {
     super(m);
     // Set the prototype explicitly.
