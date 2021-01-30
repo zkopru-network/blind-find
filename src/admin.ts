@@ -9,7 +9,6 @@ import { BlindFindContract } from "./web3";
 export class Admin {
   constructor(
     readonly contract: BlindFindContract,
-    readonly address: BigInt,
     readonly treeDB: HubRegistryTreeDB
   ) {}
 
