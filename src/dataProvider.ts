@@ -26,7 +26,7 @@ type THubRegistryObj = {
   adminAddress: TEthereumAddress;
 };
 
-const hubRegistryToObj = (e: HubRegistry) => {
+export const hubRegistryToObj = (e: HubRegistry) => {
   return {
     sig: e.sig,
     pubkey: e.pubkey,
@@ -34,7 +34,7 @@ const hubRegistryToObj = (e: HubRegistry) => {
   };
 };
 
-const objToHubRegistry = (obj: THubRegistryObj) => {
+export const objToHubRegistry = (obj: THubRegistryObj) => {
   return new HubRegistry(obj.sig, obj.pubkey, obj.adminAddress);
 };
 
@@ -60,6 +60,10 @@ export class HubRegistryTreeDB {
   }
 
   async insert(e: HubRegistry) {
+    // If hubRegistry already exists in the tree, skip it.
+    if (this.getIndex(e) !== undefined) {
+      return;
+    }
     await this.dbMap.set(this.getDBKey(e), hubRegistryToObj(e));
     this.tree.insert(e);
   }
