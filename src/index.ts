@@ -127,7 +127,7 @@ class HubRegistryTree {
 
   insert(e: HubRegistry) {
     if (!e.verify()) {
-      throw new ValueError(`registry is not verified: e=${e}`);
+      throw new ValueError(`registry is not valid: e=${e}`);
     }
     const registryHash = e.hash();
     const index = this.leaves.length;
