@@ -2,6 +2,7 @@ import * as fs from "fs";
 import { stringifyBigInts, unstringifyBigInts } from "maci-crypto";
 import * as path from "path";
 import YAML from "yaml";
+import { TRateLimitParams } from "../websocket";
 
 import * as defaults from "./defaults";
 import {
@@ -20,6 +21,11 @@ interface IAdminConfig {
 
 interface IHubConfig {
   blindFindPrivkey: BigInt;
+  rateLimit: {
+    join: TRateLimitParams;
+    search: TRateLimitParams;
+    global: TRateLimitParams;
+  };
 }
 
 interface IUserConfig {
@@ -101,7 +107,7 @@ export const contractInfo: IContractInfo = {
   }
 };
 
-export const configTemplate: IConfig = {
+export const configTemplate = {
   network: {
     network: defaults.network,
     provider: {
@@ -178,6 +184,19 @@ export const parseHubConfig = (config: IConfig): IHubConfig => {
   }
   if (typeof hub.blindFindPrivkey !== "bigint") {
     throw new IncompleteConfig("hub.blindFindPrivkey should be a bigint");
+  }
+  if (hub.rateLimit === undefined) {
+    hub.rateLimit = defaults.defaultHubRateLimit;
+  } else {
+    if (hub.rateLimit.join === undefined) {
+      hub.rateLimit.join = defaults.defaultHubRateLimit.join;
+    }
+    if (hub.rateLimit.search === undefined) {
+      hub.rateLimit.search = defaults.defaultHubRateLimit.search;
+    }
+    if (hub.rateLimit.global === undefined) {
+      hub.rateLimit.global = defaults.defaultHubRateLimit.global;
+    }
   }
   return hub;
 };
