@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { buildCommandAdmin } from "./admin";
 import { buildCommandGeneral } from "./general";
 import { buildCommandHub } from "./hub";
+import { buildCommandUser } from "./user";
 
 async function main() {
   const program = new Command();
@@ -11,6 +12,7 @@ async function main() {
     .addCommand(buildCommandGeneral())
     .addCommand(buildCommandAdmin())
     .addCommand(buildCommandHub())
+    .addCommand(buildCommandUser())
     .parseAsync();
 }
 
