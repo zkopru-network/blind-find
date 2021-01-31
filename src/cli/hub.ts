@@ -4,7 +4,12 @@ import { LevelDB } from "../db";
 import { loadConfigs, parseHubConfig } from "./configs";
 import * as defaults from "./defaults";
 import { getBlindFindContract } from "./provider";
-import { base64ToObj, objToBase64, privkeyToKeypair } from "./utils";
+import {
+  base64ToObj,
+  objToBase64,
+  privkeyToKeipairCLI,
+  privkeyToKeypair
+} from "./utils";
 import { hubRegistryToObj, objToHubRegistry } from "../dataProvider";
 import { hashLeftRight, IncrementalQuinTree } from "maci-crypto";
 import { HubRegistry } from "..";
@@ -17,7 +22,9 @@ export const buildCommandHub = () => {
   command
     .addCommand(buildCommandCreateHubRegistry())
     .addCommand(buildCommandSetHubRegistryWithProof())
-    .addCommand(buildCommandStart());
+    .addCommand(buildCommandStart())
+    .addCommand(buildCommandGetKeypair())
+    .addCommand(buildCommandListJoinedUsers());
   return command;
 };
 
@@ -97,18 +104,11 @@ const buildCommandStart = () => {
     })
     .action(
       async (portString: string | undefined, hostname: string | undefined) => {
-        const { adminAddress, hubKeypair, hubConfig } = await loadHubSettings();
-        const levelDB = getDB();
-        const hubServer = new HubServer(
-          hubKeypair,
-          adminAddress,
-          hubConfig.rateLimit,
-          levelDB
-        );
+        const { hubServer } = await getHub();
         const port: number | undefined =
           portString === undefined ? undefined : Number(portString);
         await hubServer.start(port, hostname);
-        const hubPubkeyB64 = objToBase64(hubKeypair.pubKey);
+        const hubPubkeyB64 = objToBase64(hubServer.keypair.pubKey);
         console.log(
           `Hub is listening on`,
           hubServer.address,
@@ -118,6 +118,31 @@ const buildCommandStart = () => {
         await hubServer.waitClosed();
       }
     );
+  return command;
+};
+
+const buildCommandGetKeypair = () => {
+  const command = new Command("getKeypair");
+  command.description("get hub's keypair").action(async () => {
+    const configs = await loadConfigs();
+    const hubConfig = parseHubConfig(configs);
+    console.log(privkeyToKeipairCLI(hubConfig.blindFindPrivkey));
+  });
+  return command;
+};
+
+const buildCommandListJoinedUsers = () => {
+  const command = new Command("listJoinedUsers");
+  command
+    .description("list the users who has have joined the hub")
+    .action(async () => {
+      const { hubServer } = await getHub();
+      const userPubkeys: string[] = [];
+      for await (const user of hubServer.userStore) {
+        userPubkeys.push(objToBase64(user[0]));
+      }
+      console.log(userPubkeys);
+    });
   return command;
 };
 
@@ -133,6 +158,26 @@ const loadHubSettings = async () => {
     hubConfig,
     adminAddress,
     hubKeypair
+  };
+};
+
+const getHub = async () => {
+  const {
+    adminAddress,
+    hubKeypair,
+    hubConfig,
+    blindFindContract
+  } = await loadHubSettings();
+  const levelDB = getDB();
+  const hubServer = new HubServer(
+    hubKeypair,
+    adminAddress,
+    hubConfig.rateLimit,
+    levelDB
+  );
+  return {
+    hubServer,
+    blindFindContract
   };
 };
 
