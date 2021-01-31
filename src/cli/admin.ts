@@ -11,8 +11,13 @@ import { THubRegistryWithProof } from "../hub";
 
 export const buildCommandAdmin = () => {
   const adminCommand = new Command("admin");
-  adminCommand
-    .command("addHub")
+  adminCommand.addCommand(buildCommandAddHub());
+  return adminCommand;
+};
+
+const buildCommandAddHub = () => {
+  const command = new Command("addHub");
+  command
     .arguments("<hubRegistry>")
     .description("add a hub registry to the merkle tree", {
       hubRegistry: "a `THubRegistryObj` object encoded in base64"
@@ -32,7 +37,7 @@ export const buildCommandAdmin = () => {
       };
       console.log(objToBase64(hubRegistryWithProof));
     });
-  return adminCommand;
+  return command;
 };
 
 const getAdmin = async () => {
