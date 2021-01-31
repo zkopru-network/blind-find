@@ -12,7 +12,7 @@ export const buildCommandGeneral = () => {
       console.log({
         privKey: stringifyBigInts(keypair.privKey),
         pubKey: stringifyBigInts(keypair.pubKey),
-        pubKeyInBase64: objToBase64(keypair.pubKey),
+        pubKeyInBase64: objToBase64(keypair.pubKey)
       });
     });
   return general;
