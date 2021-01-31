@@ -22,6 +22,14 @@ export class ValueError extends BaseBlindFindError {
   }
 }
 
+export class AlreadyExistsError extends ValueError {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, AlreadyExistsError.prototype);
+  }
+}
+
 export class NetworkingError extends BaseBlindFindError {
   constructor(m?: string) {
     super(m);

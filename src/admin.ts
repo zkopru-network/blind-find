@@ -1,5 +1,6 @@
 import { HubRegistry } from ".";
 import { HubRegistryTreeDB } from "./dataProvider";
+import { AlreadyExistsError } from "./exceptions";
 import { BlindFindContract } from "./web3";
 
 /**
@@ -18,7 +19,16 @@ export class Admin {
   }
 
   async insertHubRegistry(e: HubRegistry) {
-    await this.treeDB.insert(e);
+    try {
+      await this.treeDB.insert(e);
+    } catch (e) {
+      // Don't insert the hubRegistry if it already exists.
+      if (e instanceof AlreadyExistsError) {
+        return;
+      } else {
+          throw e;
+      }
+    }
     const root = this.treeDB.tree.tree.root;
     await this.updateMerkleRoot(root);
   }

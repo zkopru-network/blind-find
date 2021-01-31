@@ -62,7 +62,7 @@ export class HubRegistryTreeDB {
   async insert(e: HubRegistry) {
     // If hubRegistry already exists in the tree, skip it.
     if (this.getIndex(e) !== undefined) {
-      return;
+      throw new ValueError(`registry ${this.getDBKey(e)} already exists`);
     }
     await this.dbMap.set(this.getDBKey(e), hubRegistryToObj(e));
     this.tree.insert(e);
