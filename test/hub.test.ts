@@ -104,14 +104,17 @@ describe("HubServer", function() {
       refreshPeriod: 100000
     };
     const db = new MemoryDB();
-    await HubServer.setHubRegistryToDB(db, { registry: hubRegistry, merkleProof: merkleProof });
+    await HubServer.setHubRegistryToDB(db, {
+      hubRegistry: hubRegistry,
+      merkleProof: merkleProof
+    });
     hub = new HubServer(
       hubkeypair,
       adminAddressFactory(),
       rateLimit,
       rateLimit,
       rateLimit,
-      db,
+      db
     );
     await hub.start();
 
@@ -203,14 +206,17 @@ describe("HubServer", function() {
       searchRateLimit: TRateLimitParams
     ) => {
       const db = new MemoryDB();
-      await HubServer.setHubRegistryToDB(db, { registry: hubRegistry, merkleProof: merkleProof });
+      await HubServer.setHubRegistryToDB(db, {
+        hubRegistry: hubRegistry,
+        merkleProof: merkleProof
+      });
       const hub = new HubServer(
         hubkeypair,
         adminAddress,
         globalRateLimit,
         joinRateLimit,
         searchRateLimit,
-        db,
+        db
       );
       await hub.start();
       const port = hub.address.port;

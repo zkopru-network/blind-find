@@ -1,4 +1,4 @@
-import { genKeypair, Keypair, SNARK_FIELD_SIZE } from "maci-crypto";
+import { genKeypair, Keypair } from "maci-crypto";
 import WebSocket from "ws";
 import { verifyProofIndirectConnection } from "../src/circuits/ts";
 import { LEVELS, TIMEOUT, TIMEOUT_LARGE } from "../src/configs";
@@ -9,7 +9,7 @@ import { User } from "../src/user";
 
 import { expect } from "chai";
 import { BlindFindContract } from "../src/web3";
-import { HubRegistry, HubRegistryTree } from "../src";
+import { HubRegistryTree } from "../src";
 import { blindFindContractFactory } from "../src/factories";
 import { IAtomicDB } from "../src/interfaces";
 import { hubRegistryToObj } from "../src/dataProvider";
@@ -51,16 +51,16 @@ describe("User", function() {
     const merkleProof = tree.tree.genMerklePath(0);
     const db = new MemoryDB();
     await HubServer.setHubRegistryToDB(db, {
-      registry: hubRegistryToObj(hubRegistry),
-      merkleProof: merkleProof,
-    })
+      hubRegistry: hubRegistryToObj(hubRegistry),
+      merkleProof: merkleProof
+    });
     hub = new HubServer(
       hubKeypair,
       adminAddress,
       rateLimit,
       rateLimit,
       rateLimit,
-      db,
+      db
     );
     await hub.start();
     await blindFindContract.updateMerkleRoot(merkleProof.root);
