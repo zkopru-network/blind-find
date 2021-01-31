@@ -108,6 +108,12 @@ const buildCommandStart = () => {
         const port: number | undefined =
           portString === undefined ? undefined : Number(portString);
         await hubServer.start(port, hostname);
+        const hubPubkeyB64 = objToBase64(hubKeypair.pubKey);
+        console.log(
+          `Hub is listening on`,
+          hubServer.address,
+          `, with pubkey in base64 = '${hubPubkeyB64}'`
+        );
         console.log("Press Ctrl-C to exit");
         await hubServer.waitClosed();
       }
