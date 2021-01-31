@@ -50,7 +50,7 @@ describe("User", function() {
     const hubRegistry = tree.leaves[0];
     const merkleProof = tree.tree.genMerklePath(0);
     const db = new MemoryDB();
-    await HubServer.setHubRegistryWithProof(db, {
+    await HubServer.setHubRegistryToDB(db, {
       registry: hubRegistryToObj(hubRegistry),
       merkleProof: merkleProof,
     })

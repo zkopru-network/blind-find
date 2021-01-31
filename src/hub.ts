@@ -102,8 +102,8 @@ export class UserStore implements IUserStore {
   }
 }
 
-type THubRegistryWithProof = {
-  registry: THubRegistryObj;
+export type THubRegistryWithProof = {
+  hubRegistry: THubRegistryObj;
   merkleProof: MerkleProof;
 };
 const REGISTRY_STORE_PREFIX = "blind-find-hub-registry";
@@ -127,10 +127,10 @@ export class RegistryStore {
     if (e === undefined) {
       throw new HubRegistryNotFound();
     }
-    if (this.adminAddress !== e.registry.adminAddress) {
+    if (this.adminAddress !== e.hubRegistry.adminAddress) {
       throw new DatabaseCorrupted(
         `adminAddress mismatches: this.adminAddress=${this.adminAddress}, ` +
-          `e.registry.adminAddress = ${e.registry.adminAddress}`
+          `e.registry.adminAddress = ${e.hubRegistry.adminAddress}`
       );
     }
     return e;
@@ -176,11 +176,8 @@ export class HubServer extends BaseServer {
     this.searchRateLimiter = new TokenBucketRateLimiter(searchRateLimit);
   }
 
-  static async setHubRegistryWithProof(
-    db: IAtomicDB,
-    e: THubRegistryWithProof
-  ) {
-    const registryStore = new RegistryStore(e.registry.adminAddress, db);
+  static async setHubRegistryToDB(db: IAtomicDB, e: THubRegistryWithProof) {
+    const registryStore = new RegistryStore(e.hubRegistry.adminAddress, db);
     await registryStore.set(e);
   }
 
@@ -263,7 +260,7 @@ export class HubServer extends BaseServer {
         msg2: SMPMessage2Wire.fromTLV(msg2),
         msg3: SMPMessage3Wire.fromTLV(smpMsg3),
         proof: this.hubRegistryWithProof.merkleProof,
-        hubRegistry: objToHubRegistry(this.hubRegistryWithProof.registry),
+        hubRegistry: objToHubRegistry(this.hubRegistryWithProof.hubRegistry),
         pubkeyC: pubkey,
         pubkeyHub: this.keypair.pubKey,
         sigJoinMsgC: userRegistry.userSig,
