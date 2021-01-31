@@ -1,4 +1,10 @@
-import { stringifyBigInts, unstringifyBigInts } from "maci-crypto";
+import {
+  genPubKey,
+  Keypair,
+  PrivKey,
+  stringifyBigInts,
+  unstringifyBigInts
+} from "maci-crypto";
 
 export const objToBase64 = (obj: any): string => {
   const objWithBigIntStringified = stringifyBigInts(obj);
@@ -16,4 +22,11 @@ export const base64ToObj = (b64string: string): any => {
   const objInString = objInBuffer.toString("utf-8");
   const objWithBigIntStringified = JSON.parse(objInString);
   return unstringifyBigInts(objWithBigIntStringified);
+};
+
+export const privkeyToKeypair = (privkey: PrivKey): Keypair => {
+  return {
+    privKey: privkey,
+    pubKey: genPubKey(privkey)
+  };
 };

@@ -71,7 +71,7 @@ export abstract class BaseServer {
     return this.wsServer.address() as WebSocket.AddressInfo;
   }
 
-  async start(port?: number) {
+  async start(port?: number, hostname?: string) {
     if (this.isRunning) {
       return;
     }
@@ -91,8 +91,10 @@ export abstract class BaseServer {
     };
     if (port === undefined) {
       webServer = app.listen(newConnectionCB);
-    } else {
+    } else if (hostname === undefined) {
       webServer = app.listen(port, newConnectionCB);
+    } else {
+      webServer = app.listen(port, hostname, newConnectionCB);
     }
     const server = new WebSocket.Server({ server: webServer });
     // Wait until the websocket server is already listening.
@@ -107,6 +109,18 @@ export abstract class BaseServer {
       await this.onIncomingConnection(rwtor, request);
     };
     this.wsServer.on("connection", handler.bind(this));
+  }
+
+  async waitClosed() {
+    return new Promise((res, rej) => {
+      if (this.wsServer === undefined) {
+        rej(new Error("ws server is not listened"));
+      } else {
+        this.wsServer.on("close", () => {
+          res();
+        });
+      }
+    });
   }
 
   close() {

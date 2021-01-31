@@ -181,9 +181,9 @@ export class HubServer extends BaseServer {
     await registryStore.set(e);
   }
 
-  async start(port?: number) {
+  async start(port?: number, hostname?: string) {
     this.hubRegistryWithProof = await this.registryStore.get();
-    await super.start(port);
+    await super.start(port, hostname);
   }
 
   async onJoinRequest(
