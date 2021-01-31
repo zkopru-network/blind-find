@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { PubKey, SNARK_FIELD_SIZE, stringifyBigInts } from "maci-crypto";
+import { PubKey, SNARK_FIELD_SIZE } from "maci-crypto";
 
 import * as defaults from "./defaults";
 import { LevelDB } from "../db";
@@ -7,7 +7,7 @@ import { ValueError } from "../exceptions";
 import { User } from "../user";
 import { loadConfigs, parseUserConfig } from "./configs";
 import { getBlindFindContract } from "./provider";
-import { base64ToObj, objToBase64, privkeyToKeypair } from "./utils";
+import { base64ToObj, privkeyToKeipairCLI, privkeyToKeypair } from "./utils";
 
 export const buildCommandUser = () => {
   const command = new Command("user");
@@ -82,12 +82,7 @@ const buildCommandGetKeypair = () => {
   command.description("get user's keypair").action(async () => {
     const configs = await loadConfigs();
     const userConfig = parseUserConfig(configs);
-    const userKeypair = privkeyToKeypair(userConfig.blindFindPrivkey);
-    console.log({
-      privKey: stringifyBigInts(userKeypair.privKey),
-      pubKey: stringifyBigInts(userKeypair.pubKey),
-      pubKeyInBase64: objToBase64(userKeypair.pubKey)
-    });
+    console.log(privkeyToKeipairCLI(userConfig.blindFindPrivkey));
   });
   return command;
 };

@@ -30,3 +30,12 @@ export const privkeyToKeypair = (privkey: PrivKey): Keypair => {
     pubKey: genPubKey(privkey)
   };
 };
+
+export const privkeyToKeipairCLI = (privkey: PrivKey) => {
+  const keypair = privkeyToKeypair(privkey);
+  return {
+    privKey: stringifyBigInts(keypair.privKey),
+    pubKey: stringifyBigInts(keypair.pubKey),
+    pubKeyInBase64: objToBase64(keypair.pubKey)
+  };
+};
