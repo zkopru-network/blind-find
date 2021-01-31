@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { buildCommandAdmin } from "./admin";
 import { buildCommandGeneral } from "./general";
+import { buildCommandHub } from "./hub";
 
 async function main() {
   const program = new Command();
@@ -9,6 +10,7 @@ async function main() {
     .description("Blind Find v1")
     .addCommand(buildCommandGeneral())
     .addCommand(buildCommandAdmin())
+    .addCommand(buildCommandHub())
     .parseAsync();
 }
 

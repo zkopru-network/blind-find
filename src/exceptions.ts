@@ -22,11 +22,35 @@ export class ValueError extends BaseBlindFindError {
   }
 }
 
-export class AlreadyExistsError extends ValueError {
+export class StorageError extends BaseBlindFindError {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, StorageError.prototype);
+  }
+}
+
+export class AlreadyExistsError extends StorageError {
   constructor(m?: string) {
     super(m);
     // Set the prototype explicitly.
     Object.setPrototypeOf(this, AlreadyExistsError.prototype);
+  }
+}
+
+export class DatabaseCorrupted extends StorageError {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, DatabaseCorrupted.prototype);
+  }
+}
+
+export class HubRegistryNotFound extends StorageError {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, HubRegistryNotFound.prototype);
   }
 }
 

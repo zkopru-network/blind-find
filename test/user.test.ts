@@ -9,9 +9,10 @@ import { User } from "../src/user";
 
 import { expect } from "chai";
 import { BlindFindContract } from "../src/web3";
-import { HubRegistryTree } from "../src";
+import { HubRegistry, HubRegistryTree } from "../src";
 import { blindFindContractFactory } from "../src/factories";
 import { IAtomicDB } from "../src/interfaces";
+import { hubRegistryToObj } from "../src/dataProvider";
 
 const timeoutBeginAndEnd = TIMEOUT + TIMEOUT;
 // Timeout for running SMP against one peer (including time generating/verifying proofs).
@@ -48,14 +49,18 @@ describe("User", function() {
     expect(tree.length).to.eql(1);
     const hubRegistry = tree.leaves[0];
     const merkleProof = tree.tree.genMerklePath(0);
+    const db = new MemoryDB();
+    await HubServer.setHubRegistryWithProof(db, {
+      registry: hubRegistryToObj(hubRegistry),
+      merkleProof: merkleProof,
+    })
     hub = new HubServer(
       hubKeypair,
-      hubRegistry,
-      merkleProof,
+      adminAddress,
       rateLimit,
       rateLimit,
       rateLimit,
-      new MemoryDB()
+      db,
     );
     await hub.start();
     await blindFindContract.updateMerkleRoot(merkleProof.root);

@@ -20,7 +20,7 @@ import {
 
 const LEAVES_PREFIX = "blind-find-data-provider-leaves";
 
-type THubRegistryObj = {
+export type THubRegistryObj = {
   sig: Signature;
   pubkey: PubKey;
   adminAddress: TEthereumAddress;
@@ -63,6 +63,11 @@ export class HubRegistryTreeDB {
     // If hubRegistry already exists in the tree, skip it.
     if (this.getIndex(e) !== undefined) {
       throw new ValueError(`registry ${this.getDBKey(e)} already exists`);
+    }
+    if (!e.verify()) {
+      throw new ValueError(
+        `signature of registry ${this.getDBKey(e)} is invalid`
+      );
     }
     await this.dbMap.set(this.getDBKey(e), hubRegistryToObj(e));
     this.tree.insert(e);

@@ -111,6 +111,12 @@ export const configTemplate: IConfig = {
   },
   admin: {
     adminEthereumPrivkey: "0x123"
+  },
+  hub: {
+    blindFindPrivkey: BigInt("456")
+  },
+  user: {
+    blindFindPrivkey: BigInt("789")
   }
 };
 

@@ -5,7 +5,7 @@ import { BlindFindContract } from "./web3";
 
 /**
  * In charge of the merkle tree updating.
- * NOTE: I'm thinking if it should inherit DataProvider.
+ * NOTE: should it inherit DataProvider?
  */
 export class Admin {
   constructor(
@@ -26,7 +26,7 @@ export class Admin {
       if (e instanceof AlreadyExistsError) {
         return;
       } else {
-          throw e;
+        throw e;
       }
     }
     const root = this.treeDB.tree.tree.root;

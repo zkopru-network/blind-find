@@ -2,13 +2,12 @@ import * as http from "http";
 import { Keypair, PubKey, Signature } from "maci-crypto";
 import { AddressInfo } from "ws";
 
+import { getCounterSignHashedData, signMsg, verifySignedMsg } from ".";
 import {
-  getCounterSignHashedData,
-  HubRegistry,
-  signMsg,
-  verifySignedMsg
-} from ".";
-import { RequestFailed } from "./exceptions";
+  RequestFailed,
+  DatabaseCorrupted,
+  HubRegistryNotFound
+} from "./exceptions";
 import {
   JoinReq,
   JoinResp,
@@ -29,6 +28,7 @@ import {
   IWebSocketReadWriter
 } from "./websocket";
 import { TIMEOUT, MAXIMUM_TRIALS, TIMEOUT_LARGE } from "./configs";
+import { objToHubRegistry, THubRegistryObj } from "./dataProvider";
 import { SMPStateMachine } from "./smp";
 import { hashPointToScalar } from "./utils";
 import { IAtomicDB, MerkleProof } from "./interfaces";
@@ -102,6 +102,45 @@ export class UserStore implements IUserStore {
   }
 }
 
+type THubRegistryWithProof = {
+  registry: THubRegistryObj;
+  merkleProof: MerkleProof;
+};
+const REGISTRY_STORE_PREFIX = "blind-find-hub-registry";
+/**
+ * `RegistryStore` stores the mapping from `adminAddress` to `TUserRegistry`.
+ */
+export class RegistryStore {
+  private dbMap: IDBMap<THubRegistryWithProof>;
+  constructor(private readonly adminAddress: BigInt, db: IAtomicDB) {
+    this.dbMap = new DBMap<THubRegistryWithProof>(REGISTRY_STORE_PREFIX, db);
+  }
+
+  private getRegistryKey() {
+    return "key";
+  }
+
+  async get(): Promise<THubRegistryWithProof> {
+    const e: THubRegistryWithProof | undefined = await this.dbMap.get(
+      this.getRegistryKey()
+    );
+    if (e === undefined) {
+      throw new HubRegistryNotFound();
+    }
+    if (this.adminAddress !== e.registry.adminAddress) {
+      throw new DatabaseCorrupted(
+        `adminAddress mismatches: this.adminAddress=${this.adminAddress}, ` +
+          `e.registry.adminAddress = ${e.registry.adminAddress}`
+      );
+    }
+    return e;
+  }
+
+  async set(e: THubRegistryWithProof) {
+    await this.dbMap.set(this.getRegistryKey(), e);
+  }
+}
+
 // TODO: Probably we can use `close.code` to indicate the reason why a socket is closed by
 //  the server.
 //  Ref: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
@@ -111,15 +150,17 @@ export class UserStore implements IUserStore {
  */
 export class HubServer extends BaseServer {
   userStore: IUserStore;
+  registryStore: RegistryStore;
 
   globalRateLimiter: IIPRateLimiter;
   joinRateLimiter: IIPRateLimiter;
   searchRateLimiter: IIPRateLimiter;
 
+  hubRegistryWithProof?: THubRegistryWithProof;
+
   constructor(
     readonly keypair: Keypair,
-    readonly hubRegistry: HubRegistry,
-    readonly merkleProof: MerkleProof,
+    readonly adminAddress: BigInt,
     globalRateLimit: TRateLimitParams,
     joinRateLimit: TRateLimitParams,
     searchRateLimit: TRateLimitParams,
@@ -129,9 +170,23 @@ export class HubServer extends BaseServer {
   ) {
     super();
     this.userStore = new UserStore(db);
+    this.registryStore = new RegistryStore(adminAddress, db);
     this.globalRateLimiter = new TokenBucketRateLimiter(globalRateLimit);
     this.joinRateLimiter = new TokenBucketRateLimiter(joinRateLimit);
     this.searchRateLimiter = new TokenBucketRateLimiter(searchRateLimit);
+  }
+
+  static async setHubRegistryWithProof(
+    db: IAtomicDB,
+    e: THubRegistryWithProof
+  ) {
+    const registryStore = new RegistryStore(e.registry.adminAddress, db);
+    await registryStore.set(e);
+  }
+
+  async start(port?: number) {
+    this.hubRegistryWithProof = await this.registryStore.get();
+    await super.start(port);
   }
 
   async onJoinRequest(
@@ -195,6 +250,11 @@ export class HubServer extends BaseServer {
         throw new Error("r4 should have been generated to compute Ph and Qh");
       }
       const r4h = state2.r4;
+      if (this.hubRegistryWithProof === undefined) {
+        throw new Error(
+          "hubRegistryWithProof should have been loaded when server started"
+        );
+      }
       const proofOfSMP = await genProofOfSMP({
         h2,
         h3,
@@ -202,8 +262,8 @@ export class HubServer extends BaseServer {
         msg1: SMPMessage1Wire.fromTLV(smpMsg1),
         msg2: SMPMessage2Wire.fromTLV(msg2),
         msg3: SMPMessage3Wire.fromTLV(smpMsg3),
-        proof: this.merkleProof,
-        hubRegistry: this.hubRegistry,
+        proof: this.hubRegistryWithProof.merkleProof,
+        hubRegistry: objToHubRegistry(this.hubRegistryWithProof.registry),
         pubkeyC: pubkey,
         pubkeyHub: this.keypair.pubKey,
         sigJoinMsgC: userRegistry.userSig,
