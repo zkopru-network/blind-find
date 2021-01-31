@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { genKeypair, stringifyBigInts } from "maci-crypto";
+import { objToBase64 } from "./utils";
 
 export const buildCommandGeneral = () => {
   const general = new Command("general");
@@ -7,8 +8,12 @@ export const buildCommandGeneral = () => {
     .command("genKeypair")
     .description("generate a Blind Find keypair")
     .action(() => {
-      const keypair = stringifyBigInts(genKeypair());
-      console.log(keypair);
+      const keypair = genKeypair();
+      console.log({
+        privKey: stringifyBigInts(keypair.privKey),
+        pubKey: stringifyBigInts(keypair.pubKey),
+        pubKeyInBase64: objToBase64(keypair.pubKey),
+      });
     });
   return general;
 };
