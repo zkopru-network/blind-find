@@ -3,7 +3,7 @@ import { Admin } from "../admin";
 import { hubRegistryToObj, HubRegistryTreeDB } from "../dataProvider";
 import { LevelDB } from "../db";
 import { loadConfigs, parseAdminConfig } from "./configs";
-import { dbDir } from "./defaults";
+import * as defaults from "./defaults";
 import { getBlindFindContract } from "./provider";
 import { base64ToObj, objToBase64 } from "./utils";
 import { objToHubRegistry } from "../dataProvider";
@@ -43,7 +43,11 @@ const getAdmin = async () => {
     networkConfig,
     adminConfig.adminEthereumPrivkey
   );
-  const levelDB = new LevelDB(dbDir);
+  const levelDB = getDB();
   const treeDB = await HubRegistryTreeDB.fromDB(levelDB);
   return new Admin(blindFindContract, treeDB);
+};
+
+const getDB = () => {
+  return new LevelDB(defaults.dbAdmin);
 };

@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { HubServer, THubRegistryWithProof } from "../hub";
 import { LevelDB } from "../db";
 import { loadConfigs, parseHubConfig } from "./configs";
-import { dbDir } from "./defaults";
+import * as defaults from "./defaults";
 import { getBlindFindContract } from "./provider";
 import { base64ToObj, objToBase64, privkeyToKeypair } from "./utils";
 import { hubRegistryToObj, objToHubRegistry } from "../dataProvider";
@@ -78,7 +78,7 @@ const buildCommandSetHubRegistryWithProof = () => {
       await validateMerkleRoot(blindFindContract, merkleProof.root);
 
       // Store this valid hub registry and its proof.
-      const levelDB = new LevelDB(dbDir);
+      const levelDB = getDB();
       await HubServer.setHubRegistryToDB(levelDB, {
         hubRegistry: hubRegistryToObj(hubRegistry),
         merkleProof: merkleProof
@@ -98,7 +98,7 @@ const buildCommandStart = () => {
     .action(
       async (portString: string | undefined, hostname: string | undefined) => {
         const { adminAddress, hubKeypair, hubConfig } = await loadHubSettings();
-        const levelDB = new LevelDB(dbDir);
+        const levelDB = getDB();
         const hubServer = new HubServer(
           hubKeypair,
           adminAddress,
@@ -159,4 +159,8 @@ const validateMerkleRoot = async (
   if (!allRoots.has(merkleRoot)) {
     throw new ValueError("merkle root is not on chain");
   }
+};
+
+const getDB = () => {
+  return new LevelDB(defaults.dbHub);
 };
