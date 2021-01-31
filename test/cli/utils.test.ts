@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { objToBase64, base64ToObj, pubkeyToHex, pubkeyFromHex } from "../../src/cli/utils";
+import { objToBase64, base64ToObj } from "../../src/cli/utils";
 
 describe("base64 encoding for JSON", () => {
   it("", () => {
