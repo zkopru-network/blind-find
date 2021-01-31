@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { PubKey, SNARK_FIELD_SIZE } from "maci-crypto";
+import { PubKey, SNARK_FIELD_SIZE, stringifyBigInts } from "maci-crypto";
 
 import * as defaults from "./defaults";
 import { LevelDB } from "../db";
@@ -7,11 +7,14 @@ import { ValueError } from "../exceptions";
 import { User } from "../user";
 import { loadConfigs, parseUserConfig } from "./configs";
 import { getBlindFindContract } from "./provider";
-import { base64ToObj, privkeyToKeypair } from "./utils";
+import { base64ToObj, objToBase64, privkeyToKeypair } from "./utils";
 
 export const buildCommandUser = () => {
   const command = new Command("user");
-  command.addCommand(buildCommandJoin()).addCommand(buildCommandSearch());
+  command
+    .addCommand(buildCommandJoin())
+    .addCommand(buildCommandSearch())
+    .addCommand(buildCommandGetKeypair());
   return command;
 };
 
@@ -44,6 +47,48 @@ const buildCommandJoin = () => {
 
 const buildCommandSearch = () => {
   const command = new Command("search");
+  command
+    .arguments("<hostname> <port> <targetPubkey>")
+    .description("search for a user through a hub", {
+      hostname: "hub's hostname",
+      port: "hub's port",
+      targetPubkey: "target user's public key in base64"
+    })
+    .action(
+      async (hostname: string, portString: string, targetPubkeyB64: string) => {
+        const port = Number(portString);
+        const targetPubkey = base64ToObj(targetPubkeyB64) as PubKey;
+        validatePubkey(targetPubkey);
+        const {
+          adminAddress,
+          userKeypair,
+          blindFindContract,
+          db
+        } = await loadUserSettings();
+        const user = new User(userKeypair, adminAddress, blindFindContract, db);
+        const result = await user.search(hostname, port, targetPubkey);
+        if (result === null) {
+          console.log(`Failed to search for user ${targetPubkeyB64}`);
+        } else {
+          console.log(`Found user ${targetPubkeyB64}, proof = `, result);
+        }
+      }
+    );
+  return command;
+};
+
+const buildCommandGetKeypair = () => {
+  const command = new Command("getKeypair");
+  command.description("get user's keypair").action(async () => {
+    const configs = await loadConfigs();
+    const userConfig = parseUserConfig(configs);
+    const userKeypair = privkeyToKeypair(userConfig.blindFindPrivkey);
+    console.log({
+      privKey: stringifyBigInts(userKeypair.privKey),
+      pubKey: stringifyBigInts(userKeypair.pubKey),
+      pubKeyInBase64: objToBase64(userKeypair.pubKey)
+    });
+  });
   return command;
 };
 
