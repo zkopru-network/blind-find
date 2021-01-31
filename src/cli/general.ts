@@ -6,7 +6,7 @@ export const buildCommandGeneral = () => {
   const general = new Command("general");
   general
     .command("genKeypair")
-    .description("generate a Blind Find keypair")
+    .description("generate a BlindFind keypair")
     .action(() => {
       const keypair = genKeypair();
       console.log({

@@ -25,7 +25,7 @@ const buildCommandCreateHubRegistry = () => {
   const command = new Command("createHubRegistry");
   command
     .description(
-      "Create a hub registry. To be registered as a valid hub, " +
+      "create a hub registry. To be registered as a valid hub, " +
         "this registry must be set to admin and added to hub registry tree."
     )
     .action(async () => {
@@ -42,7 +42,7 @@ const buildCommandSetHubRegistryWithProof = () => {
   command
     .arguments("<hubRegistryWithProof>")
     .description(
-      "Set hub registry along with its merkle proof to the database",
+      "set hub registry along with its merkle proof to the database",
       {
         hubRegistryWithProof:
           "a `HubRegistryWithProof` object encoded in base64"
@@ -91,7 +91,7 @@ const buildCommandStart = () => {
   const command = new Command("start");
   command
     .arguments("[port] [hostname]")
-    .description("Start the hub server", {
+    .description("start the hub server", {
       port: "port hub server listens to",
       hostname: "interface hub server listens to, default to be 0.0.0.0"
     })

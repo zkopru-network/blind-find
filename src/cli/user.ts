@@ -19,7 +19,7 @@ const buildCommandJoin = () => {
   const command = new Command("join");
   command
     .arguments("<hostname> <port> <hubPubkey>")
-    .description("Join a hub", {
+    .description("join a hub", {
       hostname: "hub's hostname",
       port: "hub's port",
       hubPubkey: "hub's public key in base64"
