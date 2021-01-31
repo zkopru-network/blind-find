@@ -7,7 +7,8 @@ import {
   HubServer,
   sendJoinHubReq,
   sendSearchReq,
-  UserStore
+  UserStore,
+  THubRateLimit
 } from "../src/hub";
 import { genKeypair, Signature } from "maci-crypto";
 import { LEVELS, TIMEOUT, TIMEOUT_LARGE } from "../src/configs";
@@ -103,6 +104,11 @@ describe("HubServer", function() {
       numAccess: 1000,
       refreshPeriod: 100000
     };
+    const hubRateLimit = {
+      join: rateLimit,
+      search: rateLimit,
+      global: rateLimit,
+    }
     const db = new MemoryDB();
     await HubServer.setHubRegistryToDB(db, {
       hubRegistry: hubRegistry,
@@ -110,10 +116,8 @@ describe("HubServer", function() {
     });
     hub = new HubServer(
       hubkeypair,
-      adminAddressFactory(),
-      rateLimit,
-      rateLimit,
-      rateLimit,
+      adminAddress,
+      hubRateLimit,
       db
     );
     await hub.start();
@@ -200,11 +204,7 @@ describe("HubServer", function() {
     const hubRegistry = tree.leaves[0];
     const merkleProof = tree.tree.genMerklePath(0);
 
-    const createHub = async (
-      globalRateLimit: TRateLimitParams,
-      joinRateLimit: TRateLimitParams,
-      searchRateLimit: TRateLimitParams
-    ) => {
+    const createHub = async (rateLimit: THubRateLimit) => {
       const db = new MemoryDB();
       await HubServer.setHubRegistryToDB(db, {
         hubRegistry: hubRegistry,
@@ -213,9 +213,7 @@ describe("HubServer", function() {
       const hub = new HubServer(
         hubkeypair,
         adminAddress,
-        globalRateLimit,
-        joinRateLimit,
-        searchRateLimit,
+        rateLimit,
         db
       );
       await hub.start();
@@ -226,34 +224,13 @@ describe("HubServer", function() {
     const zeroRateLimit = { numAccess: 0, refreshPeriod: 100000 };
     const normalRateLimit = { numAccess: 1000, refreshPeriod: 100000 };
 
-    // Put zero rate limit on global, thus any request fails.
-    await (async () => {
-      const { hub, port } = await createHub(
-        zeroRateLimit,
-        normalRateLimit,
-        normalRateLimit
-      );
-      const signedMsg = signedJoinMsgFactory(user1, hubkeypair);
-      await expect(
-        sendJoinHubReq(
-          ip,
-          port,
-          signedMsg.userPubkey,
-          signedMsg.userSig,
-          signedMsg.hubPubkey
-        )
-      ).to.be.rejected;
-      await expect(sendSearchReq(ip, port, user1.pubKey)).to.be.rejected;
-      hub.close();
-    })();
-
     // Put zero rate limit on join requests, thus only join requests fail.
     await (async () => {
-      const { hub, port } = await createHub(
-        normalRateLimit,
-        zeroRateLimit,
-        normalRateLimit
-      );
+      const { hub, port } = await createHub({
+        join: zeroRateLimit,
+        search: normalRateLimit,
+        global: normalRateLimit,
+      });
       const signedMsg = signedJoinMsgFactory(user1, hubkeypair);
       await expect(
         sendJoinHubReq(
@@ -271,11 +248,32 @@ describe("HubServer", function() {
 
     // Put zero rate limit on search requests, thus only search requests fail.
     await (async () => {
-      const { hub, port } = await createHub(
-        normalRateLimit,
-        normalRateLimit,
-        zeroRateLimit
-      );
+      const { hub, port } = await createHub({
+        join: normalRateLimit,
+        search: zeroRateLimit,
+        global: normalRateLimit,
+      });
+      await expect(sendSearchReq(ip, port, user1.pubKey)).to.be.rejected;
+      hub.close();
+    })();
+
+    // Put zero rate limit on global, thus any request fails.
+    await (async () => {
+      const { hub, port } = await createHub({
+        join: normalRateLimit,
+        search: normalRateLimit,
+        global: zeroRateLimit,
+      });
+      const signedMsg = signedJoinMsgFactory(user1, hubkeypair);
+      await expect(
+        sendJoinHubReq(
+          ip,
+          port,
+          signedMsg.userPubkey,
+          signedMsg.userSig,
+          signedMsg.hubPubkey
+        )
+      ).to.be.rejected;
       await expect(sendSearchReq(ip, port, user1.pubKey)).to.be.rejected;
       hub.close();
     })();

@@ -102,9 +102,7 @@ const buildCommandStart = () => {
         const hubServer = new HubServer(
           hubKeypair,
           adminAddress,
-          hubConfig.rateLimit.global,
-          hubConfig.rateLimit.join,
-          hubConfig.rateLimit.search,
+          hubConfig.rateLimit,
           levelDB
         );
         const port: number | undefined =

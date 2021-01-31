@@ -141,6 +141,12 @@ export class RegistryStore {
   }
 }
 
+export type THubRateLimit = {
+  global: TRateLimitParams;
+  join: TRateLimitParams;
+  search: TRateLimitParams;
+};
+
 // TODO: Probably we can use `close.code` to indicate the reason why a socket is closed by
 //  the server.
 //  Ref: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
@@ -152,18 +158,16 @@ export class HubServer extends BaseServer {
   userStore: IUserStore;
   registryStore: RegistryStore;
 
-  globalRateLimiter: IIPRateLimiter;
   joinRateLimiter: IIPRateLimiter;
   searchRateLimiter: IIPRateLimiter;
+  globalRateLimiter: IIPRateLimiter;
 
   hubRegistryWithProof?: THubRegistryWithProof;
 
   constructor(
     readonly keypair: Keypair,
     readonly adminAddress: BigInt,
-    globalRateLimit: TRateLimitParams,
-    joinRateLimit: TRateLimitParams,
-    searchRateLimit: TRateLimitParams,
+    rateLimit: THubRateLimit,
     db: IAtomicDB,
     readonly timeoutSmall = TIMEOUT,
     readonly timeoutLarge = TIMEOUT_LARGE
@@ -171,9 +175,9 @@ export class HubServer extends BaseServer {
     super();
     this.userStore = new UserStore(db);
     this.registryStore = new RegistryStore(adminAddress, db);
-    this.globalRateLimiter = new TokenBucketRateLimiter(globalRateLimit);
-    this.joinRateLimiter = new TokenBucketRateLimiter(joinRateLimit);
-    this.searchRateLimiter = new TokenBucketRateLimiter(searchRateLimit);
+    this.joinRateLimiter = new TokenBucketRateLimiter(rateLimit.join);
+    this.searchRateLimiter = new TokenBucketRateLimiter(rateLimit.search);
+    this.globalRateLimiter = new TokenBucketRateLimiter(rateLimit.global);
   }
 
   static async setHubRegistryToDB(db: IAtomicDB, e: THubRegistryWithProof) {

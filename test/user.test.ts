@@ -36,6 +36,11 @@ describe("User", function() {
     numAccess: 1000,
     refreshPeriod: 100000
   };
+  const hubRateLimit = {
+    join: rateLimit,
+    search: rateLimit,
+    global: rateLimit,
+  }
   let ip: string;
   let port: number;
 
@@ -57,9 +62,7 @@ describe("User", function() {
     hub = new HubServer(
       hubKeypair,
       adminAddress,
-      rateLimit,
-      rateLimit,
-      rateLimit,
+      hubRateLimit,
       db
     );
     await hub.start();
