@@ -138,6 +138,10 @@ export const parseHubConfig = (config: IConfig): IHubConfig => {
   return hub;
 };
 
+// TODO: Refactor
+//  - Load **options** and configs from configs.yaml
+//  - Create `IConfig` based on the options, configs, and the defaults.
+
 export const loadConfigs = async (
   filePath: string = defaults.configsPath
 ): Promise<IConfig> => {
