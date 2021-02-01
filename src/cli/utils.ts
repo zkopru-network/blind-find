@@ -38,3 +38,11 @@ export const keypairToCLIFormat = (keypair: Keypair) => {
     pubKeyInBase64: objToBase64(keypair.pubKey)
   };
 };
+
+export const printObj = (s: any) => {
+  if (typeof s === "string") {
+    console.log(s);
+  } else {
+    console.log(JSON.stringify(stringifyBigInts(s)));
+  }
+};

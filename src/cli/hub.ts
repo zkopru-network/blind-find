@@ -1,7 +1,12 @@
 import { Command } from "commander";
 import { HubServer, THubRegistryWithProof } from "../hub";
 import { IConfig } from "./configs";
-import { base64ToObj, objToBase64, keypairToCLIFormat } from "./utils";
+import {
+  base64ToObj,
+  objToBase64,
+  keypairToCLIFormat,
+  printObj
+} from "./utils";
 import { hubRegistryToObj, objToHubRegistry } from "../dataProvider";
 import { hashLeftRight, IncrementalQuinTree } from "maci-crypto";
 import { HubRegistry } from "..";
@@ -12,6 +17,7 @@ import { BlindFindContract } from "../web3";
 export const buildCommandHub = (config: IConfig) => {
   const command = new Command("hub");
   command
+    .description("hub lets users join and replies to search requests")
     .addCommand(buildCommandCreateHubRegistry(config))
     .addCommand(buildCommandSetHubRegistryWithProof(config))
     .addCommand(buildCommandStart(config))
@@ -31,7 +37,7 @@ const buildCommandCreateHubRegistry = (config: IConfig) => {
       const { adminAddress, hubKeypair } = await loadHubSettings(config);
 
       const hubRegistry = HubRegistry.fromKeypair(hubKeypair, adminAddress);
-      console.log(objToBase64(hubRegistryToObj(hubRegistry)));
+      printObj(objToBase64(hubRegistryToObj(hubRegistry)));
     });
   return command;
 };
@@ -116,7 +122,7 @@ const buildCommandStart = (config: IConfig) => {
 const buildCommandGetKeypair = (config: IConfig) => {
   const command = new Command("getKeypair");
   command.description("get hub's keypair").action(async () => {
-    console.log(keypairToCLIFormat(config.getKeypair()));
+    printObj(keypairToCLIFormat(config.getKeypair()));
   });
   return command;
 };
@@ -131,7 +137,7 @@ const buildCommandListJoinedUsers = (config: IConfig) => {
       for await (const user of hubServer.userStore) {
         userPubkeys.push(objToBase64(user[0]));
       }
-      console.log(userPubkeys);
+      printObj(userPubkeys);
     });
   return command;
 };

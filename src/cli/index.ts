@@ -12,7 +12,7 @@ async function main() {
   const program = new Command();
   program
     .description("Blind Find v1")
-    .version("0.0.1")
+    .version("0.0.1") // TODO: Parse from other places?
     .enablePositionalOptions()
     .passThroughOptions()
     // TODO: Add an option for logger level.

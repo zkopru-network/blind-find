@@ -3,11 +3,12 @@ import { PubKey, SNARK_FIELD_SIZE } from "maci-crypto";
 import { ValueError } from "../exceptions";
 import { User } from "../user";
 import { IConfig } from "./configs";
-import { base64ToObj, keypairToCLIFormat } from "./utils";
+import { base64ToObj, printObj, keypairToCLIFormat } from "./utils";
 
 export const buildCommandUser = (config: IConfig) => {
   const command = new Command("user");
   command
+    .description("user join hubs and search for others")
     .addCommand(buildCommandJoin(config))
     .addCommand(buildCommandSearch(config))
     .addCommand(buildCommandGetKeypair(config));
@@ -76,7 +77,7 @@ const buildCommandSearch = (config: IConfig) => {
 const buildCommandGetKeypair = (config: IConfig) => {
   const command = new Command("getKeypair");
   command.description("get user's keypair").action(async () => {
-    console.log(keypairToCLIFormat(config.getKeypair()));
+    printObj(keypairToCLIFormat(config.getKeypair()));
   });
   return command;
 };

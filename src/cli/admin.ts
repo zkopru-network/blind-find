@@ -2,13 +2,15 @@ import { Command } from "commander";
 import { Admin } from "../admin";
 import { hubRegistryToObj, HubRegistryTreeDB } from "../dataProvider";
 import { IConfig } from "./configs";
-import { base64ToObj, objToBase64 } from "./utils";
+import { base64ToObj, printObj, objToBase64 } from "./utils";
 import { objToHubRegistry } from "../dataProvider";
 import { THubRegistryWithProof } from "../hub";
 
 export const buildCommandAdmin = (config: IConfig) => {
   const adminCommand = new Command("admin");
-  adminCommand.addCommand(buildCommandAddHub(config));
+  adminCommand
+    .description("admin manages hubs")
+    .addCommand(buildCommandAddHub(config));
   return adminCommand;
 };
 
@@ -32,7 +34,7 @@ const buildCommandAddHub = (config: IConfig) => {
         hubRegistry: hubRegistryToObj(hubRegistry),
         merkleProof: admin.treeDB.tree.tree.genMerklePath(index)
       };
-      console.log(objToBase64(hubRegistryWithProof));
+      printObj(objToBase64(hubRegistryWithProof));
     });
   return command;
 };
