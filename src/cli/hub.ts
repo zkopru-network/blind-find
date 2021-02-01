@@ -125,8 +125,7 @@ const buildCommandGetKeypair = () => {
   const command = new Command("getKeypair");
   command.description("get hub's keypair").action(async () => {
     const configs = await loadConfigs();
-    const hubConfig = parseHubConfig(configs);
-    console.log(privkeyToKeipairCLI(hubConfig.blindFindPrivkey));
+    console.log(privkeyToKeipairCLI(configs.blindFindPrivkey));
   });
   return command;
 };
@@ -152,7 +151,7 @@ const loadHubSettings = async () => {
   const hubConfig = parseHubConfig(configs);
   const blindFindContract = getBlindFindContract(networkConfig);
   const adminAddress = await blindFindContract.getAdmin();
-  const hubKeypair = privkeyToKeypair(hubConfig.blindFindPrivkey);
+  const hubKeypair = privkeyToKeypair(configs.blindFindPrivkey);
   return {
     blindFindContract,
     hubConfig,

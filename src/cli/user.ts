@@ -5,7 +5,7 @@ import * as defaults from "./defaults";
 import { LevelDB } from "../db";
 import { ValueError } from "../exceptions";
 import { User } from "../user";
-import { loadConfigs, parseUserConfig } from "./configs";
+import { loadConfigs } from "./configs";
 import { getBlindFindContract } from "./provider";
 import { base64ToObj, privkeyToKeipairCLI, privkeyToKeypair } from "./utils";
 
@@ -81,8 +81,7 @@ const buildCommandGetKeypair = () => {
   const command = new Command("getKeypair");
   command.description("get user's keypair").action(async () => {
     const configs = await loadConfigs();
-    const userConfig = parseUserConfig(configs);
-    console.log(privkeyToKeipairCLI(userConfig.blindFindPrivkey));
+    console.log(privkeyToKeipairCLI(configs.blindFindPrivkey));
   });
   return command;
 };
@@ -90,14 +89,12 @@ const buildCommandGetKeypair = () => {
 const loadUserSettings = async () => {
   const configs = await loadConfigs();
   const networkConfig = configs.network;
-  const userConfig = parseUserConfig(configs);
   const blindFindContract = getBlindFindContract(networkConfig);
   const adminAddress = await blindFindContract.getAdmin();
-  const userKeypair = privkeyToKeypair(userConfig.blindFindPrivkey);
+  const userKeypair = privkeyToKeypair(configs.blindFindPrivkey);
   const db = getDB();
   return {
     blindFindContract,
-    userConfig,
     adminAddress,
     userKeypair,
     db

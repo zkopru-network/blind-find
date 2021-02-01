@@ -1,5 +1,10 @@
 import * as fs from "fs";
-import { stringifyBigInts, unstringifyBigInts } from "maci-crypto";
+import {
+  genPrivKey,
+  PrivKey,
+  stringifyBigInts,
+  unstringifyBigInts
+} from "maci-crypto";
 import * as path from "path";
 import YAML from "yaml";
 import { TRateLimitParams } from "../websocket";
@@ -17,19 +22,17 @@ interface IContractAddress {
 
 interface IAdminConfig {
   adminEthereumPrivkey?: string;
+  rateLimit: {
+    global: TRateLimitParams;
+  };
 }
 
 interface IHubConfig {
-  blindFindPrivkey: BigInt;
   rateLimit: {
     join: TRateLimitParams;
     search: TRateLimitParams;
     global: TRateLimitParams;
   };
-}
-
-interface IUserConfig {
-  blindFindPrivkey: BigInt;
 }
 
 interface IWeb3Params {
@@ -50,9 +53,9 @@ export interface INetworkConfig {
 
 interface IConfig {
   network: INetworkConfig;
+  blindFindPrivkey: PrivKey;
   admin?: IAdminConfig;
   hub?: IHubConfig;
-  user?: IUserConfig;
 }
 
 export interface IContractInfo {
@@ -60,6 +63,7 @@ export interface IContractInfo {
   networks: IContractAddress;
 }
 
+// TODO: Should it be moved out of configs.ts?
 export const contractInfo: IContractInfo = {
   // NOTE: Or should abi be compiled from the source, to avoid being outdated when the contract is updated.
   abi: [
@@ -107,27 +111,23 @@ export const contractInfo: IContractInfo = {
   }
 };
 
-export const configTemplate = {
-  network: {
-    network: defaults.network,
-    provider: {
-      name: defaults.provider,
-      apiKey: "A123"
+export const createConfigTemplate = () => {
+  return {
+    network: {
+      network: "kovan",
+      provider: {
+        name: "infura",
+        apiKey: "Put your infura api key here"
+      }
+    },
+    blindFindPrivkey: genPrivKey(),
+    admin: {
+      adminEthereumPrivkey: "private key of the Blind Find contract admin"
     }
-  },
-  admin: {
-    adminEthereumPrivkey: "0x123"
-  },
-  hub: {
-    blindFindPrivkey: BigInt("456")
-  },
-  user: {
-    blindFindPrivkey: BigInt("789")
-  }
+  };
 };
 
 export const parseNetworkConfig = (config: IConfig): INetworkConfig => {
-  // Check config.netwrok
   const network = config.network;
   if (network === undefined) {
     throw new IncompleteConfig("network is not specified");
@@ -151,7 +151,7 @@ export const parseNetworkConfig = (config: IConfig): INetworkConfig => {
     if (typeof provider.apiKey !== "string") {
       throw new IncompleteConfig("provider.apiKey should be a string");
     }
-    // TODO: Support 'web3'
+    // TODO: Support JSONRPC
   } else {
     throw new UnsupportedNetwork(`${provider.name} is not supported yet`);
   }
@@ -159,7 +159,6 @@ export const parseNetworkConfig = (config: IConfig): INetworkConfig => {
 };
 
 export const parseAdminConfig = (config: IConfig): IAdminConfig => {
-  // Check config.user
   const admin = config.admin;
   if (admin === undefined) {
     throw new IncompleteConfig("admin is not specified");
@@ -174,16 +173,11 @@ export const parseAdminConfig = (config: IConfig): IAdminConfig => {
 };
 
 export const parseHubConfig = (config: IConfig): IHubConfig => {
-  // Check config.user
   const hub = config.hub;
   if (hub === undefined) {
-    throw new IncompleteConfig("hub is not specified");
-  }
-  if (hub.blindFindPrivkey === undefined) {
-    throw new IncompleteConfig("hub.blindFindPrivkey is not specified");
-  }
-  if (typeof hub.blindFindPrivkey !== "bigint") {
-    throw new IncompleteConfig("hub.blindFindPrivkey should be a bigint");
+    return {
+      rateLimit: defaults.defaultHubRateLimit
+    };
   }
   if (hub.rateLimit === undefined) {
     hub.rateLimit = defaults.defaultHubRateLimit;
@@ -201,32 +195,24 @@ export const parseHubConfig = (config: IConfig): IHubConfig => {
   return hub;
 };
 
-export const parseUserConfig = (config: IConfig): IUserConfig => {
-  // Check config.user
-  const user = config.user;
-  if (user === undefined) {
-    throw new IncompleteConfig("user is not specified");
-  }
-  if (user.blindFindPrivkey === undefined) {
-    throw new IncompleteConfig("user.blindFindPrivkey is not specified");
-  }
-  if (typeof user.blindFindPrivkey !== "bigint") {
-    throw new IncompleteConfig("user.blindFindPrivkey should be a bigint");
-  }
-  return user;
-};
-
 export const loadConfigs = async (
   filePath: string = defaults.configsPath
 ): Promise<IConfig> => {
   try {
     const configString = await fs.promises.readFile(filePath, "utf-8");
     const configs = unstringifyBigInts(YAML.parse(configString));
+    const networkConfig = parseNetworkConfig(configs);
+    if (configs.blindFindPrivkey === undefined) {
+      throw new IncompleteConfig("blind find privkey is not found");
+    }
+    if (typeof configs.blindFindPrivkey !== "bigint") {
+      throw new IncompleteConfig("blind find privkey is in a wrong type");
+    }
     return {
-      network: parseNetworkConfig(configs),
+      network: networkConfig,
+      blindFindPrivkey: configs.blindFindPrivkey,
       admin: configs.admin,
-      hub: configs.hub,
-      user: configs.user
+      hub: configs.hub
     };
   } catch (e) {
     // If no `configs.yaml` is found, provide a template.
@@ -235,7 +221,9 @@ export const loadConfigs = async (
       const dirName = path.dirname(filePath);
       await fs.promises.mkdir(dirName, { recursive: true });
       // Write config template
-      const templateYAML = YAML.stringify(stringifyBigInts(configTemplate));
+      const templateYAML = YAML.stringify(
+        stringifyBigInts(createConfigTemplate())
+      );
       await fs.promises.writeFile(filePath, templateYAML, "utf-8");
       throw new NoUserConfigs(
         `${filePath} is not found and thus a template is generated. ` +
