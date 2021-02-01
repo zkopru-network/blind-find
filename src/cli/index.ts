@@ -15,6 +15,7 @@ async function main() {
     .version("0.0.1")
     .enablePositionalOptions()
     .passThroughOptions()
+    // TODO: Add an option for logger level.
     .option(
       "-d, --data-dir <dir>",
       "directory storing data blind find uses",
