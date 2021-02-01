@@ -16,10 +16,6 @@ import {
   UnsupportedNetwork
 } from "./exceptions";
 
-interface IContractAddress {
-  [network: string]: { address: string; atBlock: number };
-}
-
 interface IAdminConfig {
   adminEthereumPrivkey?: string;
   rateLimit: {
@@ -57,59 +53,6 @@ interface IConfig {
   admin?: IAdminConfig;
   hub?: IHubConfig;
 }
-
-export interface IContractInfo {
-  abi: any;
-  networks: IContractAddress;
-}
-
-// TODO: Should it be moved out of configs.ts?
-export const contractInfo: IContractInfo = {
-  // NOTE: Or should abi be compiled from the source, to avoid being outdated when the contract is updated.
-  abi: [
-    { inputs: [], stateMutability: "nonpayable", type: "constructor" },
-    {
-      anonymous: false,
-      inputs: [
-        {
-          indexed: false,
-          internalType: "uint256",
-          name: "merkleRoot",
-          type: "uint256"
-        }
-      ],
-      name: "UpdateMerkleRoot",
-      type: "event"
-    },
-    {
-      inputs: [],
-      name: "admin",
-      outputs: [{ internalType: "address", name: "", type: "address" }],
-      stateMutability: "view",
-      type: "function"
-    },
-    {
-      inputs: [],
-      name: "latestMerkleRoot",
-      outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-      stateMutability: "view",
-      type: "function"
-    },
-    {
-      inputs: [{ internalType: "uint256", name: "root", type: "uint256" }],
-      name: "updateMerkleRoot",
-      outputs: [],
-      stateMutability: "nonpayable",
-      type: "function"
-    }
-  ],
-  networks: {
-    kovan: {
-      address: "0xE57881D655309C9a20f469a95564beaEb93Ce73A",
-      atBlock: 23208018
-    }
-  }
-};
 
 export const createConfigTemplate = () => {
   return {

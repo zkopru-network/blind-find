@@ -4,7 +4,7 @@ import { hubRegistryToObj, HubRegistryTreeDB } from "../dataProvider";
 import { LevelDB } from "../db";
 import { loadConfigs, parseAdminConfig } from "./configs";
 import * as defaults from "./defaults";
-import { getBlindFindContract } from "./provider";
+import { getBlindFindContract } from "./contract";
 import { base64ToObj, objToBase64 } from "./utils";
 import { objToHubRegistry } from "../dataProvider";
 import { THubRegistryWithProof } from "../hub";

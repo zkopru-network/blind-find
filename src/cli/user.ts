@@ -6,7 +6,7 @@ import { LevelDB } from "../db";
 import { ValueError } from "../exceptions";
 import { User } from "../user";
 import { loadConfigs } from "./configs";
-import { getBlindFindContract } from "./provider";
+import { getBlindFindContract } from "./contract";
 import { base64ToObj, privkeyToKeipairCLI, privkeyToKeypair } from "./utils";
 
 export const buildCommandUser = () => {

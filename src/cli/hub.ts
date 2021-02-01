@@ -3,7 +3,7 @@ import { HubServer, THubRegistryWithProof } from "../hub";
 import { LevelDB } from "../db";
 import { loadConfigs, parseHubConfig } from "./configs";
 import * as defaults from "./defaults";
-import { getBlindFindContract } from "./provider";
+import { getBlindFindContract } from "./contract";
 import {
   base64ToObj,
   objToBase64,
