@@ -2,8 +2,6 @@ import * as os from "os";
 import * as path from "path";
 
 export const dataDir = path.join(os.homedir(), ".blind_find");
-export const dbDir = path.join(dataDir, "db");
-export const configsFileName = "configs.yaml";
 export const network = "kovan";
 export const provider = "infura";
 const hour = 3600 * 1000; // 3600s

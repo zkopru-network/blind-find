@@ -1,15 +1,7 @@
 import { Command } from "commander";
 import { HubServer, THubRegistryWithProof } from "../hub";
-import { LevelDB } from "../db";
-import { IConfig, parseHubConfig } from "./configs";
-import * as defaults from "./defaults";
-import { getBlindFindContract } from "./contract";
-import {
-  base64ToObj,
-  objToBase64,
-  privkeyToKeipairCLI,
-  privkeyToKeypair
-} from "./utils";
+import { IConfig } from "./configs";
+import { base64ToObj, objToBase64, keypairToCLIFormat } from "./utils";
 import { hubRegistryToObj, objToHubRegistry } from "../dataProvider";
 import { hashLeftRight, IncrementalQuinTree } from "maci-crypto";
 import { HubRegistry } from "..";
@@ -17,18 +9,18 @@ import { ValueError } from "../exceptions";
 import { MerkleProof } from "../interfaces";
 import { BlindFindContract } from "../web3";
 
-export const buildCommandHub = (configs: IConfig) => {
+export const buildCommandHub = (config: IConfig) => {
   const command = new Command("hub");
   command
-    .addCommand(buildCommandCreateHubRegistry(configs))
-    .addCommand(buildCommandSetHubRegistryWithProof(configs))
-    .addCommand(buildCommandStart(configs))
-    .addCommand(buildCommandGetKeypair(configs))
-    .addCommand(buildCommandListJoinedUsers(configs));
+    .addCommand(buildCommandCreateHubRegistry(config))
+    .addCommand(buildCommandSetHubRegistryWithProof(config))
+    .addCommand(buildCommandStart(config))
+    .addCommand(buildCommandGetKeypair(config))
+    .addCommand(buildCommandListJoinedUsers(config));
   return command;
 };
 
-const buildCommandCreateHubRegistry = (configs: IConfig) => {
+const buildCommandCreateHubRegistry = (config: IConfig) => {
   const command = new Command("createHubRegistry");
   command
     .description(
@@ -36,7 +28,7 @@ const buildCommandCreateHubRegistry = (configs: IConfig) => {
         "this registry must be set to admin and added to hub registry tree."
     )
     .action(async () => {
-      const { adminAddress, hubKeypair } = await loadHubSettings(configs);
+      const { adminAddress, hubKeypair } = await loadHubSettings(config);
 
       const hubRegistry = HubRegistry.fromKeypair(hubKeypair, adminAddress);
       console.log(objToBase64(hubRegistryToObj(hubRegistry)));
@@ -44,7 +36,7 @@ const buildCommandCreateHubRegistry = (configs: IConfig) => {
   return command;
 };
 
-const buildCommandSetHubRegistryWithProof = (configs: IConfig) => {
+const buildCommandSetHubRegistryWithProof = (config: IConfig) => {
   const command = new Command("setHubRegistryWithProof");
   command
     .arguments("<hubRegistryWithProof>")
@@ -56,9 +48,7 @@ const buildCommandSetHubRegistryWithProof = (configs: IConfig) => {
       }
     )
     .action(async (hubRegistryWithProofB64: string) => {
-      const { blindFindContract, adminAddress } = await loadHubSettings(
-        configs
-      );
+      const { blindFindContract, adminAddress } = await loadHubSettings(config);
       const hubRegistryWithProofObj = base64ToObj(
         hubRegistryWithProofB64
       ) as THubRegistryWithProof;
@@ -87,8 +77,8 @@ const buildCommandSetHubRegistryWithProof = (configs: IConfig) => {
       await validateMerkleRoot(blindFindContract, merkleProof.root);
 
       // Store this valid hub registry and its proof.
-      const levelDB = getDB();
-      await HubServer.setHubRegistryToDB(levelDB, {
+      const db = config.getDB();
+      await HubServer.setHubRegistryToDB(db, {
         hubRegistry: hubRegistryToObj(hubRegistry),
         merkleProof: merkleProof
       });
@@ -96,7 +86,7 @@ const buildCommandSetHubRegistryWithProof = (configs: IConfig) => {
   return command;
 };
 
-const buildCommandStart = (configs: IConfig) => {
+const buildCommandStart = (config: IConfig) => {
   const command = new Command("start");
   command
     .arguments("[port] [hostname]")
@@ -106,7 +96,7 @@ const buildCommandStart = (configs: IConfig) => {
     })
     .action(
       async (portString: string | undefined, hostname: string | undefined) => {
-        const { hubServer } = await getHub(configs);
+        const { hubServer } = await getHub(config);
         const port: number | undefined =
           portString === undefined ? undefined : Number(portString);
         await hubServer.start(port, hostname);
@@ -123,20 +113,20 @@ const buildCommandStart = (configs: IConfig) => {
   return command;
 };
 
-const buildCommandGetKeypair = (configs: IConfig) => {
+const buildCommandGetKeypair = (config: IConfig) => {
   const command = new Command("getKeypair");
   command.description("get hub's keypair").action(async () => {
-    console.log(privkeyToKeipairCLI(configs.blindFindPrivkey));
+    console.log(keypairToCLIFormat(config.getKeypair()));
   });
   return command;
 };
 
-const buildCommandListJoinedUsers = (configs: IConfig) => {
+const buildCommandListJoinedUsers = (config: IConfig) => {
   const command = new Command("listJoinedUsers");
   command
     .description("list the users who has have joined the hub")
     .action(async () => {
-      const { hubServer } = await getHub(configs);
+      const { hubServer } = await getHub(config);
       const userPubkeys: string[] = [];
       for await (const user of hubServer.userStore) {
         userPubkeys.push(objToBase64(user[0]));
@@ -146,12 +136,11 @@ const buildCommandListJoinedUsers = (configs: IConfig) => {
   return command;
 };
 
-const loadHubSettings = async (configs: IConfig) => {
-  const networkConfig = configs.network;
-  const hubConfig = parseHubConfig(configs);
-  const blindFindContract = getBlindFindContract(networkConfig);
+const loadHubSettings = async (config: IConfig) => {
+  const hubConfig = config.getHubConfig();
+  const blindFindContract = config.getBlindFindContract();
   const adminAddress = await blindFindContract.getAdmin();
-  const hubKeypair = privkeyToKeypair(configs.blindFindPrivkey);
+  const hubKeypair = config.getKeypair();
   return {
     blindFindContract,
     hubConfig,
@@ -160,19 +149,17 @@ const loadHubSettings = async (configs: IConfig) => {
   };
 };
 
-const getHub = async (configs: IConfig) => {
-  const {
-    adminAddress,
-    hubKeypair,
-    hubConfig,
-    blindFindContract
-  } = await loadHubSettings(configs);
-  const levelDB = getDB();
+const getHub = async (config: IConfig) => {
+  const hubConfig = config.getHubConfig();
+  const blindFindContract = config.getBlindFindContract();
+  const adminAddress = await blindFindContract.getAdmin();
+  const hubKeypair = config.getKeypair();
+  const db = config.getDB();
   const hubServer = new HubServer(
     hubKeypair,
     adminAddress,
     hubConfig.rateLimit,
-    levelDB
+    db
   );
   return {
     hubServer,
@@ -209,8 +196,4 @@ const validateMerkleRoot = async (
   if (!allRoots.has(merkleRoot)) {
     throw new ValueError("merkle root is not on chain");
   }
-};
-
-const getDB = () => {
-  return new LevelDB(defaults.dbDir);
 };

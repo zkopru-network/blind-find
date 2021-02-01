@@ -31,8 +31,7 @@ export const privkeyToKeypair = (privkey: PrivKey): Keypair => {
   };
 };
 
-export const privkeyToKeipairCLI = (privkey: PrivKey) => {
-  const keypair = privkeyToKeypair(privkey);
+export const keypairToCLIFormat = (keypair: Keypair) => {
   return {
     privKey: stringifyBigInts(keypair.privKey),
     pubKey: stringifyBigInts(keypair.pubKey),

@@ -1,24 +1,20 @@
 import { Command } from "commander";
 import { PubKey, SNARK_FIELD_SIZE } from "maci-crypto";
-
-import * as defaults from "./defaults";
-import { LevelDB } from "../db";
 import { ValueError } from "../exceptions";
 import { User } from "../user";
 import { IConfig } from "./configs";
-import { getBlindFindContract } from "./contract";
-import { base64ToObj, privkeyToKeipairCLI, privkeyToKeypair } from "./utils";
+import { base64ToObj, keypairToCLIFormat } from "./utils";
 
-export const buildCommandUser = (configs: IConfig) => {
+export const buildCommandUser = (config: IConfig) => {
   const command = new Command("user");
   command
-    .addCommand(buildCommandJoin(configs))
-    .addCommand(buildCommandSearch(configs))
-    .addCommand(buildCommandGetKeypair(configs));
+    .addCommand(buildCommandJoin(config))
+    .addCommand(buildCommandSearch(config))
+    .addCommand(buildCommandGetKeypair(config));
   return command;
 };
 
-const buildCommandJoin = (configs: IConfig) => {
+const buildCommandJoin = (config: IConfig) => {
   const command = new Command("join");
   command
     .arguments("<hostname> <port> <hubPubkey>")
@@ -37,7 +33,7 @@ const buildCommandJoin = (configs: IConfig) => {
           userKeypair,
           blindFindContract,
           db
-        } = await loadUserSettings(configs);
+        } = await loadUserSettings(config);
         const user = new User(userKeypair, adminAddress, blindFindContract, db);
         await user.join(hostname, port, hubPubkey);
       }
@@ -45,7 +41,7 @@ const buildCommandJoin = (configs: IConfig) => {
   return command;
 };
 
-const buildCommandSearch = (configs: IConfig) => {
+const buildCommandSearch = (config: IConfig) => {
   const command = new Command("search");
   command
     .arguments("<hostname> <port> <targetPubkey>")
@@ -64,7 +60,7 @@ const buildCommandSearch = (configs: IConfig) => {
           userKeypair,
           blindFindContract,
           db
-        } = await loadUserSettings(configs);
+        } = await loadUserSettings(config);
         const user = new User(userKeypair, adminAddress, blindFindContract, db);
         const result = await user.search(hostname, port, targetPubkey);
         if (result === null) {
@@ -77,20 +73,19 @@ const buildCommandSearch = (configs: IConfig) => {
   return command;
 };
 
-const buildCommandGetKeypair = (configs: IConfig) => {
+const buildCommandGetKeypair = (config: IConfig) => {
   const command = new Command("getKeypair");
   command.description("get user's keypair").action(async () => {
-    console.log(privkeyToKeipairCLI(configs.blindFindPrivkey));
+    console.log(keypairToCLIFormat(config.getKeypair()));
   });
   return command;
 };
 
-const loadUserSettings = async (configs: IConfig) => {
-  const networkConfig = configs.network;
-  const blindFindContract = getBlindFindContract(networkConfig);
+const loadUserSettings = async (config: IConfig) => {
+  const blindFindContract = config.getBlindFindContract();
   const adminAddress = await blindFindContract.getAdmin();
-  const userKeypair = privkeyToKeypair(configs.blindFindPrivkey);
-  const db = getDB();
+  const userKeypair = config.getKeypair();
+  const db = config.getDB();
   return {
     blindFindContract,
     adminAddress,
@@ -111,8 +106,4 @@ const validatePubkey = (pubkey: PubKey) => {
   ) {
     throw new ValueError(`invalid pubkey: ${pubkey}`);
   }
-};
-
-const getDB = () => {
-  return new LevelDB(defaults.dbDir);
 };

@@ -1,12 +1,12 @@
 import { Command } from "commander";
 import { buildCommandAdmin } from "./admin";
-import { loadConfigs } from "./configs";
+import { BlindFindConfig } from "./configs";
 import * as defaults from "./defaults";
 import { buildCommandGeneral } from "./general";
 import { buildCommandHub } from "./hub";
 import { buildCommandUser } from "./user";
 
-// TODO: Workaround w/ the fact that options in root is not inherited
+// NOTE: Workaround: parse arguments twice to get the global option.
 //  https://github.com/tj/commander.js/issues/1229.
 async function main() {
   const program = new Command();
@@ -17,28 +17,20 @@ async function main() {
     .passThroughOptions()
     .option(
       "-d, --data-dir <dir>",
-      "directory where stores data blind find uses",
+      "directory storing data blind find uses",
       defaults.dataDir
     )
     .parse();
   const globalOpts = program.opts();
-  // TODO: Parse user's options (what inside configs.yaml) and create `IConfig`.
-  const configs = await loadConfigs(globalOpts.dataDir);
+  const config = await BlindFindConfig.loadFromDataDir(globalOpts.dataDir);
   await program
     .description("Blind Find v1")
-    .addCommand(buildCommandGeneral(configs))
-    .addCommand(buildCommandAdmin(configs))
-    .addCommand(buildCommandHub(configs))
-    .addCommand(buildCommandUser(configs))
+    .addCommand(buildCommandGeneral(config))
+    .addCommand(buildCommandAdmin(config))
+    .addCommand(buildCommandHub(config))
+    .addCommand(buildCommandUser(config))
     .parseAsync();
 }
-
-/*
-1. 不管怎樣，每個指令都要 parse config
-2. parse config 需要 config path, 這要從 root option 拿
-- If -d dir, then `loadConfigs(dir)`
-- If --debug, then console.debug ...
- */
 
 main()
   .then(() => process.exit(0))
