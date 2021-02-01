@@ -1,8 +1,9 @@
 import { Command } from "commander";
 import { genKeypair, stringifyBigInts } from "maci-crypto";
+import { IConfig } from "./configs";
 import { objToBase64 } from "./utils";
 
-export const buildCommandGeneral = () => {
+export const buildCommandGeneral = (configs: IConfig) => {
   const general = new Command("general");
   general
     .command("genKeypair")

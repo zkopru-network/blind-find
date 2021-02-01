@@ -5,20 +5,20 @@ import * as defaults from "./defaults";
 import { LevelDB } from "../db";
 import { ValueError } from "../exceptions";
 import { User } from "../user";
-import { loadConfigs } from "./configs";
+import { IConfig } from "./configs";
 import { getBlindFindContract } from "./contract";
 import { base64ToObj, privkeyToKeipairCLI, privkeyToKeypair } from "./utils";
 
-export const buildCommandUser = () => {
+export const buildCommandUser = (configs: IConfig) => {
   const command = new Command("user");
   command
-    .addCommand(buildCommandJoin())
-    .addCommand(buildCommandSearch())
-    .addCommand(buildCommandGetKeypair());
+    .addCommand(buildCommandJoin(configs))
+    .addCommand(buildCommandSearch(configs))
+    .addCommand(buildCommandGetKeypair(configs));
   return command;
 };
 
-const buildCommandJoin = () => {
+const buildCommandJoin = (configs: IConfig) => {
   const command = new Command("join");
   command
     .arguments("<hostname> <port> <hubPubkey>")
@@ -37,7 +37,7 @@ const buildCommandJoin = () => {
           userKeypair,
           blindFindContract,
           db
-        } = await loadUserSettings();
+        } = await loadUserSettings(configs);
         const user = new User(userKeypair, adminAddress, blindFindContract, db);
         await user.join(hostname, port, hubPubkey);
       }
@@ -45,7 +45,7 @@ const buildCommandJoin = () => {
   return command;
 };
 
-const buildCommandSearch = () => {
+const buildCommandSearch = (configs: IConfig) => {
   const command = new Command("search");
   command
     .arguments("<hostname> <port> <targetPubkey>")
@@ -64,7 +64,7 @@ const buildCommandSearch = () => {
           userKeypair,
           blindFindContract,
           db
-        } = await loadUserSettings();
+        } = await loadUserSettings(configs);
         const user = new User(userKeypair, adminAddress, blindFindContract, db);
         const result = await user.search(hostname, port, targetPubkey);
         if (result === null) {
@@ -77,17 +77,15 @@ const buildCommandSearch = () => {
   return command;
 };
 
-const buildCommandGetKeypair = () => {
+const buildCommandGetKeypair = (configs: IConfig) => {
   const command = new Command("getKeypair");
   command.description("get user's keypair").action(async () => {
-    const configs = await loadConfigs();
     console.log(privkeyToKeipairCLI(configs.blindFindPrivkey));
   });
   return command;
 };
 
-const loadUserSettings = async () => {
-  const configs = await loadConfigs();
+const loadUserSettings = async (configs: IConfig) => {
   const networkConfig = configs.network;
   const blindFindContract = getBlindFindContract(networkConfig);
   const adminAddress = await blindFindContract.getAdmin();
@@ -116,5 +114,5 @@ const validatePubkey = (pubkey: PubKey) => {
 };
 
 const getDB = () => {
-  return new LevelDB(defaults.dbUser);
+  return new LevelDB(defaults.dbDir);
 };

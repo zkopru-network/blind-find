@@ -47,12 +47,25 @@ export interface INetworkConfig {
   provider: IWeb3Params | IInfuraParams;
 }
 
-interface IConfig {
+export interface IOptions {
   network: INetworkConfig;
   blindFindPrivkey: PrivKey;
   admin?: IAdminConfig;
   hub?: IHubConfig;
 }
+
+export interface IConfig {
+  network: INetworkConfig;
+  blindFindPrivkey: PrivKey;
+  admin?: IAdminConfig;
+  hub?: IHubConfig;
+  // dbPath: string;
+}
+
+// class BlindFindConfig implements IConfig {
+
+// }
+
 
 export const createConfigTemplate = () => {
   return {
@@ -142,11 +155,10 @@ export const parseHubConfig = (config: IConfig): IHubConfig => {
 //  - Load **options** and configs from configs.yaml
 //  - Create `IConfig` based on the options, configs, and the defaults.
 
-export const loadConfigs = async (
-  filePath: string = defaults.configsPath
-): Promise<IConfig> => {
+export const loadConfigs = async (dataDir: string): Promise<IConfig> => {
+  const configsPath = path.join(dataDir, defaults.configsFileName);
   try {
-    const configString = await fs.promises.readFile(filePath, "utf-8");
+    const configString = await fs.promises.readFile(configsPath, "utf-8");
     const configs = unstringifyBigInts(YAML.parse(configString));
     const networkConfig = parseNetworkConfig(configs);
     if (configs.blindFindPrivkey === undefined) {
@@ -165,15 +177,15 @@ export const loadConfigs = async (
     // If no `configs.yaml` is found, provide a template.
     if (e.code === "ENOENT") {
       // mkdir -p `filePath`
-      const dirName = path.dirname(filePath);
+      const dirName = path.dirname(configsPath);
       await fs.promises.mkdir(dirName, { recursive: true });
       // Write config template
       const templateYAML = YAML.stringify(
         stringifyBigInts(createConfigTemplate())
       );
-      await fs.promises.writeFile(filePath, templateYAML, "utf-8");
+      await fs.promises.writeFile(configsPath, templateYAML, "utf-8");
       throw new NoUserConfigs(
-        `${filePath} is not found and thus a template is generated. ` +
+        `${configsPath} is not found and thus a template is generated. ` +
           "Complete the template and try again."
       );
     } else {
