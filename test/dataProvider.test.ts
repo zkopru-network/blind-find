@@ -1,4 +1,4 @@
-import { hubRegistryFactory, adminAddressFactory } from "../src/factories";
+import { hubRegistryFactory, adminAddressFactory } from "./factories";
 import {
   DataProviderServer,
   sendGetMerkleProofReq,

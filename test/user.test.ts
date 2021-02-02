@@ -3,14 +3,14 @@ import WebSocket from "ws";
 import { verifyProofIndirectConnection } from "../src/circuits/ts";
 import { LEVELS, TIMEOUT, TIMEOUT_LARGE } from "../src/configs";
 import { MemoryDB } from "../src/db";
-import { hubRegistryTreeFactory } from "../src/factories";
+import { hubRegistryTreeFactory } from "./factories";
 import { HubServer } from "../src/hub";
 import { User } from "../src/user";
 
 import { expect } from "chai";
 import { BlindFindContract } from "../src/web3";
 import { HubRegistryTree } from "../src";
-import { blindFindContractFactory } from "../src/factories";
+import { blindFindContractFactory } from "./factories";
 import { IAtomicDB } from "../src/interfaces";
 import { hubRegistryToObj } from "../src/dataProvider";
 

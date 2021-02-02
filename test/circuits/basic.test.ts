@@ -11,7 +11,7 @@ import { babyJubPointFactoryExclude } from "../utils";
 import {
   adminAddressFactory,
   hubRegistryTreeFactory
-} from "../../src/factories";
+} from ".././factories";
 
 import chai from "chai";
 const expect = chai.expect;

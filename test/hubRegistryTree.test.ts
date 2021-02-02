@@ -2,7 +2,7 @@ import {
   adminAddressFactory,
   hubRegistryFactory,
   hubRegistryTreeFactory
-} from "../src/factories";
+} from "./factories";
 import { HubRegistryTree } from "../src";
 import { secretFactory } from "../src/smp/v4/factories";
 import { genKeypair } from "maci-crypto";

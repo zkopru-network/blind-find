@@ -6,7 +6,7 @@ import {
   verifyProofIndirectConnection,
   TProof
 } from "../../src/circuits/ts";
-import { proofIndirectConnectionInputsFactory } from "../../src/factories";
+import { proofIndirectConnectionInputsFactory } from ".././factories";
 import { babyJubPointFactory } from "../../src/smp/v4/factories";
 import { bigIntFactoryExclude, factoryExclude } from "../utils";
 

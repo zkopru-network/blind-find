@@ -11,16 +11,16 @@ import {
   HubRegistry,
   HubRegistryTree,
   signMsg
-} from "./";
-import { SMPStateMachine } from "./smp";
-import { SMPState1, SMPState2 } from "./smp/state";
+} from "../src";
+import { SMPStateMachine } from "../src/smp";
+import { SMPState1, SMPState2 } from "../src/smp/state";
 import {
   SMPMessage1Wire,
   SMPMessage2Wire,
   SMPMessage3Wire
-} from "./smp/v4/serialization";
-import { TEthereumAddress } from "./types";
-import { hashPointToScalar } from "./utils";
+} from "../src/smp/v4/serialization";
+import { TEthereumAddress } from "../src/types";
+import { hashPointToScalar } from "../src/utils";
 
 import { ethers } from "hardhat";
 import { BlindFindContract } from "../src/web3";

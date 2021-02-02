@@ -2,7 +2,7 @@ import { executeCircuit, getSignalByName } from "maci-circuits";
 
 import { compileCircuit } from "./utils";
 import { bigIntFactoryExclude, deepcopyRawObj } from "../utils";
-import { proofOfSMPInputsFactory } from "../../src/factories";
+import { proofOfSMPInputsFactory } from ".././factories";
 import { proofOfSMPInputsToCircuitArgs } from "../../src/circuits/ts";
 
 import chai from "chai";

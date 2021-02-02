@@ -2,7 +2,7 @@ import {
   adminAddressFactory,
   hubRegistryTreeFactory,
   signedJoinMsgFactory
-} from "../src/factories";
+} from "./factories";
 import {
   HubServer,
   sendJoinHubReq,

@@ -4,7 +4,7 @@ import {
   hubRegistryFactory,
   hubRegistryTreeFactory,
   signedJoinMsgFactory
-} from "../src/factories";
+} from "./factories";
 import {
   GetMerkleProofReq,
   GetMerkleProofResp,

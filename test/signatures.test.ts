@@ -6,7 +6,7 @@ import {
   getJoinHubMsgHashedData,
   getRegisterNewHubHashedData
 } from "../src";
-import { adminAddressFactory } from "../src/factories";
+import { adminAddressFactory } from "./factories";
 import { bigIntFactoryExclude, privkeyFactoryExclude } from "./utils";
 
 import { expect } from "chai";

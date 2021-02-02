@@ -12,7 +12,7 @@ import { bigIntFactoryExclude } from "../utils";
 import {
   adminAddressFactory,
   hubRegistryTreeFactory
-} from "../../src/factories";
+} from ".././factories";
 import { expect } from "chai";
 
 describe("join msg signatures", function() {
