@@ -3,7 +3,7 @@ import { PubKey, SNARK_FIELD_SIZE } from "maci-crypto";
 import { ValueError } from "../exceptions";
 import { User } from "../user";
 import { IConfig } from "./configs";
-import { base64ToObj, printObj, keypairToCLIFormat } from "./utils";
+import { base64ToObj, printObj, keypairToCLIFormat, preprocessPrintedObj } from "./utils";
 
 export const buildCommandUser = (config: IConfig) => {
   const command = new Command("user");
@@ -67,7 +67,7 @@ const buildCommandSearch = (config: IConfig) => {
         if (result === null) {
           console.log(`Failed to search for user ${targetPubkeyB64}`);
         } else {
-          console.log(`Found user ${targetPubkeyB64}, proof = `, result);
+          console.log(`Found user ${targetPubkeyB64}, proof = `, preprocessPrintedObj(result));
         }
       }
     );

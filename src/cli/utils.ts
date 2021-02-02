@@ -39,10 +39,15 @@ export const keypairToCLIFormat = (keypair: Keypair) => {
   };
 };
 
+export const preprocessPrintedObj = (s: any) => {
+  return JSON.stringify(stringifyBigInts(s), null, "\t");
+}
+
 export const printObj = (s: any) => {
   if (typeof s === "string") {
     console.log(s);
   } else {
-    console.log(JSON.stringify(stringifyBigInts(s)));
+    const prettified = preprocessPrintedObj(s);
+    console.log(prettified);
   }
 };
