@@ -150,7 +150,7 @@ export const connect = async (
 
 interface ICallback<T> {
   resolvePromise(t: T): void;
-  rejectPromise(reason?: any);
+  rejectPromise(reason?: any): void;
   cancelTimeout(): void;
 }
 
