@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { Command } from "commander";
 import { buildCommandAdmin } from "./admin";
 import { BlindFindConfig } from "./configs";
@@ -6,7 +8,7 @@ import { buildCommandGeneral } from "./general";
 import { buildCommandHub } from "./hub";
 import { buildCommandUser } from "./user";
 
-// NOTE: Workaround: parse arguments twice to get the global option.
+// NOTE: Workaround: parse arguments twice to get the global options.
 //  https://github.com/tj/commander.js/issues/1229.
 async function main() {
   const program = new Command();
