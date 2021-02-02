@@ -32,7 +32,7 @@ import { objToHubRegistry, THubRegistryObj } from "./dataProvider";
 import { SMPStateMachine } from "./smp";
 import { hashPointToScalar } from "./utils";
 import { IAtomicDB, MerkleProof } from "./interfaces";
-import { genProofOfSMP, TProof } from "./circuits/ts";
+import { genProofOfSMP, TProof } from "./circuits";
 import { IDBMap, DBMap } from "./db";
 import { SMPState1, SMPState2 } from "./smp/state";
 import {

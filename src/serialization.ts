@@ -4,7 +4,7 @@ import {
   stringifyBigInts,
   unstringifyBigInts
 } from "maci-crypto";
-import { TProof } from "./circuits/ts";
+import { TProof } from "./circuits";
 import { LEVELS } from "./configs";
 import { MerkleProof } from "./interfaces";
 import { ValueError } from "./smp/exceptions";

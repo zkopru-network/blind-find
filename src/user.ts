@@ -5,7 +5,7 @@ import {
   verifyProofIndirectConnection,
   verifyProofOfSMP,
   TProofIndirectConnection
-} from "./circuits/ts";
+} from "./circuits";
 import { TIMEOUT, TIMEOUT_LARGE } from "./configs";
 import { DBMap } from "./db";
 import { sendJoinHubReq, sendSearchReq } from "./hub";
