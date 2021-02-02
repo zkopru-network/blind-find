@@ -53,7 +53,9 @@ jobs:
         #   - `package.json`: script possibly changes
         #   - `package-lock.json`: circom/snarkjs version possibly changes
         #   - `installZkutil.sh`: zkutil version possibly changes
-        #   - `proofOfSMP.circom`, proofSuccessfulSMP.circom: circom code possibly change
+        # FIXME:
+        #   - `proofOfSMP.circom`, proofSuccessfulSMP.circom: circom code possibly change, but
+        #     we should also consider the imported circuits.
         key: ${{ runner.os }}-circuits-${{ hashFiles('./package.json', './package-lock.json', './scripts/installZkutil.sh', 'circuits/instance/proofOfSMP.circom', 'circuits/instance/proofSuccessfulSMP.circom') }}
     - name: Build circuits if hasn't been built
       if: steps.cache-circuits.outputs.cache-hit != 'true'
