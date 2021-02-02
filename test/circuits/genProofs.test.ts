@@ -29,36 +29,36 @@ describe("Test `genProof` and `verifyProof`", function() {
   });
 
   it("proofOfSMP succeeds", async () => {
-    const res = verifyProofOfSMP(proofOfSMP);
+    const res = await verifyProofOfSMP(proofOfSMP);
     expect(res).to.be.true;
 
     // Invalid public
     const invalidPublicSignals = [...proofOfSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
-    expect(() => {
+    await expect(
       verifyProofOfSMP({
         proof: proofOfSMP.proof,
         publicSignals: invalidPublicSignals
-      });
-    }).to.throw;
+      })
+    ).to.be.rejected;
   });
 
   it("proofSuccessfulSMP succeeds", async () => {
-    expect(verifyProofSuccessfulSMP(proofSuccessfulSMP)).to.be.true;
+    expect(await verifyProofSuccessfulSMP(proofSuccessfulSMP)).to.be.true;
 
     // Invalid public
     const invalidPublicSignals = [...proofSuccessfulSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
-    expect(() => {
+    await expect(
       verifyProofSuccessfulSMP({
         proof: proofSuccessfulSMP.proof,
         publicSignals: invalidPublicSignals
-      });
-    }).to.throw;
+      })
+    ).to.be.rejected;
   });
 
   it("proof indirect connection (proofOfSMP and proofSuccessfulSMP)", async () => {
-    const res = verifyProofIndirectConnection(
+    const res = await verifyProofIndirectConnection(
       {
         pubkeyA: inputs.pubkeyA,
         pubkeyC: inputs.pubkeyC,
@@ -82,7 +82,7 @@ describe("Test `genProof` and `verifyProof`", function() {
     const anotherAdminAddress = bigIntFactoryExclude([inputs.adminAddress]);
     // Wrong pubkeyA
     expect(
-      verifyProofIndirectConnection(
+      await verifyProofIndirectConnection(
         {
           pubkeyA: anotherPubkey,
           pubkeyC: inputs.pubkeyC,
@@ -95,7 +95,7 @@ describe("Test `genProof` and `verifyProof`", function() {
     ).to.be.false;
     // Wrong pubkeyC
     expect(
-      verifyProofIndirectConnection(
+      await verifyProofIndirectConnection(
         {
           pubkeyA: inputs.pubkeyA,
           pubkeyC: anotherPubkey,
@@ -108,7 +108,7 @@ describe("Test `genProof` and `verifyProof`", function() {
     ).to.be.false;
     // Wrong pubkeyAdmin
     expect(
-      verifyProofIndirectConnection(
+      await verifyProofIndirectConnection(
         {
           pubkeyA: inputs.pubkeyA,
           pubkeyC: inputs.pubkeyC,
@@ -121,7 +121,7 @@ describe("Test `genProof` and `verifyProof`", function() {
     ).to.be.false;
     // Wrong root
     expect(
-      verifyProofIndirectConnection(
+      await verifyProofIndirectConnection(
         {
           pubkeyA: inputs.pubkeyA,
           pubkeyC: inputs.pubkeyC,

@@ -19,6 +19,7 @@ import { BabyJubPoint } from "../smp/v4/babyJub";
 import { MerkleProof } from "../interfaces";
 import { TEthereumAddress } from "../types";
 const circom = require("circom");
+import tmp from 'tmp-promise';
 
 /**
  * Ref
@@ -130,8 +131,8 @@ const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
   return args;
 };
 
-const verifyProofOfSMP = (proof: TProof) => {
-  return verifyProof(proofOfSMPPath, proof);
+const verifyProofOfSMP = async (proof: TProof) => {
+  return await verifyProof(proofOfSMPPath, proof);
 };
 
 const proofSuccessfulSMPInputsToCircuitArgs = (
@@ -159,8 +160,8 @@ const genProofSuccessfulSMP = async (
   );
 };
 
-const verifyProofSuccessfulSMP = (proof: TProof) => {
-  return verifyProof(proofSuccessfulSMPPath, proof);
+const verifyProofSuccessfulSMP = async (proof: TProof) => {
+  return await verifyProof(proofSuccessfulSMPPath, proof);
 };
 
 const getCircuitName = (circomFileBasename: string): string => {
@@ -205,16 +206,15 @@ const genProofAndPublicSignals = async (
   paramsFilename: string,
   circuit?: any
 ) => {
-  const date = Date.now();
   const paramsPath = path.join(buildDir, paramsFilename);
   const circuitR1csPath = path.join(buildDir, circuitR1csFilename);
   const circuitWasmPath = path.join(buildDir, circuitWasmFilename);
-  const pathPrefix = path.join(buildDir, date.toString());
-  const inputJsonPath = `${pathPrefix}.input.json`;
-  const witnessPath = `${pathPrefix}.witness.wtns`;
-  const witnessJsonPath = `${pathPrefix}.witness.json`;
-  const proofPath = `${pathPrefix}.proof.json`;
-  const publicJsonPath = `${pathPrefix}.publicSignals.json`;
+  const tmpDir = await tmp.dir({ unsafeCleanup: true });
+  const inputJsonPath = path.join(tmpDir.path, "input.json");
+  const witnessPath = path.join(tmpDir.path, "witness.wtns");
+  const witnessJsonPath = path.join(tmpDir.path, "witness.json");
+  const proofPath = path.join(tmpDir.path, "proof.json");
+  const publicJsonPath = path.join(tmpDir.path, "publicSignals.json");
 
   // TODO: should be changed to async later
   fs.writeFileSync(inputJsonPath, JSON.stringify(stringifyBigInts(inputs)));
@@ -249,55 +249,30 @@ const genProofAndPublicSignals = async (
   const proof = JSON.parse(fs.readFileSync(proofPath).toString());
   await circuit.checkConstraints(witness);
 
-  // TODO: can be combined to single command?
-  // TODO: `shell` can be changed to async
-  shell.rm("-f", witnessPath);
-  shell.rm("-f", witnessJsonPath);
-  shell.rm("-f", proofPath);
-  shell.rm("-f", publicJsonPath);
-  shell.rm("-f", inputJsonPath);
-
+  await tmpDir.cleanup();
   return { proof, publicSignals, witness, circuit };
 };
 
-const verifyProof = (circomFilePath: string, proof: TProof) => {
-  const date = Date.now().toString();
+const verifyProof = async (circomFilePath: string, proof: TProof) => {
   const circuitName = getCircuitName(path.basename(circomFilePath));
-  const paramsFilename = `${circuitName}.params`;
-  const proofFilename = `${date}.${circuitName}.proof.json`;
-  const publicSignalsFilename = `${date}.${circuitName}.publicSignals.json`;
+  const tmpDir = await tmp.dir({ unsafeCleanup: true });
+  const paramsPath = path.join(buildDir, `${circuitName}.params`);
+  const proofPath = path.join(tmpDir.path, 'proof.json');
+  const publicSignalsPath = path.join(tmpDir.path, 'publicSignals.json');
   // TODO: can be combined to single command?
   fs.writeFileSync(
-    path.join(buildDir, proofFilename),
+    proofPath,
     JSON.stringify(stringifyBigInts(proof.proof))
   );
   // TODO: can be combined to single command?
   fs.writeFileSync(
-    path.join(buildDir, publicSignalsFilename),
+    publicSignalsPath,
     JSON.stringify(stringifyBigInts(proof.publicSignals))
   );
-
-  return verifyProofInFiles(
-    paramsFilename,
-    proofFilename,
-    publicSignalsFilename
-  );
-};
-
-const verifyProofInFiles = (
-  paramsFilename: string,
-  proofFilename: string,
-  publicSignalsFilename: string
-): boolean => {
-  const paramsPath = path.join(buildDir, paramsFilename);
-  const proofPath = path.join(buildDir, proofFilename);
-  const publicSignalsPath = path.join(buildDir, publicSignalsFilename);
   const verifyCmd = `${zkutilPath} verify -p ${paramsPath} -r ${proofPath} -i ${publicSignalsPath}`;
   const output = shell.exec(verifyCmd).stdout.trim();
 
-  // TODO: can be combined to single command?
-  shell.rm("-f", proofPath);
-  shell.rm("-f", publicSignalsPath);
+  await tmpDir.cleanup();
 
   return output === "Proof is correct";
 };
@@ -348,17 +323,17 @@ const isPubkeySame = (a: PubKey, b: PubKey) => {
   return a.length === b.length && a[0] === b[0] && a[1] === b[1];
 };
 
-const verifyProofIndirectConnection = (
+const verifyProofIndirectConnection = async (
   proof: TProofIndirectConnection,
   validMerkleRoots: Set<BigInt>
 ) => {
-  if (!verifyProofOfSMP(proof.proofOfSMP)) {
+  if (!(await verifyProofOfSMP(proof.proofOfSMP))) {
     return false;
   }
   const resProofOfSMP = parseProofOfSMPPublicSignals(
     proof.proofOfSMP.publicSignals
   );
-  if (!verifyProofSuccessfulSMP(proof.proofSuccessfulSMP)) {
+  if (!(await verifyProofSuccessfulSMP(proof.proofSuccessfulSMP))) {
     return false;
   }
   const resProofSuccessfulSMP = parseProofSuccessfulSMPPublicSignals(

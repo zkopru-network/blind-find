@@ -71,8 +71,7 @@ export class User {
       return null;
     }
     // One peer matched. Verify the proof.
-    const isProofOfSMPValid = verifyProofOfSMP(res.proofOfSMP);
-    if (!isProofOfSMPValid) {
+    if (!(await verifyProofOfSMP(res.proofOfSMP))) {
       throw new InvalidProof("proof of smp is invalid");
     }
     // Construct Proof of Successful SMP

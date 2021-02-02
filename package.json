@@ -12,14 +12,14 @@
     "contracts/**/*"
   ],
   "bin": {
-    "blind-find": "lib/cli/index.js",
-    "hhhhh": "lib/cli/index.js"
+    "blind-find": "lib/cli/index.js"
   },
   "scripts": {
     "build": "tsc",
     "build_all_circuits": "make",
     "build_proof_smp": "make proof-smp",
     "build_proof_successful_smp": "make proof-successful-smp",
+    "postinstall": "npm run build && npm run build_all_circuits",
     "test": "hardhat test",
     "lint": "exit 0 # FIXME: use eslint instead"
   },
@@ -45,6 +45,7 @@
     "maci-circuits": "^0.3.8",
     "maci-config": "^0.3.8",
     "maci-crypto": "^0.3.8",
+    "tmp-promise": "^3.0.2",
     "ws": "^7.4.1",
     "yaml": "^1.10.0"
   },

@@ -7,30 +7,23 @@ import { ValueError } from "../src/exceptions";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 
+import tmp from 'tmp-promise';
+
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 
-const dbPath = "/tmp/abc123456dsiuafadsoifjdsiao";
-
 describe("LevelDB", () => {
   let db: LevelDB;
+  let tmpDir: tmp.DirectoryResult;
 
-  before(() => {
-    db = new LevelDB(dbPath);
+  before(async () => {
+    tmpDir = await tmp.dir({ unsafeCleanup: true });
+    db = new LevelDB(tmpDir.path);
   });
 
   after(async () => {
     await db.close();
-    // Remove db directory
-    await new Promise((res, rej) => {
-      fs.rmdir(dbPath, { recursive: true }, err => {
-        if (err) {
-          rej(err);
-        } else {
-          res();
-        }
-      });
-    });
+    await tmpDir.cleanup();
   });
 
   it("set and get", async () => {
@@ -111,24 +104,17 @@ const isPubkeySame = (a: PubKey, b: PubKey) => {
 describe("DBArray", () => {
   let db: LevelDB;
   let dbArray: DBObjectArray<PubKey>;
+  let tmpDir: tmp.DirectoryResult;
 
-  before(() => {
-    db = new LevelDB(dbPath);
+  before(async () => {
+    tmpDir = await tmp.dir({ unsafeCleanup: true });
+    db = new LevelDB(tmpDir.path);
     dbArray = new DBObjectArray("pubkeys", db);
   });
 
   after(async () => {
     await db.close();
-    // Remove db directory
-    await new Promise((res, rej) => {
-      fs.rmdir(dbPath, { recursive: true }, err => {
-        if (err) {
-          rej(err);
-        } else {
-          res();
-        }
-      });
-    });
+    await tmpDir.cleanup();
   });
 
   it("operations", async () => {
@@ -161,24 +147,17 @@ describe("DBArray", () => {
 describe("DBMap", () => {
   let db: LevelDB;
   let dbMap: DBMap<PubKey>;
+  let tmpDir: tmp.DirectoryResult;
 
-  before(() => {
-    db = new LevelDB(dbPath);
+  before(async () => {
+    tmpDir = await tmp.dir({ unsafeCleanup: true });
+    db = new LevelDB(tmpDir.path);
     dbMap = new DBMap("map", db);
   });
 
   after(async () => {
     await db.close();
-    // Remove db directory
-    await new Promise((res, rej) => {
-      fs.rmdir(dbPath, { recursive: true }, err => {
-        if (err) {
-          rej(err);
-        } else {
-          res();
-        }
-      });
-    });
+    await tmpDir.cleanup();
   });
 
   it("operations", async () => {
