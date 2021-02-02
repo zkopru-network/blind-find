@@ -1,5 +1,5 @@
 import * as path from "path";
-import { compileAndLoadCircuit } from "../../src/circuits/ts";
+import { compileAndLoadCircuit } from "../../src/circuits";
 
 const circomFilesDir = path.join(__dirname, "circom");
 

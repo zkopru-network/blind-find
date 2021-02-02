@@ -1,3 +1,3 @@
-include "../../../src/circuits/circom/proofSuccessfulSMP.circom";
+include "../../../circuits/proofSuccessfulSMP.circom";
 
 component main = ProofSuccessfulSMP();

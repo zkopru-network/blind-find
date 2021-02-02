@@ -1,6 +1,6 @@
 import { genKeypair, Keypair } from "maci-crypto";
 import WebSocket from "ws";
-import { verifyProofIndirectConnection } from "../src/circuits/ts";
+import { verifyProofIndirectConnection } from "../src/circuits";
 import { LEVELS, TIMEOUT, TIMEOUT_LARGE } from "../src/configs";
 import { MemoryDB } from "../src/db";
 import { hubRegistryTreeFactory } from "./factories";

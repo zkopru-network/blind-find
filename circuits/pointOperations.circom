@@ -1,7 +1,7 @@
-include "../../../node_modules/circomlib/circuits/bitify.circom";
-include "../../../node_modules/circomlib/circuits/comparators.circom";
-include "../../../node_modules/circomlib/circuits/escalarmulany.circom";
-include "../../../node_modules/circomlib/circuits/gates.circom";
+include "../node_modules/circomlib/circuits/bitify.circom";
+include "../node_modules/circomlib/circuits/comparators.circom";
+include "../node_modules/circomlib/circuits/escalarmulany.circom";
+include "../node_modules/circomlib/circuits/gates.circom";
 
 template IsPointEqual() {
     signal input pointA[2];

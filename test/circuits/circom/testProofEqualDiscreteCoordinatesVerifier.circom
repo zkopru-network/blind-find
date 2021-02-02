@@ -1,3 +1,3 @@
-include "../../../src/circuits/circom/proofEqualDiscreteCoordinatesVerifier.circom";
+include "../../../circuits/proofEqualDiscreteCoordinatesVerifier.circom";
 
 component main = ProofEqualDiscreteCoordinatesVerifier();

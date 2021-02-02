@@ -1,13 +1,19 @@
 {
   "name": "blind-find",
+  "description": "A typescript implementation of Blind Find, a peer-to-peer network allowing private peer search proposed by Barry Whitehat and Kobi Gurkan",
   "version": "0.0.1",
+  "license": "MIT",
+  "author": "Kevin Mai-Hsuan Chia(mhchia) <kevin@mhchia.com>",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [
-    "lib/**/*"
+    "lib/**/*",
+    "circuits/**/*",
+    "contracts/**/*"
   ],
   "bin": {
-    "blind-find": "lib/cli/index.js"
+    "blind-find": "lib/cli/index.js",
+    "hhhhh": "lib/cli/index.js"
   },
   "scripts": {
     "build": "tsc",

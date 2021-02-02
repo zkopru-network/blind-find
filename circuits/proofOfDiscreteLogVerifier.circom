@@ -1,5 +1,5 @@
-include "../../../node_modules/circomlib/circuits/babyjub.circom";
-include "../../../node_modules/maci-circuits/circom/hasherPoseidon.circom";
+include "../node_modules/circomlib/circuits/babyjub.circom";
+include "../node_modules/maci-circuits/circom/hasherPoseidon.circom";
 
 include "./pointOperations.circom";
 

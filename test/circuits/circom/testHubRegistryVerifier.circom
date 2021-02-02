@@ -1,3 +1,3 @@
-include "../../../src/circuits/circom/proofOfSMP.circom";
+include "../../../circuits/proofOfSMP.circom";
 
 component main = HubRegistryVerifier(4);

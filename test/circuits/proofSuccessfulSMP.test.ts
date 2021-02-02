@@ -3,7 +3,7 @@ import { executeCircuit, getSignalByName } from "maci-circuits";
 import { compileCircuit } from "./utils";
 import { babyJubPointFactoryExclude, bigIntFactoryExclude } from "../utils";
 import { proofSuccessfulSMPInputsFactory } from ".././factories";
-import { proofSuccessfulSMPInputsToCircuitArgs } from "../../src/circuits/ts";
+import { proofSuccessfulSMPInputsToCircuitArgs } from "../../src/circuits";
 
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";

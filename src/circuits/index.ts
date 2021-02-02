@@ -8,16 +8,16 @@ import {
   stringifyBigInts,
   unstringifyBigInts
 } from "maci-crypto";
-import { ValueError } from "../../smp/exceptions";
+import { ValueError } from "../smp/exceptions";
 import {
   SMPMessage1Wire,
   SMPMessage2Wire,
   SMPMessage3Wire
-} from "../../smp/v4/serialization";
-import { HubRegistry } from "../..";
-import { BabyJubPoint } from "../../smp/v4/babyJub";
-import { MerkleProof } from "../../interfaces";
-import { TEthereumAddress } from "../../types";
+} from "../smp/v4/serialization";
+import { HubRegistry } from "..";
+import { BabyJubPoint } from "../smp/v4/babyJub";
+import { MerkleProof } from "../interfaces";
+import { TEthereumAddress } from "../types";
 const circom = require("circom");
 
 /**
@@ -25,25 +25,23 @@ const circom = require("circom");
  *  - maci-circuit: https://github.com/appliedzkp/maci/blob/e5e3c2f9f5f0d6b130b1c4b0ee41e6042c0cbcc0/circuits/ts/index.ts#L161
  */
 
+// TODO: Move to configs.ts?
 const zkutilPath = "~/.cargo/bin/zkutil";
+const circomFilePostfix = ".circom";
+const circomDir = `${__dirname}/../../circuits`;
+const buildDir = `${__dirname}/../../build`;
+const snarkjsCLI = path.join(
+  __dirname,
+  "../../node_modules/snarkjs/build/cli.cjs"
+);
+const proofOfSMPPath = path.join(circomDir, "instance/proofOfSMP.circom");
+const proofSuccessfulSMPPath = path.join(circomDir, "instance/proofSuccessfulSMP.circom");
 
 export const compileAndLoadCircuit = async (circuitPath: string) => {
   const circuit = await circom.tester(path.join(circuitPath));
-
   await circuit.loadSymbols();
-
   return circuit;
 };
-
-const circomFilePostfix = ".circom";
-const circomDir = `${__dirname}/../circom`;
-const buildDir = `${__dirname}/../../../build`;
-const snarkjsCLI = path.join(
-  __dirname,
-  "../../../node_modules/snarkjs/build/cli.cjs"
-);
-const proofOfSMPPath = "instance/proofOfSMP.circom";
-const proofSuccessfulSMPPath = "instance/proofSuccessfulSMP.circom";
 
 type ProofOfSMPInput = {
   h2: BigInt;
@@ -165,28 +163,27 @@ const verifyProofSuccessfulSMP = (proof: TProof) => {
   return verifyProof(proofSuccessfulSMPPath, proof);
 };
 
-const getCircuitName = (circomFile: string): string => {
+const getCircuitName = (circomFileBasename: string): string => {
   if (
-    circomFile.slice(circomFile.length - circomFilePostfix.length) !==
+    circomFileBasename.slice(circomFileBasename.length - circomFilePostfix.length) !==
     circomFilePostfix
   ) {
     throw new ValueError(
-      `circom file must have postifx ${circomFilePostfix}: circomFile=${circomFile}`
+      `circom file must have postifx ${circomFilePostfix}: circomFile=${circomFileBasename}`
     );
   }
-  const basename = circomFile.substring(circomFile.lastIndexOf("/") + 1);
-  return basename.slice(0, basename.length - circomFilePostfix.length);
+  return circomFileBasename.slice(0, circomFileBasename.length - circomFilePostfix.length);
 };
 
 /**
- * Find the circuit file under `src/circuits/circom/`. Compile it and generate the proof with `inputs`.
- * @param circomFile
+ * Find the circuit file under `circuits/`. Compile it and generate the proof with `inputs`.
+ * @param circomFullPath
  * @param inputs
  * @param circuit
  */
-const genProof = async (circomFile: string, inputs: any, circuit?: any) => {
-  const circuitName = getCircuitName(circomFile);
-  const circomFullPath = path.join(circomDir, circomFile);
+const genProof = async (circomFullPath: string, inputs: any, circuit?: any) => {
+  const circomFileBasename = path.basename(circomFullPath);
+  const circuitName = getCircuitName(circomFileBasename);
   const circuitR1csPath = `${circuitName}.r1cs`;
   const wasmPath = `${circuitName}.wasm`;
   const paramsPath = `${circuitName}.params`;
@@ -263,9 +260,9 @@ const genProofAndPublicSignals = async (
   return { proof, publicSignals, witness, circuit };
 };
 
-const verifyProof = (circomFile: string, proof: TProof) => {
+const verifyProof = (circomFilePath: string, proof: TProof) => {
   const date = Date.now().toString();
-  const circuitName = getCircuitName(circomFile);
+  const circuitName = getCircuitName(path.basename(circomFilePath));
   const paramsFilename = `${circuitName}.params`;
   const proofFilename = `${date}.${circuitName}.proof.json`;
   const publicSignalsFilename = `${date}.${circuitName}.publicSignals.json`;

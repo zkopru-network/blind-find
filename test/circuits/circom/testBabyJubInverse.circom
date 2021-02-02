@@ -1,3 +1,3 @@
-include "../../../src/circuits/circom/pointOperations.circom";
+include "../../../circuits/pointOperations.circom";
 
 component main = BabyInverse();

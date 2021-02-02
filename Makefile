@@ -1,7 +1,7 @@
 
 .PHONY = clean
 
-CIRCOM_DIR = src/circuits/circom/instance
+CIRCOM_DIR = circuits/instance
 BUILD_DIR = build
 
 # R1CSS = $(CIRCOMS:%.circom=$(BUILD_DIR)/%.r1cs)

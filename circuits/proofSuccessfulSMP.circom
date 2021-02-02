@@ -1,5 +1,5 @@
-include "../../../node_modules/maci-circuits/circom/hasherPoseidon.circom";
-include "../../../node_modules/maci-circuits/circom/verify_signature.circom";
+include "../node_modules/maci-circuits/circom/hasherPoseidon.circom";
+include "../node_modules/maci-circuits/circom/verify_signature.circom";
 
 include "./pointOperations.circom";
 
