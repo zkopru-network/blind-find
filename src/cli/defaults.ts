@@ -10,3 +10,4 @@ export const defaultHubRateLimit = {
   search: { numAccess: 100, refreshPeriod: hour }, // 100 searches per hour
   global: { numAccess: 200, refreshPeriod: hour } // 100 joins per hour
 };
+// TODO: Add JSONRPC url?
