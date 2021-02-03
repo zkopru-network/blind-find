@@ -18,7 +18,7 @@ import { BlindFindContract } from "../web3";
 import { ethers, Wallet } from "ethers";
 import { LevelDB } from "../db";
 import { privkeyToKeypair } from "./utils";
-import { abi, contractAddressInNetwork} from "./contractInfo";
+import { abi, contractAddressInNetwork } from "./contractInfo";
 
 interface IContractAddress {
   address: string;
@@ -26,7 +26,7 @@ interface IContractAddress {
 }
 
 interface IAdminConfig {
-  adminEthereumPrivkey?: string;
+  adminEthereumPrivkey: string;
   rateLimit: {
     global: TRateLimitParams;
   };
@@ -216,13 +216,15 @@ export class BlindFindConfig {
     } else {
       throw new ConfigError(`network is not supported`);
     }
-
-    const adminConfig = this.getAdminConfig();
-    const privkey = adminConfig.adminEthereumPrivkey;
-    if (privkey !== undefined) {
-      providerOrWallet = new ethers.Wallet(privkey, provider);
-    } else {
-      providerOrWallet = provider;
+    try {
+      const adminConfig = this.getAdminConfig();
+      providerOrWallet = new ethers.Wallet(adminConfig.adminEthereumPrivkey, provider);
+    } catch (e) {
+      if (e instanceof ConfigError) {
+        providerOrWallet = provider;
+      } else {
+        throw e;
+      }
     }
     const c = new ethers.Contract(
       contractAddress.address,
