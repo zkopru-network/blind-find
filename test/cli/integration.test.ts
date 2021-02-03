@@ -5,16 +5,29 @@ import YAML from "yaml";
 import tmp from "tmp-promise";
 
 import { expect } from 'chai';
-import { ethers } from "hardhat";
+// import { ethers } from "hardhat";
+import { ethers } from "ethers";
 
 import { configsFileName } from "../../src/cli/constants";
 
 import { exec, parsePrintedObj } from './utils';
 import { BlindFindContract } from "../../src/web3";
 import { genPrivKey, stringifyBigInts } from "maci-crypto";
+import { abi, bytecode } from "../../src/cli/contractInfo";
 
-const url = "http://localhost:8545";
+const hostname = 'localhost';
+const port = 5566;
+const url = `http://${hostname}:${port}`;
 const hardhatDefaultPrivkey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+
+const sleep = async (time: number) => {
+    await new Promise((res, rej) => {
+        setInterval(() => {
+            res();
+        }, time);
+    })
+}
+
 tmp.setGracefulCleanup();
 
 class Role {
@@ -34,7 +47,7 @@ class Role {
     }
 }
 
-const createDataDir = async (
+const createRole = async (
     contractAddress: string,
     roleName: string,
 ): Promise<Role> => {
@@ -43,8 +56,8 @@ const createDataDir = async (
             name: "web3",
             url: url,
             customContractAddress: {
-            address: contractAddress,
-            atBlock: 0,
+                address: contractAddress,
+                atBlock: 0,
             }
         }
     };
@@ -93,13 +106,27 @@ describe("Integration test for roles", function () {
   let userAnother: Role;
 
   before(async () => {
-    hardhatNode = shell.exec('npx hardhat node', { async: true, silent: true });
+    hardhatNode = shell.exec(
+        `npx hardhat node --hostname ${hostname} --port ${port}`,
+        { async: true, silent: true },
+    );
+
+    const expectedLine = `Started HTTP and WebSocket JSON-RPC server at ${url}`;
+    // Wait until hardhatNode is ready, by expecting `expectedLine` is printed.
+    await new Promise((res, rej) => {
+        hardhatNode.stdout.on('data', (data: string) => {
+            if (data.indexOf(expectedLine)) {
+                res();
+            }
+        })
+    });
 
     // Deploy contract to hardhat node
     const provider = new ethers.providers.JsonRpcProvider(url);
     const wallet = new ethers.Wallet(hardhatDefaultPrivkey, provider);
-    const BlindFindContractFactory = await ethers.getContractFactory(
-        "BlindFindContract",
+    const BlindFindContractFactory = new ethers.ContractFactory(
+        abi,
+        bytecode,
         wallet,
     );
     const c = await BlindFindContractFactory.deploy();
@@ -107,10 +134,10 @@ describe("Integration test for roles", function () {
     const contractAddress = c.address;
 
     // Create each role
-    admin = await createDataDir(contractAddress, "admin");
-    hub = await createDataDir(contractAddress, "hub");
-    userJoined = await createDataDir(contractAddress, "user");
-    userAnother = await createDataDir(contractAddress, "user");
+    admin = await createRole(contractAddress, "admin");
+    hub = await createRole(contractAddress, "hub");
+    userJoined = await createRole(contractAddress, "user");
+    userAnother = await createRole(contractAddress, "user");
   });
 
   after(async () => {
@@ -122,8 +149,8 @@ describe("Integration test for roles", function () {
   })
 
   it("", async () => {
-      const keypair = hub.exec('getKeypair').stdout;
-      console.log(keypair);
+    const res = hub.exec('createHubRegistry');
+    console.log(res.stdout);
   });
 });
 
