@@ -12,16 +12,18 @@ import { TRateLimitParams } from "../websocket";
 
 import * as defaults from "./defaults";
 import { configsFileName, dbDir } from "./constants";
-import {
-  NoUserConfigs,
-  IncompleteConfig,
-  UnsupportedNetwork
-} from "./exceptions";
+import { ConfigError } from "./exceptions";
 import { IAtomicDB } from "../interfaces";
 import { BlindFindContract } from "../web3";
 import { ethers, Wallet } from "ethers";
 import { LevelDB } from "../db";
 import { privkeyToKeypair } from "./utils";
+import { abi, contractAddressInNetwork} from "./contractInfo";
+
+interface IContractAddress {
+  address: string;
+  atBlock: number;
+}
 
 interface IAdminConfig {
   adminEthereumPrivkey?: string;
@@ -40,22 +42,28 @@ interface IHubConfig {
 
 interface IWeb3Params {
   name: "web3";
-  ip: string;
-  port: string;
+  url: string;
+  // - if `customContractAddress` is specified, try `customContractAddress`.
+  // - else, use `contractInfo[network]` if `network` is specified.
+  network?: string;
+  customContractAddress?: IContractAddress;
 }
 
 interface IInfuraParams {
   name: "infura";
   apiKey: string;
+  // - if `customContractAddress` is specified, try `customContractAddress`.
+  // - else, use the `contractInfo[network]`.
+  network: string;
+  customContractAddress?: IContractAddress;
 }
 
-export interface INetworkConfig {
-  network: string;
+interface INetworkOptions {
   provider: IWeb3Params | IInfuraParams;
 }
 
 export interface IOptions {
-  network: INetworkConfig;
+  network: INetworkOptions;
   blindFindPrivkey: PrivKey;
   admin?: IAdminConfig;
   hub?: IHubConfig;
@@ -69,9 +77,6 @@ export interface IConfig {
   getKeypair(): Keypair;
 }
 
-/*
-  Read user's option from disk, parse it, and load it with defaults.
-*/
 export class BlindFindConfig {
   constructor(
     private readonly userOptions: IOptions,
@@ -82,50 +87,53 @@ export class BlindFindConfig {
 
   private validateUserOptions(userOptions: IOptions): void {
     if (userOptions.blindFindPrivkey === undefined) {
-      throw new IncompleteConfig("blind find privkey is not found");
+      throw new ConfigError("blind find privkey is not found");
     }
     if (typeof userOptions.blindFindPrivkey !== "bigint") {
-      throw new IncompleteConfig("blind find privkey is in a wrong type");
+      throw new ConfigError("blind find privkey is in a wrong type");
     }
     const network = userOptions.network;
     if (network === undefined) {
-      throw new IncompleteConfig("network is not specified");
-    }
-    if (network.network === undefined) {
-      throw new IncompleteConfig("network.network is not specified");
-    }
-    if (typeof network.network !== "string") {
-      throw new IncompleteConfig("network.network should be a string");
+      throw new ConfigError("network is not specified");
     }
     const provider = network.provider;
     if (provider === undefined) {
-      throw new IncompleteConfig("provider is not specified");
+      throw new ConfigError("provider is not specified");
     }
     if (provider.name === undefined) {
-      throw new IncompleteConfig("provider.name is not specified");
+      throw new ConfigError("provider.name is not specified");
     } else if (provider.name === "infura") {
       if (provider.apiKey === undefined) {
-        throw new IncompleteConfig("provider.apiKey is not specified");
+        throw new ConfigError("provider.apiKey is not specified");
       }
       if (typeof provider.apiKey !== "string") {
-        throw new IncompleteConfig("provider.apiKey should be a string");
+        throw new ConfigError("provider.apiKey should be a string");
       }
-      // TODO: Support JSONRPC
+      if (provider.network === undefined) {
+        throw new ConfigError("provider.network must be specified when using infura");
+      }
+    } else if (provider.name === 'web3') {
+      if (provider.url === undefined) {
+        throw new ConfigError("provider.url is not specified");
+      }
+      if (typeof provider.url !== "string") {
+        throw new ConfigError("provider.url should be a string");
+      }
     } else {
-      throw new UnsupportedNetwork(`${provider.name} is not supported yet`);
+      throw new ConfigError(`network is not supported`);
     }
   }
 
   public getAdminConfig(): IAdminConfig {
     const admin = this.userOptions.admin;
     if (admin === undefined) {
-      throw new IncompleteConfig("admin is not specified");
+      throw new ConfigError("admin is not specified");
     }
     if (admin.adminEthereumPrivkey === undefined) {
-      throw new IncompleteConfig("admin.adminEthereumPrivkey is not specified");
+      throw new ConfigError("admin.adminEthereumPrivkey is not specified");
     }
     if (typeof admin.adminEthereumPrivkey !== "string") {
-      throw new IncompleteConfig(
+      throw new ConfigError(
         "admin.adminEthereumPrivkey should be a string"
       );
     }
@@ -163,30 +171,65 @@ export class BlindFindConfig {
   getBlindFindContract(): BlindFindContract {
     const networkConfig = this.userOptions.network;
     const providerConfig = networkConfig.provider;
+    let provider: ethers.providers.BaseProvider;
+    let providerOrWallet: Wallet | ethers.providers.BaseProvider;
+    let contractAddress: IContractAddress;
+
     if (providerConfig.name === "infura") {
-      const provider = new ethers.providers.InfuraProvider(
-        networkConfig.network,
+      provider = new ethers.providers.InfuraProvider(
+        providerConfig.network,
         providerConfig.apiKey
       );
-      const abi = contractInfo.abi;
-      const contractDetail = contractInfo.networks[networkConfig.network];
-      let providerOrWallet: Wallet | ethers.providers.BaseProvider = provider;
-      const adminConfig = this.getAdminConfig();
-      const privkey = adminConfig.adminEthereumPrivkey;
-      if (privkey !== undefined) {
-        providerOrWallet = new ethers.Wallet(privkey, provider);
+      // Check if the network is supported
+      contractAddress = contractAddressInNetwork[providerConfig.network];
+      if (contractAddress === undefined) {
+        throw new ConfigError(`network ${providerConfig.network} is not supported`);
       }
-      const c = new ethers.Contract(
-        contractDetail.address,
-        abi,
-        providerOrWallet
+      // If user provides `customContractAddress`, use it.
+      if (providerConfig.customContractAddress !== undefined) {
+        contractAddress = providerConfig.customContractAddress;
+      }
+    } else if (providerConfig.name === "web3") {
+      provider = new ethers.providers.JsonRpcProvider(
+        providerConfig.url,
+        providerConfig.network,
       );
-      return new BlindFindContract(c, contractDetail.atBlock);
+
+      // If user provides `customContractAddress`, use it.
+      if (providerConfig.customContractAddress !== undefined) {
+        contractAddress = providerConfig.customContractAddress;
+      } else {
+        if (providerConfig.network !== undefined) {
+          // Check if the network is supported
+          const defaultContractAddress = contractAddressInNetwork[providerConfig.network];
+          if (defaultContractAddress === undefined) {
+            throw new ConfigError(`network ${providerConfig.network} is not supported`);
+          } else {
+            contractAddress = defaultContractAddress;
+          }
+        } else {
+          throw new ConfigError(
+            'both network and customContractAddress are not specified'
+          );
+        }
+      }
     } else {
-      throw new UnsupportedNetwork(
-        `provider ${providerConfig.name} is not supported yet`
-      );
+      throw new ConfigError(`network is not supported`);
     }
+
+    const adminConfig = this.getAdminConfig();
+    const privkey = adminConfig.adminEthereumPrivkey;
+    if (privkey !== undefined) {
+      providerOrWallet = new ethers.Wallet(privkey, provider);
+    } else {
+      providerOrWallet = provider;
+    }
+    const c = new ethers.Contract(
+      contractAddress.address,
+      abi,
+      providerOrWallet
+    );
+    return new BlindFindContract(c, contractAddress.atBlock);
   }
 
   getKeypair(): Keypair {
@@ -215,7 +258,7 @@ export class BlindFindConfig {
           stringifyBigInts(createConfigsYAMLTemplate())
         );
         await fs.promises.writeFile(configsPath, templateYAML, "utf-8");
-        throw new NoUserConfigs(
+        throw new ConfigError(
           `${configsPath} is not found and thus a template is generated. ` +
             "Complete the template and try again."
         );
@@ -240,59 +283,4 @@ const createConfigsYAMLTemplate = () => {
       adminEthereumPrivkey: "private key of the Blind Find contract admin"
     }
   };
-};
-
-interface IContractAddress {
-  [network: string]: { address: string; atBlock: number };
-}
-interface IContractInfo {
-  abi: any;
-  networks: IContractAddress;
-}
-
-const contractInfo: IContractInfo = {
-  // NOTE: Or should abi be compiled from the source, to avoid being outdated when the contract is updated.
-  abi: [
-    { inputs: [], stateMutability: "nonpayable", type: "constructor" },
-    {
-      anonymous: false,
-      inputs: [
-        {
-          indexed: false,
-          internalType: "uint256",
-          name: "merkleRoot",
-          type: "uint256"
-        }
-      ],
-      name: "UpdateMerkleRoot",
-      type: "event"
-    },
-    {
-      inputs: [],
-      name: "admin",
-      outputs: [{ internalType: "address", name: "", type: "address" }],
-      stateMutability: "view",
-      type: "function"
-    },
-    {
-      inputs: [],
-      name: "latestMerkleRoot",
-      outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-      stateMutability: "view",
-      type: "function"
-    },
-    {
-      inputs: [{ internalType: "uint256", name: "root", type: "uint256" }],
-      name: "updateMerkleRoot",
-      outputs: [],
-      stateMutability: "nonpayable",
-      type: "function"
-    }
-  ],
-  networks: {
-    kovan: {
-      address: "0xE57881D655309C9a20f469a95564beaEb93Ce73A",
-      atBlock: 23208018
-    }
-  }
 };
