@@ -8,26 +8,10 @@ export class BaseBlindFindCLIError extends BaseBlindFindError {
   }
 }
 
-export class UnsupportedNetwork extends BaseBlindFindCLIError {
+export class ConfigError extends BaseBlindFindCLIError {
   constructor(m?: string) {
     super(m);
     // Set the prototype explicitly.
-    Object.setPrototypeOf(this, UnsupportedNetwork.prototype);
-  }
-}
-
-export class NoUserConfigs extends BaseBlindFindCLIError {
-  constructor(m?: string) {
-    super(m);
-    // Set the prototype explicitly.
-    Object.setPrototypeOf(this, NoUserConfigs.prototype);
-  }
-}
-
-export class IncompleteConfig extends BaseBlindFindCLIError {
-  constructor(m?: string) {
-    super(m);
-    // Set the prototype explicitly.
-    Object.setPrototypeOf(this, IncompleteConfig.prototype);
+    Object.setPrototypeOf(this, ConfigError.prototype);
   }
 }
