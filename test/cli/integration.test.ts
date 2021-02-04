@@ -11,7 +11,7 @@ import { ethers } from "ethers";
 import { configsFileName } from "../../src/cli/constants";
 import { jsonStringToObj, keypairToCLIFormat } from "../../src/cli/utils";
 
-import { exec } from './utils';
+import { exec, parsePrintedObj } from './utils';
 import { genKeypair, genPrivKey, PubKey, stringifyBigInts } from "maci-crypto";
 import { abi, bytecode } from "../../src/cli/contractInfo";
 
@@ -90,7 +90,7 @@ describe("Integration test for roles", function () {
   let hub: Role;
   let userJoined: Role;
   let userAnother: Role;
-
+  let contractAddress: string;
 
   const createRole = async (
     contractAddress: string,
@@ -167,7 +167,7 @@ describe("Integration test for roles", function () {
     );
     const c = await BlindFindContractFactory.deploy();
     await c.deployed();
-    const contractAddress = c.address;
+    contractAddress = c.address;
 
     // Create each role
     admin = await createRole(contractAddress, "admin");
@@ -184,7 +184,16 @@ describe("Integration test for roles", function () {
     await userAnother.cleanup();
   })
 
-  it("", async () => {
+  it("general", async () => {
+    const general = await createRole(contractAddress, "general");
+    const output = general.exec("genKeypair").stdout;
+    const obj = parsePrintedObj(output);
+    expect(obj.privKey).not.to.be.undefined;
+    expect(obj.pubKey).not.to.be.undefined;
+    expect(obj.pubKeyInBase64).not.to.be.undefined;
+  });
+
+  it("roles", async () => {
     /*
         Scenario 1: a hub candidate wants to register as a hub.
     */
