@@ -15,6 +15,10 @@ import { exec } from './utils';
 import { genKeypair, genPrivKey, PubKey, stringifyBigInts } from "maci-crypto";
 import { abi, bytecode } from "../../src/cli/contractInfo";
 
+const hardhatDefaultPrivkey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const timeoutHardhatNode = 20000;
+const timeoutHubStart = 10000;
+
 const getFreePort = async () => {
     const server = net.createServer();
     return await new Promise<number>((res, rej) => {
@@ -30,10 +34,6 @@ const getFreePort = async () => {
         });
     });
 };
-
-const hardhatDefaultPrivkey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-const timeoutHardhatNode = 20000;
-const timeoutHubStart = 10000;
 
 tmp.setGracefulCleanup();
 
@@ -79,7 +79,7 @@ const parseCLIKeypair = (s: string): { privKey: BigInt, pubKey: PubKey, pubKeyIn
 }
 
 describe("Integration test for roles", function () {
-  this.timeout(1000000);
+  this.timeout(300000);
   let hardhatNode;
 
   let hostname: string;
@@ -207,9 +207,8 @@ describe("Integration test for roles", function () {
         Scenario 2: hub starts to serve user requests.
     */
     const hubKeypair = jsonStringToObj(hub.exec('getKeypair').stdout);
-    console.debug("starting Hub");
     // command: blind-find hub start
-    const hubStartProcess = hub.exec(`start`, { async: true, silent: false });
+    const hubStartProcess = hub.exec(`start`, { async: true });
     // Wait until hub is started
     const regex = /Listening on port (\d+)/;
     const hubPort = await new Promise<number>((res, rej) => {
@@ -235,21 +234,16 @@ describe("Integration test for roles", function () {
     const resUserJoin = userJoined.exec(`join ${hostname} ${hubPort} ${hubKeypair.pubKeyInBase64}`);
     expect(resUserJoin.code).to.eql(0);
 
-    // await new Promise((res, rej) => {
-    //     setTimeout(() => {
-    //         res();
-    //     }, 10000);
-    // })
     // Let `userAnother` search
-    // Test: succeeds when searching for a user who hasn't joined the hub.
-    const resUserAnotherSearch = userAnother.exec(`search ${hostname} ${hubPort} ${userJoinedKeypair.pubKeyInBase64}`, { silent: false});
+    // Test: succeeds when searching for a user who has joined the hub.
+    const resUserAnotherSearch = userAnother.exec(`search ${hostname} ${hubPort} ${userJoinedKeypair.pubKeyInBase64}`);
     expect(resUserAnotherSearch.code).to.eql(0);
     // Test: fails when searching for a user who hasn't joined the hub.
     const randomPubkeyB64 = keypairToCLIFormat(genKeypair()).pubKeyInBase64;
     const resUserAnotherSearchFailure = userAnother.exec(`search ${hostname} ${hubPort} ${randomPubkeyB64}`);
     expect(resUserAnotherSearchFailure.code).not.to.eql(0);
 
-    // TODO: Verify proof
+    // TODO: Add `user verifyProofOfIndirectConnection` if it is added in CLI.
 
   });
 });

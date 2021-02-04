@@ -9,6 +9,8 @@ const cli = `ts-node ${cliPath}`
 export const exec = (cmd: string, options?: any) => {
     if (options === undefined) {
         options = { silent: true };
+    } else if (options.silent === undefined) {
+        options.silent = true;
     }
     return shell.exec(`${cli} ${cmd}`, options);
 }
