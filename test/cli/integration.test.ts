@@ -36,6 +36,7 @@ const getFreePort = async () => {
 };
 
 tmp.setGracefulCleanup();
+shell.config.fatal = false;
 
 class Role {
     constructor(
