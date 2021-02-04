@@ -274,8 +274,8 @@ export class BlindFindConfig {
 const createConfigsYAMLTemplate = () => {
   return {
     network: {
-      network: defaults.network,
       provider: {
+        network: defaults.network,
         name: "infura",
         apiKey: "Put your infura api key here"
       }
