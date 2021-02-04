@@ -79,7 +79,7 @@ const parseCLIKeypair = (s: string): { privKey: BigInt, pubKey: PubKey, pubKeyIn
 }
 
 describe("Integration test for roles", function () {
-  this.timeout(300000);
+  this.timeout(400000);
   let hardhatNode;
 
   let hostname: string;
@@ -248,10 +248,9 @@ describe("Integration test for roles", function () {
     const resUserAnotherSearch = userAnother.exec(`search ${hostname} ${hubPort} ${userJoinedKeypair.pubKeyInBase64}`);
     expect(resUserAnotherSearch.code).to.eql(0);
     // Test: fails when searching for a user who hasn't joined the hub.
-    // const randomPubkeyB64 = keypairToCLIFormat(genKeypair()).pubKeyInBase64;
-    // const resUserAnotherSearchFailure = userAnother.exec(`search ${hostname} ${hubPort} ${randomPubkeyB64}`);
-    // expect(resUserAnotherSearchFailure.code).not.to.eql(0);
-
+    const randomPubkeyB64 = keypairToCLIFormat(genKeypair()).pubKeyInBase64;
+    const resUserAnotherSearchFailure = userAnother.exec(`search ${hostname} ${hubPort} ${randomPubkeyB64}`, { fatal: false });
+    expect(resUserAnotherSearchFailure.code).to.eql(1);
     // TODO: Add `user verifyProofOfIndirectConnection` if it is added in CLI.
 
   });
