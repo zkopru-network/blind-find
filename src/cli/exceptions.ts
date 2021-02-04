@@ -15,3 +15,12 @@ export class ConfigError extends BaseBlindFindCLIError {
     Object.setPrototypeOf(this, ConfigError.prototype);
   }
 }
+
+
+export class CLIFailure extends BaseBlindFindCLIError {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, CLIFailure.prototype);
+  }
+}
