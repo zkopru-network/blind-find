@@ -242,10 +242,10 @@ describe("Integration test for roles", function () {
     const resUserJoin = userJoined.exec(`join ${hostname} ${hubPort} ${hubKeypair.pubKeyInBase64}`);
     expect(resUserJoin.code).to.eql(0);
 
-    // // Let `userAnother` search
-    // // Test: succeeds when searching for a user who has joined the hub.
-    // const resUserAnotherSearch = userAnother.exec(`search ${hostname} ${hubPort} ${userJoinedKeypair.pubKeyInBase64}`);
-    // expect(resUserAnotherSearch.code).to.eql(0);
+    // Let `userAnother` search
+    // Test: succeeds when searching for a user who has joined the hub.
+    const resUserAnotherSearch = userAnother.exec(`search ${hostname} ${hubPort} ${userJoinedKeypair.pubKeyInBase64}`);
+    expect(resUserAnotherSearch.code).to.eql(0);
     // Test: fails when searching for a user who hasn't joined the hub.
     const randomPubkeyB64 = keypairToCLIFormat(genKeypair()).pubKeyInBase64;
     const resUserAnotherSearchFailure = userAnother.exec(`search ${hostname} ${hubPort} ${randomPubkeyB64}`, { fatal: false });
