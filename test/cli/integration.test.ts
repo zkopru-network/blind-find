@@ -188,11 +188,10 @@ describe("Integration test for roles", function () {
   it("general", async () => {
     const general = await createRole(contractAddress, "general");
     const res = general.exec("genKeypair");
-    expect(res.code).to.eql(1);
-    // parseCLIKeypair(res.output);
+    parseCLIKeypair(res.output);
   });
 
-  it.only("roles", async () => {
+  it("roles", async () => {
     /*
         Scenario 1: a hub candidate wants to register as a hub.
     */

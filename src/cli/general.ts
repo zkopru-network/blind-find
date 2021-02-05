@@ -12,7 +12,7 @@ export const buildCommandGeneral = (config: IConfig) => {
     .description("generate a BlindFind keypair")
     .action(() => {
       const keypair = genKeypair();
-      throw new CLIFailure(`keypair: ${keypair.privKey}`);
+      console.log(keypairToCLIFormat(keypair));
     });
   return general;
 };
