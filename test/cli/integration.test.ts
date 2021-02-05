@@ -187,8 +187,9 @@ describe("Integration test for roles", function () {
 
   it.only("general", async () => {
     const general = await createRole(contractAddress, "general");
-    const output = general.exec("genKeypair").stdout;
-    parseCLIKeypair(output);
+    const res = general.exec("genKeypair");
+    expect(res.code).to.eql(0);
+    // parseCLIKeypair(res.output);
   });
 
   it("roles", async () => {
