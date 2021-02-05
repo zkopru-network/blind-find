@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { genKeypair } from "maci-crypto";
 import { IConfig } from "./configs";
+import { CLIFailure } from "./exceptions";
 import { printObj, keypairToCLIFormat } from "./utils";
 
 export const buildCommandGeneral = (config: IConfig) => {
@@ -11,7 +12,7 @@ export const buildCommandGeneral = (config: IConfig) => {
     .description("generate a BlindFind keypair")
     .action(() => {
       const keypair = genKeypair();
-      printObj(keypairToCLIFormat(keypair));
+      throw new CLIFailure(`keypair: ${keypair.privKey}`);
     });
   return general;
 };

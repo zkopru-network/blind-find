@@ -185,7 +185,7 @@ describe("Integration test for roles", function () {
     await userAnother.cleanup();
   })
 
-  it("general", async () => {
+  it.only("general", async () => {
     const general = await createRole(contractAddress, "general");
     const output = general.exec("genKeypair").stdout;
     parseCLIKeypair(output);
