@@ -1,7 +1,5 @@
 # Blind Find CLI
 
-[TOC]
-
 ## Command Line Interface (CLI)
 
 `src/cli/index.ts` provides CLI. There are 4 subcommands: [general](#General), [admin](#Admin), [hub](#Hub), and [user](#User). General subcommand provides general utility functions. The others provide functionalities for their corresponding roles. For example, for general users, only `general` and `user` are useful in most cases. Consult available commands with the option `--help`.
