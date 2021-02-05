@@ -188,10 +188,7 @@ describe("Integration test for roles", function () {
   it("general", async () => {
     const general = await createRole(contractAddress, "general");
     const output = general.exec("genKeypair").stdout;
-    const obj = parsePrintedObj(output);
-    expect(obj.privKey).not.to.be.undefined;
-    expect(obj.pubKey).not.to.be.undefined;
-    expect(obj.pubKeyInBase64).not.to.be.undefined;
+    parseCLIKeypair(output);
   });
 
   it("roles", async () => {
