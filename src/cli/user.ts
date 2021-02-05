@@ -69,7 +69,7 @@ const buildCommandSearch = (config: IConfig) => {
           console.log(`Not Found: user = '${targetPubkeyB64}'`);
           process.exit(1);
         } else {
-          console.log(`Found: user='${targetPubkeyB64}', proof = `, result);
+          console.log(result);
         }
       }
     );
