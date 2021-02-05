@@ -66,9 +66,10 @@ const buildCommandSearch = (config: IConfig) => {
         const user = new User(userKeypair, adminAddress, blindFindContract, db);
         const result = await user.search(hostname, port, targetPubkey);
         if (result === null) {
-          throw new CLIFailure(`failed to search for user ${targetPubkeyB64}`);
+          console.log(`Not Found: user = '${targetPubkeyB64}'`);
+          process.exit(1);
         } else {
-          console.log(`Found user ${targetPubkeyB64}, proof = `, result);
+          console.log(`Found: user='${targetPubkeyB64}', proof = `, result);
         }
       }
     );

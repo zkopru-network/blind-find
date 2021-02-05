@@ -12,6 +12,8 @@ export const exec = (cmd: string, options?: any) => {
     } else if (options.silent === undefined) {
         options.silent = true;
     }
+    // Don't throw when command fails.
+    shell.config.fatal = false;
     return shell.exec(`${cli} ${cmd}`, options);
 }
 

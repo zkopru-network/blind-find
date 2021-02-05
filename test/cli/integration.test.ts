@@ -11,7 +11,7 @@ import { ethers } from "ethers";
 import { configsFileName } from "../../src/cli/constants";
 import { jsonStringToObj, keypairToCLIFormat } from "../../src/cli/utils";
 
-import { exec, parsePrintedObj } from './utils';
+import { exec } from './utils';
 import { genKeypair, genPrivKey, PubKey, stringifyBigInts } from "maci-crypto";
 import { abi, bytecode } from "../../src/cli/contractInfo";
 
@@ -36,7 +36,6 @@ const getFreePort = async () => {
 };
 
 tmp.setGracefulCleanup();
-shell.config.fatal = false;
 
 class Role {
     constructor(
@@ -187,11 +186,9 @@ describe("Integration test for roles", function () {
 
   it("general", async () => {
     const general = await createRole(contractAddress, "general");
-    const output = general.exec("genKeypair").stdout;
-    const obj = parsePrintedObj(output);
-    expect(obj.privKey).not.to.be.undefined;
-    expect(obj.pubKey).not.to.be.undefined;
-    expect(obj.pubKeyInBase64).not.to.be.undefined;
+    const res = general.exec("genKeypair");
+    parseCLIKeypair(res.stdout);
+    await general.cleanup();
   });
 
   it("roles", async () => {
