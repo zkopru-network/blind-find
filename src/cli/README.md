@@ -97,7 +97,7 @@ List the public keys of users who have joined the hub.
 ```bash
 npx ts-node src/cli/index.ts user join <hostname> <port> <hubPubKeyInBase64>
 ```
-Join a hub whose public key is `hubPubKeyInBase64` listening on the interface specified by `hostname` and `port`.
+Join hub `hubPubKeyInBase64` listening on the interface specified by `hostname` and `port`.
 
 
 ### search
@@ -106,7 +106,7 @@ Join a hub whose public key is `hubPubKeyInBase64` listening on the interface sp
 npx ts-node src/cli/index.ts search <hostname> <port> <targetPubkeyInBase64>
 ```
 
-Search the target user who public key is `targetPubkeyInBase64` through the hub listening on the interface specified by `hostname` and `port`. If the search is successful, the output is a Proof of Indirect Connection. Otherwise, the process exits with error code `1`.
+Search for the target user `targetPubkeyInBase64` through the hub listening on the interface specified by `hostname` and `port`. If the search is successful, the output is a Proof of Indirect Connection. Otherwise, the process exits with error code `1`.
 
 ### getKeypair
 
@@ -115,4 +115,7 @@ npx ts-node src/cli/index.ts user getKeypair
 ```
 
 Output user's keypair.
-        
+
+## Example
+
+Check out the testing scenario in [integration.test.ts](../../test/cli/integration.test.ts).
