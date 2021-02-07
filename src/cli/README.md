@@ -22,9 +22,66 @@ Commands:
   help [command]        display help for command
 ```
 
-## Options
+### Data directory
 
-- `-d, --data-dir <dir>`: specifies the data directory where stores the configuration file `configs.yaml` file and the database.
+```
+~/.blind_find/
+├── configs.yaml  # Blind Find configuration file
+└── db  # Blind Find DB
+```
+
+Blind Find stores configurations and data in Blind Find data directory. It is `~/.blind_find` by default and can be changed through the option `--data-dir <dir>`.
+
+```bash
+# Using `<dir>` as data directory
+$ npx ts-node src/cli/index.ts --dataDir <dir>
+```
+
+### Configurations
+
+CLI configurations are defined by the interface [`IOptions`](https://github.com/mhchia/blind-find/blob/b6dbb17c73ffdc3c51172ff76050aa2bb95faa07/src/cli/configs.ts#L65). It can be changed through modifying `configs.yaml`.
+
+When first running CLI command, a template configuration file is generated under the Blind Find data directory. To correctly run Blind Find commands, it is required to complete the necessary fields in configuration file.
+
+```bash
+$ npx ts-node src/cli/index.ts
+ConfigError: /Users/mhchia/.blind_find/configs.yaml is not found and thus a template is generated. Complete the template and try again.
+    at Function.loadFromDataDir (/Users/mhchia/projects/work/applied-zkp/blind-find/src/cli/configs.ts:263:15)
+    at main (/Users/mhchia/projects/work/applied-zkp/blind-find/src/cli/index.ts:28:18)
+```
+
+The default generated `configs.yaml` is in the following format.
+
+```yaml
+network:
+  provider:
+    network: kovan
+    name: infura
+    apiKey: Put your infura api key here
+blindFindPrivkey: "1234567890"
+```
+
+- `blindFindPrivkey`: Required. The Blind Find private key, an EdDSA keypair using BabyJub curve.
+- `network`: Required, the networking settings.
+    - `provider`: Required. Either [Infura](#Infura-provider) or [Web3](#Web3-provider) is supported.
+
+> Only "kovan" (Kovan testnet) is supported now.
+
+#### Infura provider
+- `name`: `"infura"`
+- `network`: Required, the ethereum network we are using.
+- `apiKey`: Required, Infura's API key.
+- `customContractAddress`: Optional. If it is not specified, we use the hardcoded [deployed contract] on network the specified netwrok.
+    - `address`: Blind Find contract address
+    - `atBlock`: the block where the Blind Find contract is deployed
+
+#### Web3 provider
+- `name`: `"web3"`
+- `network`: Optional, network name.
+- `url`: Required, the url which web3 json rpc server is listening.
+- `customContractAddress`: Optional. If it is not specified, we use the hardcoded [deployed contract] on network the specified netwrok.
+    - `address`: Blind Find contract address
+    - `atBlock`: the block where the Blind Find contract is deployed
 
 ## General
 
