@@ -7,6 +7,13 @@
 
 ## Install
 
+Since we're using [`zkutil`](https://github.com/poma/zkutil) to perform proof generation/verification and other stuffs, first we need to ensure `cargo` is installed and install `zkutil` with `installZkutil.sh`.
+
+```bash
+./scripts/installZkutil.sh
+source $HOME/.cargo/env
+```
+
 Clone the repo.
 ```bash
 git clone git@github.com:mhchia/blind-find.git
@@ -18,16 +25,14 @@ cd blind-find
 npm install
 ```
 
-Ensure cargo is installed and install `zkutil` with `installZkutil.sh`.
-
+Compile circuits and generate necessary parameters.
 ```bash
-./scripts/installZkutil.sh
-```
-
-Compile circuits and generate necessary parameters. 
-```
 npm run build_all_circuits
 ```
+
+## Command Line Interface (CLI)
+
+Read [CLI document](src/cli/README.md) for the usage.
 
 ## Test
 
