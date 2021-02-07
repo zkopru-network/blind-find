@@ -71,7 +71,7 @@ blindFindPrivkey: "1234567890"
 - `name`: `"infura"`
 - `network`: Required, the ethereum network we are using.
 - `apiKey`: Required, Infura's API key.
-- `customContractAddress`: Optional. If it is not specified, we use the hardcoded [deployed contract] on network the specified netwrok.
+- `customContractAddress`: Optional. If it is not specified, we use the hardcoded [deployed contracts][deployed-contracts] on the specified network.
     - `address`: Blind Find contract address
     - `atBlock`: the block where the Blind Find contract is deployed
 
@@ -79,7 +79,7 @@ blindFindPrivkey: "1234567890"
 - `name`: `"web3"`
 - `network`: Optional, network name.
 - `url`: Required, the url which web3 json rpc server is listening.
-- `customContractAddress`: Optional. If it is not specified, we use the hardcoded [deployed contract] on network the specified netwrok.
+- `customContractAddress`: Optional. If it is not specified, we use the hardcoded [deployed contracts][deployed-contracts] on the specified network.
     - `address`: Blind Find contract address
     - `atBlock`: the block where the Blind Find contract is deployed
 
@@ -176,3 +176,6 @@ Output user's keypair.
 ## Example
 
 Check out the testing scenario in [integration.test.ts](../../test/cli/integration.test.ts).
+
+
+[deployed-contracts]: https://github.com/mhchia/blind-find/blob/8378a527f76fab56c23b8b6952252f9110a16873/src/cli/contractInfo.ts#L3
