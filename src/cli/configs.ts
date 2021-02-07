@@ -280,9 +280,6 @@ const createConfigsYAMLTemplate = () => {
         apiKey: "Put your infura api key here"
       }
     },
-    blindFindPrivkey: genPrivKey(),
-    admin: {
-      adminEthereumPrivkey: "private key of the Blind Find contract admin"
-    }
+    blindFindPrivkey: genPrivKey()
   };
 };
