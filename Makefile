@@ -21,6 +21,8 @@ $(BUILD_DIR)/%_pk.json $(BUILD_DIR)/%_vk.json: $(BUILD_DIR)/%.params $(BUILD_DIR
 	zkutil export-keys -c $(patsubst %.params,%.r1cs,$<) -p $< -r $(patsubst %.params,%_pk.json,$<) -v $(patsubst %.params,%_vk.json,$<)
 
 # Compile circuits and perform trusted setup.
+# NOTE: It will be more precise to consider not only the entry circom files,
+#	but also the libraries used.
 $(BUILD_DIR)/%.r1cs $(BUILD_DIR)/%.wasm $(BUILD_DIR)/%.params: $(CIRCOM_DIR)/%.circom
 	@mkdir -p $(BUILD_DIR)
 	node ./node_modules/circom/cli.js $< -r $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.r1cs,$<) -w $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.wasm,$<)
