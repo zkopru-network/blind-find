@@ -4,17 +4,24 @@
 CIRCOM_DIR = circuits/instance
 BUILD_DIR = build
 
-# R1CSS = $(CIRCOMS:%.circom=$(BUILD_DIR)/%.r1cs)
+CIRCOMS = $(CIRCOM_DIR)/proofOfSMP.circom $(CIRCOM_DIR)/proofSuccessfulSMP.circom
+R1CSS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%.r1cs)
+WASMS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%.wasm)
+PARAMS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%.params)
+PROVING_KEYS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%_pk.json)
+VERIFICATION_KEYS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%_vk.json)
 
-all: proof-smp proof-successful-smp
+all: $(R1CSS) $(WASMS) $(PARAMS) $(PROVING_KEYS) $(VERIFICATION_KEYS)
 
 clean:
 	rm -rf build/
 
-proof-smp: $(BUILD_DIR)/proofOfSMP.r1cs
+# Extract keys from params.
+$(BUILD_DIR)/%_pk.json $(BUILD_DIR)/%_vk.json: $(BUILD_DIR)/%.params $(BUILD_DIR)/%.r1cs
+	zkutil export-keys -c $(patsubst %.params,%.r1cs,$<) -p $< -r $(patsubst %.params,%_pk.json,$<) -v $(patsubst %.params,%_vk.json,$<)
 
-proof-successful-smp: $(BUILD_DIR)/proofSuccessfulSMP.r1cs
-
-$(BUILD_DIR)/%.r1cs $(BUILD_DIR)/%.wasm $(BUILD_DIR)/%.params $(BUILD_DIR)/%_pk.json $(BUILD_DIR)/%_vk.json: $(CIRCOM_DIR)/%.circom
+# Compile circuits and perform trusted setup.
+$(BUILD_DIR)/%.r1cs $(BUILD_DIR)/%.wasm $(BUILD_DIR)/%.params: $(CIRCOM_DIR)/%.circom
 	@mkdir -p $(BUILD_DIR)
-	./scripts/buildScript.sh $<
+	node ./node_modules/circom/cli.js $< -r $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.r1cs,$<) -w $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.wasm,$<)
+	zkutil setup -c $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.r1cs,$<) -p $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.params,$<)
