@@ -17,8 +17,6 @@
   "scripts": {
     "build": "tsc",
     "build_all_circuits": "make",
-    "build_proof_smp": "make proof-smp",
-    "build_proof_successful_smp": "make proof-successful-smp",
     "test": "hardhat test",
     "lint": "exit 0 # FIXME: use eslint instead"
   },
