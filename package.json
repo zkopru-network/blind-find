@@ -1,7 +1,7 @@
 {
   "name": "blind-find",
   "description": "A typescript implementation of Blind Find, a peer-to-peer network allowing private peer search proposed by Barry Whitehat and Kobi Gurkan",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "author": "Kevin Mai-Hsuan Chia(mhchia) <kevin@mhchia.com>",
   "main": "lib/index.js",
@@ -9,7 +9,8 @@
   "files": [
     "lib/**/*",
     "circuits/**/*",
-    "contracts/**/*"
+    "contracts/**/*",
+    "build/*.@(params|r1cs|wasm)"
   ],
   "bin": {
     "blind-find": "lib/cli/index.js"
@@ -17,8 +18,10 @@
   "scripts": {
     "build": "tsc",
     "build_all_circuits": "make",
+    "release": "npm run build && npm run build_all_circuits && npm publish",
     "test": "hardhat test",
-    "lint": "exit 0 # FIXME: use eslint instead"
+    "lint": "exit 0 # FIXME: use eslint instead",
+    "postinstall": "npm run build_all_circuits"
   },
   "repository": {
     "type": "git",
