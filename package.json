@@ -21,13 +21,14 @@
     "release": "npm run build && npm run build_all_circuits && npm publish",
     "test": "hardhat test",
     "lint": "exit 0 # FIXME: use eslint instead",
-    "postinstall": "npm run build_all_circuits"
+    "install_zkutil": "./scripts/installZkutil.sh",
+    "postinstall": "npm run install_zkutil && npm run build_all_circuits"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mhchia/blind-find.git"
   },
-  "keywords": [],
+  "keywords": ["zkp", "mpc", "ethereum"],
   "bugs": {
     "url": "https://github.com/mhchia/blind-find/issues"
   },
