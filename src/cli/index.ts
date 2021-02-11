@@ -8,13 +8,19 @@ import { buildCommandGeneral } from "./general";
 import { buildCommandHub } from "./hub";
 import { buildCommandUser } from "./user";
 
+// Use the version from `package.json`. However, it should be changed
+//  if we put the code on browser. Deps information might leak to the clients
+//  if we do so.
+// Ref: https://stackoverflow.com/a/10855054/5315957
+const version = require("../../package.json").version;
+
 // NOTE: Workaround: parse arguments twice to get the global options.
 //  https://github.com/tj/commander.js/issues/1229.
 async function main() {
   const program = new Command();
   program
     .description("Blind Find v1")
-    .version("0.0.1") // TODO: Parse from other places?
+    .version(version)
     .enablePositionalOptions()
     .passThroughOptions()
     // TODO: Add an option for logger level.
