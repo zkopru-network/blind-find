@@ -228,14 +228,14 @@ const genProofAndPublicSignals = async (
   const witnessCmd = `${snarkjsCmd} wc ${circuitWasmPath} ${inputJsonPath} ${witnessPath}`;
 
   shell.config.fatal = true;
-  shell.exec(witnessCmd);
+  shell.exec(witnessCmd, { silent: true });
 
   const witnessJsonCmd = `${snarkjsCmd} wej ${witnessPath} ${witnessJsonPath}`;
-  shell.exec(witnessJsonCmd);
+  shell.exec(witnessJsonCmd, { silent: true });
 
   const proveCmd = `${zkutilPath} prove -c ${circuitR1csPath} -p ${paramsPath} -w ${witnessJsonPath} -r ${proofPath} -o ${publicJsonPath}`;
 
-  shell.exec(proveCmd);
+  shell.exec(proveCmd, { silent: true });
 
   // TODO: should be changed to async later
   const witness = unstringifyBigInts(
@@ -270,7 +270,7 @@ const verifyProof = async (circomFilePath: string, proof: TProof) => {
     JSON.stringify(stringifyBigInts(proof.publicSignals))
   );
   const verifyCmd = `${zkutilPath} verify -p ${paramsPath} -r ${proofPath} -i ${publicSignalsPath}`;
-  const output = shell.exec(verifyCmd).stdout.trim();
+  const output = shell.exec(verifyCmd, { silent: true }).stdout.trim();
 
   await tmpDir.cleanup();
 
