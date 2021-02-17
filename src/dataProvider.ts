@@ -2,7 +2,7 @@ import * as http from "http";
 import { PubKey, Signature } from "maci-crypto";
 import { AddressInfo } from "ws";
 
-import logger from "./logger";
+import { logger } from "./logger";
 
 import { HubRegistry, HubRegistryTree } from "./";
 import { LEVELS, TIMEOUT } from "./configs";

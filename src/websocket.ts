@@ -4,7 +4,7 @@ import WebSocket from "ws";
 import { AsyncEvent } from "./utils";
 import { ServerNotRunning, TimeoutError, ConnectionClosed } from "./exceptions";
 import { SOCKET_TIMEOUT, WS_PROTOCOL } from "./configs";
-import logger from "./logger";
+import { logger } from "./logger";
 
 export interface IIPRateLimiter {
   allow(ip: string): boolean;

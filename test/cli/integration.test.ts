@@ -10,6 +10,7 @@ import { ethers } from "ethers";
 
 import { configsFileName } from "../../src/cli/constants";
 import { jsonStringToObj, keypairToCLIFormat } from "../../src/cli/utils";
+import { parsePrintedProofIndirectConnection } from "../../src/cli/user";
 
 import { exec } from './utils';
 import { genKeypair, genPrivKey, PubKey, stringifyBigInts } from "maci-crypto";
@@ -45,8 +46,12 @@ class Role {
 
     }
 
-    exec(cmd: string, options?: any) {
-        return exec(`--data-dir ${this.dataDir.path} ${this.roleName} ${cmd}`, options);
+    exec(cmd: string, options?: any, loggerSilent?: boolean) {
+        if (!loggerSilent) {
+            return exec(`--data-dir ${this.dataDir.path} ${this.roleName} ${cmd}`, options);
+        } else {
+            return exec(`--silent --data-dir ${this.dataDir.path} ${this.roleName} ${cmd}`, options);
+        }
     }
 
     async cleanup() {
@@ -211,12 +216,13 @@ describe("Integration test for roles", function () {
     // command: blind-find hub setHubRegistryWithProof `hubRegistryWithProofB64`
     const resSetHubRegistryWithProof = hub.exec(`setHubRegistryWithProof ${hubRegistryWithProofB64}`);
     expect(resSetHubRegistryWithProof.code).to.be.eql(0);
+
     /*
         Scenario 2: hub starts to serve user requests.
     */
     const hubKeypair = jsonStringToObj(hub.exec('getKeypair').stdout);
     // command: blind-find hub start
-    const hubStartProcess = hub.exec(`start`, { async: true });
+    const hubStartProcess = hub.exec(`start`, { async: true }, false);
     // Wait until hub is started
     const regex = /Listening on port (\d+)/;
     const hubPort = await new Promise<number>((res, rej) => {
@@ -244,8 +250,13 @@ describe("Integration test for roles", function () {
 
     // Let `userAnother` search
     // Test: succeeds when searching for a user who has joined the hub.
-    const resUserAnotherSearch = userAnother.exec(`search ${hostname} ${hubPort} ${userJoinedKeypair.pubKeyBase64Encoded}`);
+    // Use tmpFile to store the result to workaround an issue in child_process
+    //   Ref: https://stackoverflow.com/questions/59200052/nodejs-exec-spawn-stdout-cuts-off-the-stream-at-8192-characters/59322701#59322701
+    const tmpFile = await tmp.tmpName();
+    const resUserAnotherSearch = userAnother.exec(`search ${hostname} ${hubPort} ${userJoinedKeypair.pubKeyBase64Encoded} > ${tmpFile}`);
     expect(resUserAnotherSearch.code).to.eql(0);
+    const data = await fs.promises.readFile(tmpFile, { encoding: 'utf-8' });
+    const proof = parsePrintedProofIndirectConnection(data);
 
     // Test: fails when searching for a user who hasn't joined the hub.
     const randomPubkeyB64 = keypairToCLIFormat(genKeypair()).pubKeyBase64Encoded;

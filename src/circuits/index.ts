@@ -73,7 +73,6 @@ type TProofIndirectConnection = {
   pubkeyA: PubKey;
   pubkeyC: PubKey;
   adminAddress: TEthereumAddress;
-  merkleRoot: BigInt;
   proofOfSMP: TProof;
   proofSuccessfulSMP: TProof;
 };

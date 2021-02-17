@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
+import * as logger from "../logger";
 import { buildCommandAdmin } from "./admin";
 import { BlindFindConfig } from "./configs";
 import * as defaults from "./defaults";
@@ -23,14 +24,21 @@ async function main() {
     .version(version)
     .enablePositionalOptions()
     .passThroughOptions()
-    // TODO: Add an option for logger level.
     .option(
       "-d, --data-dir <dir>",
       "directory storing data blind find uses",
       defaults.dataDir
     )
+    .option(
+      "-s, --silent",
+      "make logger silent",
+    )
     .parse();
   const globalOpts = program.opts();
+  if (globalOpts.silent) {
+    logger.transports.console.silent = true;
+  }
+
   const config = await BlindFindConfig.loadFromDataDir(globalOpts.dataDir);
   await program
     .description("Blind Find v1")

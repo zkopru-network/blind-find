@@ -2,7 +2,7 @@ import * as http from "http";
 import { Keypair, PubKey, Signature } from "maci-crypto";
 import { AddressInfo } from "ws";
 
-import logger from "./logger";
+import { logger } from "./logger";
 import { getCounterSignHashedData, signMsg, verifySignedMsg } from ".";
 import {
   RequestFailed,

@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { PubKey, SNARK_FIELD_SIZE, stringifyBigInts, unstringifyBigInts } from "maci-crypto";
-import { TProof, TProofIndirectConnection } from "../circuits";
+import { parseProofOfSMPPublicSignals, TProof, TProofIndirectConnection } from "../circuits";
 import { ValueError } from "../exceptions";
 import { User } from "../user";
 import { bigIntToEthAddress, ethAddressToBigInt } from "../web3";
@@ -84,7 +84,7 @@ const buildCommandSearch = (config: IConfig) => {
         const result = parsePrintedProofIndirectConnection(printed);
 */
         if (result === null) {
-          console.log(`Not Found: user = '${targetPubkeyB64}'`);
+          console.log(`Not Found: target = '${targetPubkeyB64}'`);
           process.exit(1);
         } else {
           console.log(outputProofIndirectConnection(result));
@@ -137,11 +137,12 @@ const stringifyProof = (proof: TProof) => {
 }
 
 const outputProofIndirectConnection = (proof: TProofIndirectConnection): string => {
+  const root = parseProofOfSMPPublicSignals(proof.proofOfSMP.publicSignals).merkleRoot;
   const proofEncoded = {
     pubkeySearcher: stringifyBigInts(proof.pubkeyA),
     pubkeyTarget: stringifyBigInts(proof.pubkeyC),
     adminAddress: bigIntToEthAddress(proof.adminAddress),
-    merkleRoot: stringifyBigInts(proof.merkleRoot),
+    merkleRoot: stringifyBigInts(root),
     proofOfSMP: stringifyProof(proof.proofOfSMP),
     proofSuccessfulSMP: stringifyProof(proof.proofSuccessfulSMP),
   }
@@ -167,7 +168,7 @@ const parseProofIndirectConnectionBase64Encoded = (base64Encoded: string) => {
   }
 }
 
-export const parsePrintedProofIndirectConnection = (p: string): TProofIndirectConnection => {
+export const parsePrintedProofIndirectConnection = (p: string) => {
   const printed = unstringifyBigInts(JSON.parse(p));
   return parseProofIndirectConnectionBase64Encoded(printed.base64Encoded);
 }
