@@ -34,7 +34,10 @@ const buildCommandAddHub = (config: IConfig) => {
         hubRegistry: hubRegistryToObj(hubRegistry),
         merkleProof: admin.treeDB.tree.tree.genMerklePath(index)
       };
-      printObj(objToBase64(hubRegistryWithProof));
+      printObj({
+        hubRegistry: hubRegistryWithProof.hubRegistry,
+        hubRegistryWithProofBase64Encoded: objToBase64(hubRegistryWithProof),
+      });
     });
   return command;
 };

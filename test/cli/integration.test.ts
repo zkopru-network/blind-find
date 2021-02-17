@@ -204,13 +204,13 @@ describe("Integration test for roles", function () {
     //  Then, admin sends back the merkle proof of this `hubRegistry` back to hub candidate,
     //  and the hub candidate becomes a valid hub.
     // command: blind-find admin addHub `hubRegistryB64`
-    const hubRegistryWithProofB64 = admin.exec(`addHub ${hubRegistryB64}`).stdout;
+    const printedHubRegistryWithProof = admin.exec(`addHub ${hubRegistryB64}`).stdout;
+    const hubRegistryWithProofB64 = jsonStringToObj(printedHubRegistryWithProof).hubRegistryWithProofBase64Encoded;
     // After receiving the merkle proof, the hub candidate needs to set the `hubRegistry` and
     //  the merkle proof in its database.
     // command: blind-find hub setHubRegistryWithProof `hubRegistryWithProofB64`
     const resSetHubRegistryWithProof = hub.exec(`setHubRegistryWithProof ${hubRegistryWithProofB64}`);
     expect(resSetHubRegistryWithProof.code).to.be.eql(0);
-
     /*
         Scenario 2: hub starts to serve user requests.
     */
