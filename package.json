@@ -29,7 +29,11 @@
     "type": "git",
     "url": "git+https://github.com/mhchia/blind-find.git"
   },
-  "keywords": ["zkp", "mpc", "ethereum"],
+  "keywords": [
+    "zkp",
+    "mpc",
+    "ethereum"
+  ],
   "bugs": {
     "url": "https://github.com/mhchia/blind-find/issues"
   },
@@ -48,6 +52,7 @@
     "maci-config": "^0.3.8",
     "maci-crypto": "^0.3.8",
     "tmp-promise": "^3.0.2",
+    "winston": "^3.3.3",
     "ws": "^7.4.1",
     "yaml": "^1.10.0"
   },

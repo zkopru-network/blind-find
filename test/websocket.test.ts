@@ -17,6 +17,8 @@ const expect = chai.expect;
 const timeout = 100;
 
 class TestServer extends BaseServer {
+  name = "TestServer";
+
   async onIncomingConnection(
     rwtor: IWebSocketReadWriter,
     request: http.IncomingMessage
@@ -27,11 +29,13 @@ class TestServer extends BaseServer {
         res();
       }, timeout + 1);
     });
-    await rwtor.write(data);
+    rwtor.write(data);
   }
 }
 
 class FaultyServer extends BaseServer {
+  name = "FaltyServer";
+
   async onIncomingConnection(
     rwtor: IWebSocketReadWriter,
     request: http.IncomingMessage

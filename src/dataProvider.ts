@@ -2,6 +2,8 @@ import * as http from "http";
 import { PubKey, Signature } from "maci-crypto";
 import { AddressInfo } from "ws";
 
+import logger from "./logger";
+
 import { HubRegistry, HubRegistryTree } from "./";
 import { LEVELS, TIMEOUT } from "./configs";
 import { DBMap, IDBMap } from "./db";
@@ -82,6 +84,7 @@ export class HubRegistryTreeDB {
  * Read-only merkle path provider
  */
 export class DataProviderServer extends BaseServer {
+  name = "DataProvider";
   rateLimiter: IIPRateLimiter;
   constructor(
     readonly adminAddress: TEthereumAddress,
@@ -97,7 +100,7 @@ export class DataProviderServer extends BaseServer {
     request: http.IncomingMessage
   ) {
     const ip = (request.connection.address() as AddressInfo).address;
-    console.info(`DataProviderServer: new incoming connection from ${ip}`);
+    logger.info(`${this.name}: new incoming connection from ${ip}`);
     if (!this.rateLimiter.allow(ip)) {
       rwtor.terminate();
       return;
@@ -115,8 +118,8 @@ export class DataProviderServer extends BaseServer {
       return;
     }
     const index = this.treeDB.getIndex(hubRegistry);
-    console.debug(
-      `DataProviderServer: received req: ${req.hubPubkey}, index=${index}`
+    logger.debug(
+      `${this.name}: received req: ${req.hubPubkey}, index=${index}`
     );
     if (index === undefined) {
       // Not Found.
@@ -145,10 +148,10 @@ export const sendGetMerkleProofReq = async (
   const bytes = await rwtor.read(timeout);
   const resp = GetMerkleProofResp.deserialize(bytes);
   if (resp.merkleProof.leaf !== hubRegistry.hash()) {
-    console.debug("sendGetMerkleProofReq: mismatch");
+    logger.debug("sendGetMerkleProofReq: mismatch");
     throw new RequestFailed("response mismatches the request");
   }
-  console.debug("sendGetMerkleProofReq: succeeds");
+  logger.debug("sendGetMerkleProofReq: succeeds");
   rwtor.close();
   return resp;
 };

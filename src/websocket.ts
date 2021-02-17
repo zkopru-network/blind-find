@@ -4,6 +4,7 @@ import WebSocket from "ws";
 import { AsyncEvent } from "./utils";
 import { ServerNotRunning, TimeoutError, ConnectionClosed } from "./exceptions";
 import { SOCKET_TIMEOUT, WS_PROTOCOL } from "./configs";
+import logger from "./logger";
 
 export interface IIPRateLimiter {
   allow(ip: string): boolean;
@@ -51,6 +52,7 @@ export class TokenBucketRateLimiter implements IIPRateLimiter {
 }
 
 export abstract class BaseServer {
+  abstract name: string;
   isRunning: boolean;
   private httpServer?: http.Server;
   private wsServer?: WebSocket.Server;
@@ -86,7 +88,7 @@ export abstract class BaseServer {
         throw new Error("address shouldn't be null");
       }
       const port = (webServer.address() as WebSocket.AddressInfo).port;
-      console.info(`Listening on port ${port}`);
+      logger.info(`${this.name}: Listening on port ${port}`);
       event.set();
     };
     if (port === undefined) {

@@ -2,6 +2,7 @@ import * as http from "http";
 import { Keypair, PubKey, Signature } from "maci-crypto";
 import { AddressInfo } from "ws";
 
+import logger from "./logger";
 import { getCounterSignHashedData, signMsg, verifySignedMsg } from ".";
 import {
   RequestFailed,
@@ -155,6 +156,7 @@ export type THubRateLimit = {
  *  response to the users.
  */
 export class HubServer extends BaseServer {
+  name = "HubServer";
   userStore: IUserStore;
   registryStore: RegistryStore;
 
@@ -195,7 +197,7 @@ export class HubServer extends BaseServer {
     ip: string,
     bytes: Uint8Array
   ) {
-    console.debug("server: onJoinRequest");
+    logger.debug(`${this.name}: onJoinRequest`);
     if (!this.joinRateLimiter.allow(ip)) {
       rwtor.terminate();
       return;
@@ -215,7 +217,7 @@ export class HubServer extends BaseServer {
     ip: string,
     bytes: Uint8Array
   ) {
-    console.debug("server: onSearchRequest");
+    logger.debug(`${this.name}: onSearchRequest`);
     if (!this.searchRateLimiter.allow(ip)) {
       rwtor.terminate();
       return;
@@ -227,7 +229,7 @@ export class HubServer extends BaseServer {
 
     for await (const peer of this.userStore) {
       const [pubkey, userRegistry] = peer;
-      console.debug(`onSearchRequest: running smp using ${pubkey}`);
+      logger.debug(`${this.name}: running smp using ${pubkey}`);
       const secret = hashPointToScalar(pubkey);
       const stateMachine = new SMPStateMachine(secret);
       const h2 = (stateMachine.state as SMPState1).s2;
@@ -237,11 +239,11 @@ export class HubServer extends BaseServer {
         throw new Error("smpMsg1tlv should not be null");
       }
       const msg1 = new SearchMessage1(false, smpMsg1);
-      console.debug(`onSearchRequest: sending msg1`);
+      logger.debug(`${this.name}: sending msg1`);
       rwtor.write(msg1.serialize());
       const msg2Bytes = await rwtor.read(this.timeoutSmall);
       const msg2 = SearchMessage2.deserialize(msg2Bytes);
-      console.debug(`onSearchRequest: received msg2`);
+      logger.debug(`${this.name}: received msg2`);
       const state2 = stateMachine.state as SMPState2;
       const smpMsg3 = stateMachine.transit(msg2);
       if (smpMsg3 === null) {
@@ -271,11 +273,11 @@ export class HubServer extends BaseServer {
         sigJoinMsgHub: userRegistry.hubSig
       });
       const msg3 = new SearchMessage3(smpMsg3, proofOfSMP);
-      console.debug(`onSearchRequest: sending msg3`);
+      logger.debug(`${this.name}: sending msg3`);
       rwtor.write(msg3.serialize());
     }
     const endMessage1 = new SearchMessage1(true);
-    console.debug(`onSearchRequest: sending ending msg1`);
+    logger.debug(`${this.name}: sending ending msg1`);
     rwtor.write(endMessage1.serialize());
   }
 
@@ -295,12 +297,12 @@ export class HubServer extends BaseServer {
 
     const remoteAddress = request.connection.remoteAddress;
     if (remoteAddress !== undefined) {
-      console.info(
-        `server: incoming connection from ${remoteAddress}, type=${tlvType}`
+      logger.info(
+        `${this.name}: incoming connection from ${remoteAddress}, type=${tlvType}`
       );
     } else {
-      console.info(
-        `server: incoming connection from unknown address, type=${tlvType}`
+      logger.info(
+        `${this.name}: incoming connection from unknown address, type=${tlvType}`
       );
     }
     switch (tlvType) {
@@ -313,7 +315,7 @@ export class HubServer extends BaseServer {
         rwtor.close();
         break;
       default:
-        console.error(`type ${tlvType} is unsupported`);
+        logger.error(`${this.name}: type ${tlvType} is unsupported`);
         rwtor.terminate();
     }
   }
@@ -360,14 +362,14 @@ export const sendSearchReq = async (
   const secret = hashPointToScalar(target);
 
   while (numTrials < maximumTrial) {
-    console.debug(
+    logger.debug(
       `sendSearchReq: starting trial ${numTrials}, waiting for msg1 from the server`
     );
     const stateMachine = new SMPStateMachine(secret);
     const a3 = (stateMachine.state as SMPState1).s3;
     const msg1Bytes = await rwtor.read(timeoutSmall);
     const msg1 = SearchMessage1.deserialize(msg1Bytes);
-    console.debug("sendSearchReq: received msg1");
+    logger.debug("sendSearchReq: received msg1");
     // Check if there is no more candidates.
     if (msg1.isEnd) {
       break;
@@ -381,10 +383,10 @@ export const sendSearchReq = async (
     if (msg2 === null) {
       throw new Error("this should never happen");
     }
-    console.debug("sendSearchReq: sending msg2");
+    logger.debug("sendSearchReq: sending msg2");
     rwtor.write(msg2.serialize());
     const msg3Bytes = await rwtor.read(timeoutLarge);
-    console.debug("sendSearchReq: received msg3");
+    logger.debug("sendSearchReq: received msg3");
     const msg3 = SearchMessage3.deserialize(msg3Bytes);
     stateMachine.transit(msg3.smpMsg3);
     if (!stateMachine.isFinished()) {
@@ -393,7 +395,7 @@ export const sendSearchReq = async (
       );
     }
     if (stateMachine.getResult()) {
-      console.debug(
+      logger.debug(
         `sendSearchReq: SMP has matched, target=${target} is found`
       );
       const pa = SMPMessage2Wire.fromTLV(msg2).pb;

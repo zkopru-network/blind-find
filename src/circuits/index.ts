@@ -228,7 +228,6 @@ const genProofAndPublicSignals = async (
   const witnessCmd = `${snarkjsCmd} wc ${circuitWasmPath} ${inputJsonPath} ${witnessPath}`;
 
   shell.config.fatal = true;
-  console.debug(`witnessCmd="${witnessCmd}"`);
   shell.exec(witnessCmd);
 
   const witnessJsonCmd = `${snarkjsCmd} wej ${witnessPath} ${witnessJsonPath}`;
