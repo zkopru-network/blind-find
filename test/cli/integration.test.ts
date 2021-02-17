@@ -54,7 +54,7 @@ class Role {
     }
 }
 
-const parseCLIKeypair = (s: string): { privKey: BigInt, pubKey: PubKey, pubKeyInBase64: string } => {
+const parseCLIKeypair = (s: string): { privKey: BigInt, pubKey: PubKey, pubKeyBase64Encoded: string } => {
     const obj = jsonStringToObj(s);
     if (obj.privKey === undefined || typeof obj.privKey !== 'bigint') {
         throw new Error(`obj.privKey is invalid: ${obj.privKey}`);
@@ -68,13 +68,13 @@ const parseCLIKeypair = (s: string): { privKey: BigInt, pubKey: PubKey, pubKeyIn
     ) {
         throw new Error(`obj.pubKey is invalid: ${obj.pubKey}`);
     }
-    if (obj.pubKeyInBase64 === undefined || typeof obj.pubKeyInBase64 !== 'string') {
-        throw new Error(`obj.pubKeyInBase64 is invalid: ${obj.pubKeyInBase64}`);
+    if (obj.pubKeyBase64Encoded === undefined || typeof obj.pubKeyBase64Encoded !== 'string') {
+        throw new Error(`obj.pubKeyBase64Encoded is invalid: ${obj.pubKeyBase64Encoded}`);
     }
     return {
         privKey: obj.privKey,
         pubKey: obj.pubKey,
-        pubKeyInBase64: obj.pubKeyInBase64
+        pubKeyBase64Encoded: obj.pubKeyBase64Encoded
     }
 }
 
@@ -238,15 +238,16 @@ describe("Integration test for roles", function () {
 
     // Let `userJoined` join `hub`
     const userJoinedKeypair = parseCLIKeypair(userJoined.exec('getKeypair').stdout);
-    const resUserJoin = userJoined.exec(`join ${hostname} ${hubPort} ${hubKeypair.pubKeyInBase64}`);
+    const resUserJoin = userJoined.exec(`join ${hostname} ${hubPort} ${hubKeypair.pubKeyBase64Encoded}`);
     expect(resUserJoin.code).to.eql(0);
 
     // Let `userAnother` search
     // Test: succeeds when searching for a user who has joined the hub.
-    const resUserAnotherSearch = userAnother.exec(`search ${hostname} ${hubPort} ${userJoinedKeypair.pubKeyInBase64}`);
+    const resUserAnotherSearch = userAnother.exec(`search ${hostname} ${hubPort} ${userJoinedKeypair.pubKeyBase64Encoded}`);
     expect(resUserAnotherSearch.code).to.eql(0);
+
     // Test: fails when searching for a user who hasn't joined the hub.
-    const randomPubkeyB64 = keypairToCLIFormat(genKeypair()).pubKeyInBase64;
+    const randomPubkeyB64 = keypairToCLIFormat(genKeypair()).pubKeyBase64Encoded;
     const resUserAnotherSearchFailure = userAnother.exec(`search ${hostname} ${hubPort} ${randomPubkeyB64}`, { fatal: false });
     expect(resUserAnotherSearchFailure.code).to.eql(1);
     // TODO: Add `user verifyProofOfIndirectConnection` if it is added in CLI.

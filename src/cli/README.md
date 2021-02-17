@@ -177,5 +177,4 @@ Output user's keypair.
 
 Check out the testing scenario in [integration.test.ts](../../test/cli/integration.test.ts).
 
-
 [deployed-contracts]: https://github.com/mhchia/blind-find/blob/8378a527f76fab56c23b8b6952252f9110a16873/src/cli/contractInfo.ts#L3

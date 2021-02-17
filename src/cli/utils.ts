@@ -35,7 +35,7 @@ export const keypairToCLIFormat = (keypair: Keypair) => {
   return {
     privKey: stringifyBigInts(keypair.privKey),
     pubKey: stringifyBigInts(keypair.pubKey),
-    pubKeyInBase64: objToBase64(keypair.pubKey)
+    pubKeyBase64Encoded: objToBase64(keypair.pubKey)
   };
 };
 
