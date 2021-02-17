@@ -14,6 +14,10 @@ VERIFICATION_KEYS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%_vk.json)
 
 all: $(R1CSS) $(WASMS) $(PARAMS) $(PROVING_KEYS) $(VERIFICATION_KEYS)
 
+compile: $(R1CSS) $(WASMS)
+
+extract_keys: $(PROVING_KEYS) $(VERIFICATION_KEYS)
+
 clean:
 	rm -rf build/
 

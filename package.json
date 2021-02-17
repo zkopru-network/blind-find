@@ -18,12 +18,12 @@
   },
   "scripts": {
     "build": "tsc",
-    "build_all_circuits": "make",
-    "release": "npm run build && npm run build_all_circuits && npm publish",
+    "extract_keys": "make extract_keys",
+    "release": "npm run build && npm publish",
     "test": "hardhat test",
     "lint": "exit 0 # FIXME: use eslint instead",
     "install_zkutil": "./scripts/installZkutil.sh",
-    "postinstall": "npm run install_zkutil && npm run build_all_circuits"
+    "postinstall": "npm run install_zkutil && npm run extract_keys"
   },
   "repository": {
     "type": "git",
