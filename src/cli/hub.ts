@@ -37,7 +37,13 @@ const buildCommandCreateHubRegistry = (config: IConfig) => {
       const { adminAddress, hubKeypair } = await loadHubSettings(config);
 
       const hubRegistry = HubRegistry.fromKeypair(hubKeypair, adminAddress);
-      printObj(objToBase64(hubRegistryToObj(hubRegistry)));
+      const obj = hubRegistryToObj(hubRegistry);
+      printObj({
+        sig: obj.sig,
+        pubkey: obj.pubkey,
+        adminAddress: obj.adminAddress,
+        base64Encoded: objToBase64(obj),
+      });
     });
   return command;
 };

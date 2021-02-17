@@ -197,7 +197,8 @@ describe("Integration test for roles", function () {
     */
     // Hub candidate signs a `hubRegistry`
     // command: blind-find hub createHubRegistry
-    const hubRegistryB64 = hub.exec('createHubRegistry').stdout;
+    const printedHubRegistry = hub.exec('createHubRegistry').stdout;
+    const hubRegistryB64 = jsonStringToObj(printedHubRegistry).base64Encoded;
     // Hub candidate sends the `hubRegistry` to admin. If admin approves, admin add the
     //  `hubRegistry` into the hub registry tree and send the merkle tree root on chain.
     //  Then, admin sends back the merkle proof of this `hubRegistry` back to hub candidate,
