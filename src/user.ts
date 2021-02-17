@@ -4,7 +4,8 @@ import {
   genProofSuccessfulSMP,
   verifyProofIndirectConnection,
   verifyProofOfSMP,
-  TProofIndirectConnection
+  TProofIndirectConnection,
+  parseProofOfSMPPublicSignals,
 } from "./circuits";
 import { TIMEOUT, TIMEOUT_LARGE } from "./configs";
 import { DBMap } from "./db";
@@ -54,7 +55,6 @@ export class User {
     await this.saveJoinedHub(ip, port, sig, hubPubkey, hubSig);
   }
 
-  // TODO: Should we save the search result?
   async search(
     ip: string,
     port: number,
@@ -91,6 +91,7 @@ export class User {
       pubkeyA: this.keypair.pubKey,
       pubkeyC: target,
       adminAddress: this.adminAddress,
+      merkleRoot: parseProofOfSMPPublicSignals(res.proofOfSMP.publicSignals).merkleRoot,
       proofOfSMP: res.proofOfSMP,
       proofSuccessfulSMP
     };

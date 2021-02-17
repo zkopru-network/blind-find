@@ -226,7 +226,7 @@ export class WebSocketAsyncReadWriter implements IWebSocketReadWriter {
 
     return new Promise((resolve, reject) => {
       const t = setTimeout(() => {
-        reject(new TimeoutError("timeout before receiving data"));
+        reject(new TimeoutError(`timeout before receiving data: timeout=${timeout}`));
       }, timeout);
       this.callbackQueue.push({
         resolvePromise: resolve,

@@ -1,9 +1,22 @@
-import { BigNumber, Contract, Event } from "ethers";
+import BN from "bn.js";
+import { BigNumber, Contract, ethers, Event } from "ethers";
 import { SNARK_FIELD_SIZE } from "maci-crypto";
 
 const bigNumberToBigInt = (n: BigNumber) => {
   return BigInt(n.toString());
 };
+
+export const ethAddressToBigInt = (address: string): BigInt => {
+  const addressBigInt = BigInt(address);
+  if (addressBigInt >= SNARK_FIELD_SIZE) {
+    throw new Error("ethereum address should be smaller than field size");
+  }
+  return addressBigInt;
+}
+
+export const bigIntToEthAddress = (n: BigInt): string => {
+  return ethers.utils.getAddress('0x' + new BN(n.toString()).toString("hex"));
+}
 
 export class BlindFindContract {
   constructor(readonly contract: Contract, readonly startBlock?: number) {}
@@ -25,11 +38,8 @@ export class BlindFindContract {
   }
 
   async getAdmin(): Promise<BigInt> {
-    const address = BigInt(await this.contract.admin());
-    if (address >= SNARK_FIELD_SIZE) {
-      throw new Error("ethereum address should be smaller than field size");
-    }
-    return address;
+    const ethAddress = await this.contract.admin();
+    return ethAddressToBigInt(ethAddress);
   }
 
   private parseEvent(event: Event) {

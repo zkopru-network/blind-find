@@ -73,6 +73,7 @@ type TProofIndirectConnection = {
   pubkeyA: PubKey;
   pubkeyC: PubKey;
   adminAddress: TEthereumAddress;
+  merkleRoot: BigInt;
   proofOfSMP: TProof;
   proofSuccessfulSMP: TProof;
 };
@@ -277,7 +278,7 @@ const verifyProof = async (circomFilePath: string, proof: TProof) => {
   return output === "Proof is correct";
 };
 
-const parseProofOfSMPPublicSignals = (publicSignals: BigInt[]) => {
+export const parseProofOfSMPPublicSignals = (publicSignals: BigInt[]) => {
   if (publicSignals.length !== 39) {
     throw new ValueError(
       `length of publicSignals is not correct: publicSignals=${publicSignals}`
