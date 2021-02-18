@@ -10,11 +10,13 @@ import { ethers } from "ethers";
 
 import { configsFileName } from "../../src/cli/constants";
 import { jsonStringToObj, keypairToCLIFormat } from "../../src/cli/utils";
-import { parsePrintedProofIndirectConnection } from "../../src/cli/user";
+import { parseProofIndirectConnectionBase64Encoded, proofIndirectConnectionToCLIFormat } from "../../src/cli/user";
 
 import { exec } from './utils';
 import { genKeypair, genPrivKey, PubKey, stringifyBigInts } from "maci-crypto";
 import { abi, bytecode } from "../../src/cli/contractInfo";
+
+import { pubkeyFactoryExclude } from "../utils";
 
 const hardhatDefaultPrivkey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const timeoutHardhatNode = 20000;
@@ -253,17 +255,33 @@ describe("Integration test for roles", function () {
     // Use tmpFile to store the result to workaround an issue in child_process
     //   Ref: https://stackoverflow.com/questions/59200052/nodejs-exec-spawn-stdout-cuts-off-the-stream-at-8192-characters/59322701#59322701
     const tmpFile = await tmp.tmpName();
+    const userAnotherKeypair = parseCLIKeypair(userAnother.exec('getKeypair').stdout);
     const resUserAnotherSearch = userAnother.exec(`search ${hostname} ${hubPort} ${userJoinedKeypair.pubKeyBase64Encoded} > ${tmpFile}`);
     expect(resUserAnotherSearch.code).to.eql(0);
     const data = await fs.promises.readFile(tmpFile, { encoding: 'utf-8' });
-    const proof = parsePrintedProofIndirectConnection(data);
+    const proofBase64 = JSON.parse(data).base64Encoded;
+    const proof = parseProofIndirectConnectionBase64Encoded(proofBase64);
+    expect(proof.pubkeyA).to.eql(userAnotherKeypair.pubKey);
+    expect(proof.pubkeyC).to.eql(userJoinedKeypair.pubKey);
 
     // Test: fails when searching for a user who hasn't joined the hub.
     const randomPubkeyB64 = keypairToCLIFormat(genKeypair()).pubKeyBase64Encoded;
     const resUserAnotherSearchFailure = userAnother.exec(`search ${hostname} ${hubPort} ${randomPubkeyB64}`, { fatal: false });
     expect(resUserAnotherSearchFailure.code).to.eql(1);
-    // TODO: Add `user verifyProofOfIndirectConnection` if it is added in CLI.
 
+    // Test: Verify the proof with `verifyProof`
+    const resUserAnotherVerifyProof = userAnother.exec(`verifyProof ${proofBase64}`);
+    expect(resUserAnotherVerifyProof.code).to.eql(0);
+    const wrongProof = {
+        pubkeyA: proof.pubkeyA,
+        pubkeyC: pubkeyFactoryExclude([proof.pubkeyC]),
+        adminAddress: proof.adminAddress,
+        proofOfSMP: proof.proofOfSMP,
+        proofSuccessfulSMP: proof.proofSuccessfulSMP,
+    }
+    const wrongProofBase64 = proofIndirectConnectionToCLIFormat(wrongProof).base64Encoded;
+    const resUserAnotherVerifyProofFailed = userAnother.exec(`verifyProof ${wrongProofBase64}`);
+    expect(resUserAnotherVerifyProofFailed.code).to.eql(1);
   });
 });
 

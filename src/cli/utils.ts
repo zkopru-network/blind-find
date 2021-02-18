@@ -2,6 +2,7 @@ import {
   genPubKey,
   Keypair,
   PrivKey,
+  PubKey,
   stringifyBigInts,
   unstringifyBigInts
 } from "maci-crypto";
@@ -31,11 +32,19 @@ export const privkeyToKeypair = (privkey: PrivKey): Keypair => {
   };
 };
 
+export const pubkeyToCLIFormat = (pubkey: PubKey) => {
+  return objToBase64(pubkey)
+}
+
+export const pubkeyFromCLIFormat = (s: string) => {
+  return base64ToObj(s) as PubKey
+}
+
 export const keypairToCLIFormat = (keypair: Keypair) => {
   return {
     privKey: stringifyBigInts(keypair.privKey),
     pubKey: stringifyBigInts(keypair.pubKey),
-    pubKeyBase64Encoded: objToBase64(keypair.pubKey)
+    pubKeyBase64Encoded: pubkeyToCLIFormat(keypair.pubKey)
   };
 };
 

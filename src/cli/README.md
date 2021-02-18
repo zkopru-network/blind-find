@@ -103,8 +103,15 @@ npx ts-node src/cli/index.ts addHub <hubRegistryInBase64>
 
 Add a hub registry to admin's merkle tree. Output is the hub registry along with its merkle proof.
 
-
 ## Hub
+
+### getKeypair
+
+```bash
+npx ts-node src/cli/index.ts hub getKeypair
+```
+
+Output hub's keypair.
 
 ### createHubRegistry
 
@@ -128,16 +135,7 @@ Set the registered hub registry along with its merkle proof to the database.
 npx ts-node src/cli/index.ts hub start [port] [hostname]
 ```
 
-Make the hub server start to listen to users requests. Press `Ctrl-C` to stop the server.
-
-### getKeypair
-
-```bash
-npx ts-node src/cli/index.ts hub getKeypair
-```
-
-Output hub's keypair.
-
+Make the hub server start to listen to users requests. `port` and `hostname` are optional. If options are not specified, defaults are `port=0` (assigned by OS) and `hostname=0.0.0.0` (listening to requests from everywhere). Press `Ctrl-C` to stop the server.
 
 ### listJoinedUsers
 
@@ -149,6 +147,15 @@ List the public keys of users who have joined the hub.
 
 
 ## User
+
+### getKeypair
+
+```bash
+npx ts-node src/cli/index.ts user getKeypair
+```
+
+Output user's keypair.
+
 ### join
 
 ```bash
@@ -160,18 +167,18 @@ Join hub `hubPubKeyInBase64` listening on the interface specified by `hostname` 
 ### search
 
 ```bash
-npx ts-node src/cli/index.ts search <hostname> <port> <targetPubkeyInBase64>
+npx ts-node src/cli/index.ts user search <hostname> <port> <targetPubkeyInBase64>
 ```
 
 Search for the target user `targetPubkeyInBase64` through the hub listening on the interface specified by `hostname` and `port`. If the search is successful, the output is a Proof of Indirect Connection. Otherwise, the process exits with error code `1`.
 
-### getKeypair
+### verifyProof
 
 ```bash
-npx ts-node src/cli/index.ts user getKeypair
+npx ts-node src/cli/index.ts user verifyProof <proofBase64Encoded>
 ```
 
-Output user's keypair.
+Verify a Proof of Indirect Connection. `proofBase64Encoded` is the proof encoded in base64.
 
 ## Example
 

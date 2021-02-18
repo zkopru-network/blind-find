@@ -5,7 +5,6 @@ import {
   verifyProofIndirectConnection,
   verifyProofOfSMP,
   TProofIndirectConnection,
-  parseProofOfSMPPublicSignals,
 } from "./circuits";
 import { TIMEOUT, TIMEOUT_LARGE } from "./configs";
 import { DBMap } from "./db";
@@ -91,20 +90,18 @@ export class User {
       pubkeyA: this.keypair.pubKey,
       pubkeyC: target,
       adminAddress: this.adminAddress,
-      merkleRoot: parseProofOfSMPPublicSignals(res.proofOfSMP.publicSignals).merkleRoot,
       proofOfSMP: res.proofOfSMP,
       proofSuccessfulSMP
     };
-    const validMerkleRoots = await this.contract.getAllMerkleRoots();
-    if (
-      !(await verifyProofIndirectConnection(
-        proofIndirectConnection,
-        validMerkleRoots
-      ))
-    ) {
+    if (!await this.verifyProofOfIndirectConnection(proofIndirectConnection)) {
       throw new InvalidProof("proof of indirect connection is invalid");
     }
     return proofIndirectConnection;
+  }
+
+  async verifyProofOfIndirectConnection(proof: TProofIndirectConnection): Promise<boolean> {
+    const validMerkleRoots = await this.contract.getAllMerkleRoots();
+    return await verifyProofIndirectConnection(proof, validMerkleRoots);
   }
 
   async getJoinedHubs() {
