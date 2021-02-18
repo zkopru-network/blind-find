@@ -89,7 +89,7 @@ network:
 blindFindPrivkey: "XXXXXXXXXXXX"
 ```
 
-By default, we're using [Infura][infura]. We need an API key to access Infura API. Register an account, create a project, and find the API key. It should be the hexidecimal postfix in your project endpoint For example, if your endpoint is `https://kovan.infura.io/v3/123456abcdef123456abcdef`, then `123456abcdef123456abcdef` is the the API key). Paste it to the field `apiKey` like the following.
+By default, we're using [Infura][infura]. We need an API key to access Infura API. Register an account, create a project, and find the API key. It should be the hexidecimal postfix in your project endpoint. For example, if your endpoint is `https://kovan.infura.io/v3/123456abcdef123456abcdef`, then `123456abcdef123456abcdef` is the the API key. Paste it to the field `apiKey` like the following.
 
 ```yaml
 network:
