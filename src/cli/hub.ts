@@ -134,7 +134,7 @@ const buildCommandGetKeypair = (config: IConfig) => {
 };
 
 const buildCommandListJoinedUsers = (config: IConfig) => {
-  const command = new Command("listJoinedUsers");
+  const command = new Command("getJoinedUsers");
   command
     .description("list the users who has have joined the hub")
     .action(async () => {

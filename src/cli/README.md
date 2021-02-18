@@ -137,10 +137,10 @@ npx ts-node src/cli/index.ts hub start [port] [hostname]
 
 Make the hub server start to listen to users requests. `port` and `hostname` are optional. If options are not specified, defaults are `port=0` (assigned by OS) and `hostname=0.0.0.0` (listening to requests from everywhere). Press `Ctrl-C` to stop the server.
 
-### listJoinedUsers
+### getJoinedUsers
 
 ```bash
-npx ts-node src/cli/index.ts hub listJoinedUsers
+npx ts-node src/cli/index.ts hub getJoinedUsers
 ```
 
 List the public keys of users who have joined the hub.
