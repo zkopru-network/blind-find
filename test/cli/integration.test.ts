@@ -245,10 +245,20 @@ describe("Integration test for roles", function () {
         });
     });
 
-    // Let `userJoined` join `hub`
+    // Test: `userJoined` hasn't joined any hub
+    const resUserJoinedGetJoinedHubsBefore = jsonStringToObj(userJoined.exec('getJoinedHubs').stdout);
+    expect(resUserJoinedGetJoinedHubsBefore.length).to.eql(0);
+
+    // Test: let `userJoined` join `hub`
     const userJoinedKeypair = parseCLIKeypair(userJoined.exec('getKeypair').stdout);
     const resUserJoin = userJoined.exec(`join ${hostname} ${hubPort} ${hubKeypair.pubKeyBase64Encoded}`);
     expect(resUserJoin.code).to.eql(0);
+
+    // Test: `hub` is in `getJoinedHubs`
+    const resUserJoinedGetJoinedHubsAfter = userJoined.exec('getJoinedHubs').stdout;
+    const resUserJoinedGetJoinedHubsAfterParsed = jsonStringToObj(resUserJoinedGetJoinedHubsAfter);
+    expect(resUserJoinedGetJoinedHubsAfterParsed.length).to.eql(1);
+    expect(resUserJoinedGetJoinedHubsAfterParsed[0].hubPubkey).to.eql(hubKeypair.pubKeyBase64Encoded);
 
     // Let `userAnother` search
     // Test: succeeds when searching for a user who has joined the hub.

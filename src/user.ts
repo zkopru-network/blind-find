@@ -15,7 +15,7 @@ import { TEthereumAddress } from "./types";
 import { hashPointToScalar } from "./utils";
 import { BlindFindContract } from "./web3";
 
-type TJoinedHubEntry = {
+export type TJoinedHubEntry = {
   ip: string;
   port: number;
   userPubkey: PubKey;

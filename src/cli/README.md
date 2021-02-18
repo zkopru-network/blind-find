@@ -163,7 +163,6 @@ npx ts-node src/cli/index.ts user join <hostname> <port> <hubPubKeyInBase64>
 ```
 Join hub `hubPubKeyInBase64` listening on the interface specified by `hostname` and `port`.
 
-
 ### search
 
 ```bash
@@ -179,6 +178,14 @@ npx ts-node src/cli/index.ts user verifyProof <proofBase64Encoded>
 ```
 
 Verify a Proof of Indirect Connection. `proofBase64Encoded` is the proof encoded in base64.
+
+### getJoinedHubs
+
+```bash
+npx ts-node src/cli/index.ts user getJoinedHubs
+```
+
+Get detailed information of the hubs the user has joined.
 
 ## Example
 

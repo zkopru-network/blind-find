@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { PubKey, SNARK_FIELD_SIZE, stringifyBigInts } from "maci-crypto";
 import { parseProofOfSMPPublicSignals, TProof, TProofIndirectConnection } from "../circuits";
 import { ValueError } from "../exceptions";
-import { User } from "../user";
+import { User, TJoinedHubEntry } from "../user";
 import { bigIntToEthAddress, ethAddressToBigInt } from "../web3";
 import { IConfig } from "./configs";
 import { base64ToObj, printObj, keypairToCLIFormat, objToBase64, pubkeyToCLIFormat, pubkeyFromCLIFormat } from "./utils";
@@ -14,7 +14,8 @@ export const buildCommandUser = (config: IConfig) => {
     .addCommand(buildCommandJoin(config))
     .addCommand(buildCommandSearch(config))
     .addCommand(buildCommandGetKeypair(config))
-    .addCommand(buildCommandVerifyProofIndirectConnection(config));
+    .addCommand(buildCommandVerifyProofIndirectConnection(config))
+    .addCommand(buildCommandGetJoinedHubs(config));
   return command;
 };
 
@@ -71,6 +72,8 @@ const buildCommandSearch = (config: IConfig) => {
           console.log(`Not Found: target = '${targetPubkeyB64}'`);
           process.exit(1);
         } else {
+          // NOTE: Don't use `printObj` here on purpose since it fails with "Invalid
+          //  Array length".
           console.log(
             JSON.stringify(
               proofIndirectConnectionToCLIFormat(result),
@@ -125,6 +128,26 @@ const buildCommandVerifyProofIndirectConnection = (config: IConfig) => {
           console.log(proofInfo);
           process.exit(0);
         }
+      }
+    );
+  return command;
+};
+
+const buildCommandGetJoinedHubs = (config: IConfig) => {
+  const command = new Command("getJoinedHubs");
+  command
+    .description("get the hubs user already joined before")
+    .action(
+      async () => {
+        const {
+          adminAddress,
+          userKeypair,
+          blindFindContract,
+          db
+        } = await loadUserSettings(config);
+        const user = new User(userKeypair, adminAddress, blindFindContract, db);
+        const joinedHubs = await user.getJoinedHubs();
+        printObj(joinedHubsToCLIFormat(joinedHubs));
       }
     );
   return command;
@@ -192,4 +215,14 @@ export const parseProofIndirectConnectionBase64Encoded = (base64Encoded: string)
     proofOfSMP: proofIndirectConnection.proofOfSMP,
     proofSuccessfulSMP: proofIndirectConnection.proofSuccessfulSMP,
   }
+}
+
+const joinedHubsToCLIFormat = (joinedHubs: TJoinedHubEntry[]) => {
+  return joinedHubs.map((hubInfo) => {
+    return {
+      hostname: hubInfo.ip,
+      port: hubInfo.port,
+      hubPubkey: pubkeyToCLIFormat(hubInfo.hubPubkey),
+    }
+  });
 }
