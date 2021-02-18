@@ -11,7 +11,8 @@
     "circuits/**/*",
     "contracts/**/*",
     "build/*.@(params|r1cs|wasm)",
-    "scripts/**/*"
+    "scripts/**/*",
+    "Makefile"
   ],
   "bin": {
     "blind-find": "lib/cli/index.js"
