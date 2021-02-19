@@ -131,7 +131,7 @@ Commands:
   help [command]                           display help for command
 ```
 
-Postfix the flag `--help` behind a command whenever you want to learn more about it.
+Postfix the flag `--help` behind a command whenever you want to learn more about the command.
 
 ```bash
 $ blind-find user getKeypair --help
