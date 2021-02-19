@@ -12,33 +12,35 @@ Unlike the ultimate version, Blind Find v1 is hierarchical. We have three roles 
 
 ![](assets/blind_find_ultimate_vs_v1.png)
 
-## Hub
+## Roles
+
+### Hub
 
 A hub is essentially a [super node](https://en.wikipedia.org/wiki/Supernode_(networking)) which can serve multiple user requests simultaneously. Users can
 - Join a hub and then be searchable.
 - Search for other users who has joined the hub before.
 
-### Registered as a hub
+#### Registered as a hub
 
 There can be multiple hubs. For one to be registered as a hub, one must sign on a message `hash("REGISTER_NEW_HUB" ++ adminEthereumAddress)` and send them along with the public key to the admin. The hub's signature is commited as a leaf node in an append-only sparse merkle tree. The root of the merkle tree is commited on a contract called Blind Find v1 contract. This commitment allows a hub to generate a zero-knowledge proof that it is indeed a registered hub without leaking which one.
 
-## Blind Find Admin
+### Blind Find Admin
 
 Blind Find Admin is the admin of Blind Find v1 contract. It is an Ethereum account, which means it can be a usual account or a contract. Whenever a hub requests to registered, admin should
 1. Put the commitment of the data signed by the hub in the merkle tree.
 2. Update the new merkle root on Blind Find v1 contract to make the hub valid.
 
-## User
+### User
 
 A user can join a [hub](#Hub) to make itself searchable by other users. It can also search if another user has joined a hub by sending a request to the hub.
 
-### Join a hub
+#### Join a hub
 
 `joinHub(userPubkey: PublicKey, userSig: Signature, hubPubkey: PublicKey)`
 
 To join a hub, a user is required to sign a `hash(userPubkey ++ hubPubkey)` with their private key and hand the signature `userSig` with the corresponding `userPubkey` to the hub. The signature is to avoid hubs from arbitrarily adding a user without the user's authentication. Then, the hub also countersigns on the `joinMsg` and add it to its own database. These information is only stored by the hub privately.
 
-### Search for user
+#### Search for user
 
 `searchForUser(hub: TCPIPAddress, target_user: PublicKey)`
 
