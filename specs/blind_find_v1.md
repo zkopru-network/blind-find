@@ -38,7 +38,7 @@ A user can join a [hub](#Hub) to make itself searchable by other users. It can a
 
 To join a hub, a user is required to sign a `hash(userPubkey ++ hubPubkey)` with their private key and hand the signature `userSig` with the corresponding `userPubkey` to the hub. The signature is to avoid hubs from arbitrarily adding a user without the user's authentication. Then, the hub also countersigns on the `joinMsg` and add it to its own database. These information is only stored by the hub privately.
 
-#### Search for user
+### Search for user
 
 `searchForUser(hub: TCPIPAddress, target_user: PublicKey)`
 
