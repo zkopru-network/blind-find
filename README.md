@@ -225,7 +225,7 @@ Press Ctrl-C to exit
 ```
 
 #### Play with Admin CLI
-Admin is the admin of [Blind Find v1 contract](contracts/BlindFindContract.sol). To become the admin of your own Blind Find v1 network, you need to deploy a Blind Find v1 contract on Ethereum network. [Admin CLI](src/cli/README.md#Admin) now only works with an [Externally Owned Account (EOA)](eoa), instead of contracts.
+Admin is the admin of [Blind Find v1 contract](contracts/BlindFindContract.sol). To become the admin of your own Blind Find v1 network, you need to deploy a Blind Find v1 contract on Ethereum network. [Admin CLI](src/cli/README.md#Admin) now only works with an [Externally Owned Account (EOA)](#eoa), instead of contracts.
 
 Add the `address` and `atBlock` (block number where the contract resides) of your own Blind Find v1 contract address in the field `customContractAddress` in `configs.yaml`.
 
