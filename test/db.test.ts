@@ -1,8 +1,6 @@
-import { DBObjectArray, DBMap, MemoryDB, LevelDB } from "../src/db";
-import fs from "fs";
+import { DBMap, MemoryDB, LevelDB } from "../src/db";
 import { PubKey } from "maci-crypto";
 import { pubkeyFactoryExclude } from "./utils";
-import { ValueError } from "../src/exceptions";
 
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
@@ -74,7 +72,7 @@ describe("MemoryDB", () => {
 
   it("set and get", async () => {
     const key = "123";
-    // Get undefined when key is not found.
+    // Get undefined when key is not found.p
     expect(await db.get(key)).to.be.undefined;
     // Get the same data when succeeds.
     const data = "456";
@@ -100,49 +98,6 @@ describe("MemoryDB", () => {
 const isPubkeySame = (a: PubKey, b: PubKey) => {
   return a.length === b.length && a[0] === b[0] && a[1] === b[1];
 };
-
-describe("DBArray", () => {
-  let db: LevelDB;
-  let dbArray: DBObjectArray<PubKey>;
-  let tmpDir: tmp.DirectoryResult;
-
-  before(async () => {
-    tmpDir = await tmp.dir({ unsafeCleanup: true });
-    db = new LevelDB(tmpDir.path);
-    dbArray = new DBObjectArray("pubkeys", db);
-  });
-
-  after(async () => {
-    await db.close();
-    await tmpDir.cleanup();
-  });
-
-  it("operations", async () => {
-    // Initially length = 0;
-    expect(await dbArray.getLength()).to.eql(0);
-    const pubkey0 = pubkeyFactoryExclude([]);
-    const pubkey1 = pubkeyFactoryExclude([pubkey0]);
-    const pubkey2 = pubkeyFactoryExclude([pubkey0, pubkey1]);
-    await dbArray.append(pubkey0);
-    // Length is incremented after appending one object.
-    expect(await dbArray.getLength()).to.eql(1);
-    const pubkey0Actual = await dbArray.get(0);
-    // Ensure what is store is correct.
-    expect(isPubkeySame(pubkey0, pubkey0Actual)).to.be.true;
-
-    // Keep appending
-    await dbArray.append(pubkey1);
-    expect(await dbArray.getLength()).to.eql(2);
-
-    // Fails when trying to set data to a out-of-range position.
-    await expect(dbArray.set(2, pubkey2)).to.be.rejectedWith(ValueError);
-
-    // Succeeds when modifying existing data in-range.
-    await dbArray.set(0, pubkey2);
-    const pubkey2Actual = await dbArray.get(0);
-    expect(isPubkeySame(pubkey2, pubkey2Actual)).to.be.true;
-  });
-});
 
 describe("DBMap", () => {
   let db: LevelDB;
@@ -172,18 +127,30 @@ describe("DBMap", () => {
     // Length is incremented after setting a keypair.
     expect(await dbMap.getLength()).to.eql(1);
     const pubkeyGetKey0 = await dbMap.get(key0);
+    // Make tsc happy.
+    if (pubkeyGetKey0 === undefined) {
+      throw new Error();
+    }
+    expect(pubkeyGetKey0).not.to.be.undefined;
     // Ensure what is store is correct.
     expect(isPubkeySame(pubkey0, pubkeyGetKey0)).to.be.true;
-    const pubkeyGetAtIndex0 = await dbMap.getAtIndex(0);
-    expect(isPubkeySame(pubkey0, pubkeyGetAtIndex0)).to.be.true;
+
+    // Throws when getting a inexistent key.
+    const keyNonExists = "keyNonExists";
+    expect(await dbMap.get(keyNonExists)).to.be.undefined;
 
     // Keep setting.
     await dbMap.set(key1, pubkey1);
     expect(await dbMap.getLength()).to.eql(2);
 
-    // Succeed when modifying existing data.
+    // Succeeds when modifying existing data.
     await dbMap.set(key1, pubkey2);
     const pubkey2Actual = await dbMap.get(key1);
+    // Make tsc happy.
+    if (pubkey2Actual === undefined) {
+      throw new Error();
+    }
+    expect(pubkey2Actual).not.to.be.undefined;
     expect(isPubkeySame(pubkey2, pubkey2Actual)).to.be.true;
 
     // AsyncIterator
@@ -192,5 +159,14 @@ describe("DBMap", () => {
       data.push(i);
     }
     expect(data.length).to.eql(2);
+
+    await dbMap.del(key0);
+    expect(await dbMap.getLength()).to.eql(1);
+    // No warning when deleting an inexistent key.
+    await dbMap.del(key0);
+    expect(await dbMap.getLength()).to.eql(1);
+    await dbMap.del(key1);
+    expect(await dbMap.getLength()).to.eql(0);
   });
+
 });

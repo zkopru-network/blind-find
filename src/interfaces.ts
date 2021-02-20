@@ -19,8 +19,16 @@ export type TLevelDBOp = {
   value?: any;
 };
 
+export type TCreateReadStreamOptions = {
+  gt?: string;
+  gte?: string;
+  lt?: string;
+  lte?: string;
+}
+
 export interface IAtomicDB extends IDB {
   get(key: string): Promise<any>;
   set(key: string, data: any): Promise<void>;
   batch(ops: Array<TLevelDBOp>): Promise<void>;
+  createReadStream(options?: TCreateReadStreamOptions): Promise<AsyncIterable<{key: string, value: any}>>;
 }

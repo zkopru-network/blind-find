@@ -14,7 +14,7 @@ import { genKeypair, Signature } from "maci-crypto";
 import { LEVELS, TIMEOUT, TIMEOUT_LARGE } from "../src/configs";
 import WebSocket from "ws";
 import { TimeoutError } from "../src/exceptions";
-import { connect, TRateLimitParams } from "../src/websocket";
+import { connect } from "../src/websocket";
 import { Short, TLV } from "../src/smp/serialization";
 import { MemoryDB } from "../src/db";
 

@@ -1,6 +1,6 @@
 import AwaitLock from "await-lock";
 
-import { IAtomicDB, TLevelDBOp } from "./interfaces";
+import { IAtomicDB, TCreateReadStreamOptions, TLevelDBOp } from "./interfaces";
 import { ValueError } from "./exceptions";
 import { stringifyBigInts, unstringifyBigInts } from "maci-crypto";
 const level = require("level");
@@ -26,6 +26,33 @@ export class MemoryDB implements IAtomicDB {
         this.map.set(op.key, op.value);
       } else {
         this.map.delete(op.key);
+      }
+    }
+  }
+
+  async createReadStream(options: TCreateReadStreamOptions): Promise<AsyncIterable<any>> {
+    const m = this.map;
+    const keys = m.keys();
+    return {
+      async *[Symbol.asyncIterator]() {
+        for (const key of keys) {
+          const value = m.get(key);
+          if (value === undefined) {
+            throw new Error('should never happen');
+          }
+          if (options.gt !== undefined && options.gt < key) {
+            yield { key, value };
+          }
+          if (options.gte !== undefined && options.gte <= key) {
+            yield { key, value };
+          }
+          if (options.lt !== undefined && key < options.lt) {
+            yield { key, value };
+          }
+          if (options.lte !== undefined && key <= options.lte) {
+            yield { key, value };
+          }
+        }
       }
     }
   }
@@ -76,16 +103,18 @@ export class LevelDB implements IAtomicDB {
     }
   }
 
+  async createReadStream(options: TCreateReadStreamOptions): Promise<AsyncIterable<any>> {
+    await this.lock.acquireAsync();
+    try {
+      return await this.db.createReadStream(options);
+    } finally {
+      this.lock.release();
+    }
+  }
+
   async close() {
     await this.db.close();
   }
-}
-
-interface IDBArray<T extends object> {
-  getLength(): Promise<number>;
-  get(index: number): Promise<T>;
-  append(data: T): Promise<void>;
-  set(index: number, data: T): Promise<void>;
 }
 
 type TKeyValue<T> = {
@@ -96,106 +125,7 @@ type TKeyValue<T> = {
 export interface IDBMap<T extends object> extends AsyncIterable<TKeyValue<T>> {
   getLength(): Promise<number>;
   get(key: string): Promise<T | undefined>;
-  getAtIndex(index: number): Promise<T>;
   set(key: string, data: T): Promise<void>;
-}
-
-export class DBObjectArray<T extends object> implements IDBArray<T> {
-  lock: AwaitLock;
-
-  constructor(readonly prefix: string, readonly db: IAtomicDB) {
-    this.lock = new AwaitLock();
-  }
-
-  async getLength(): Promise<number> {
-    await this.lock.acquireAsync();
-    try {
-      return await this._getLength();
-    } finally {
-      this.lock.release();
-    }
-  }
-
-  async get(index: number): Promise<T> {
-    await this.lock.acquireAsync();
-    try {
-      const length = await this._getLength();
-      if (index >= length) {
-        throw new ValueError(
-          `index out of range: index=${index}, length=${length}`
-        );
-      }
-      const key = this.getIndexKey(index);
-      const data = this.decodeBigInts(await this.db.get(key));
-      if (data === undefined) {
-        throw new Error("index is in the range but data is not found");
-      }
-      return data;
-    } finally {
-      this.lock.release();
-    }
-  }
-
-  async append(data: T): Promise<void> {
-    await this.lock.acquireAsync();
-    try {
-      const length = await this._getLength();
-      const key = this.getIndexKey(length);
-      const encodedData = this.encodeBigInts(data);
-      // Atomically execute the following operations.
-      await this.db.batch([
-        { type: "put", key: key, value: encodedData }, // Append data
-        { type: "put", key: this.getLengthKey(), value: length + 1 } // Update length
-      ]);
-    } finally {
-      this.lock.release();
-    }
-  }
-
-  async set(index: number, data: T): Promise<void> {
-    await this.lock.acquireAsync();
-    try {
-      const length = await this._getLength();
-      const key = this.getIndexKey(index);
-      const encodedData = this.encodeBigInts(data);
-      if (index >= length) {
-        throw new ValueError(
-          `index out of range: index=${index}, length=${length}`
-        );
-      }
-      await this.db.set(key, encodedData);
-    } finally {
-      this.lock.release();
-    }
-  }
-
-  private getLengthKey() {
-    return `${this.prefix}-length`;
-  }
-
-  private getIndexKey(index: number) {
-    return `${this.prefix}-data-${index}`;
-  }
-
-  private encodeBigInts(rawObj: T): object {
-    return stringifyBigInts(rawObj);
-  }
-
-  private decodeBigInts(encodedObj: object): T {
-    return unstringifyBigInts(encodedObj);
-  }
-
-  private async _getLength(): Promise<number> {
-    const key = this.getLengthKey();
-    const length = await this.db.get(key);
-    if (length === undefined) {
-      // Store length if it's not found.
-      await this.db.set(key, 0);
-      return 0;
-    } else {
-      return length;
-    }
-  }
 }
 
 export class DBMap<T extends object> implements IDBMap<T> {
@@ -214,26 +144,15 @@ export class DBMap<T extends object> implements IDBMap<T> {
   }
 
   // Return directly.
-  async get(key: string): Promise<T> {
+  async get(key: string): Promise<T | undefined> {
     await this.lock.acquireAsync();
     try {
-      return this.decodeBigInts(await this.db.get(this.getMapKey(key)));
-    } finally {
-      this.lock.release();
-    }
-  }
-
-  async getAtIndex(index: number): Promise<T> {
-    await this.lock.acquireAsync();
-    try {
-      const length = await this._getLength();
-      if (index >= length) {
-        throw new ValueError(
-          `index out of range: index=${index}, length=${length}`
-        );
+      const data = await this.db.get(this.getDataKey(key));
+      if (data === undefined) {
+        return undefined;
+      } else {
+        return this.decodeBigInts(data);
       }
-      const mapKey = await this.db.get(this.getIndexKey(index));
-      return this.decodeBigInts(await this.db.get(mapKey));
     } finally {
       this.lock.release();
     }
@@ -242,12 +161,15 @@ export class DBMap<T extends object> implements IDBMap<T> {
   async *[Symbol.asyncIterator]() {
     await this.lock.acquireAsync();
     try {
-      const length = await this._getLength();
-      for (let i = 0; i < length; i++) {
-        const mapKey = await this.db.get(this.getIndexKey(i));
-        const key = this.mapKeyToKey(mapKey);
-        const data = this.decodeBigInts(await this.db.get(mapKey));
-        yield { key: key, value: data };
+      const readStream = await this.db.createReadStream({
+        gt: this.getDataKeyPrefix(),
+      });
+      for await (const kv of readStream) {
+        // Skip the length key.
+        if (kv.key === this.getLengthKey()) {
+          continue;
+        }
+        yield { key: this.mapDataKeyToKey(kv.key), value: this.decodeBigInts(kv.value) };
       }
     } finally {
       this.lock.release();
@@ -257,12 +179,12 @@ export class DBMap<T extends object> implements IDBMap<T> {
   async set(key: string, data: T): Promise<void> {
     await this.lock.acquireAsync();
     try {
-      const mapKey = this.getMapKey(key);
+      const dataKey = this.getDataKey(key);
       const encodedData = this.encodeBigInts(data);
-      const savedData = await this.db.get(mapKey);
+      const savedData = await this.db.get(dataKey);
       // If the key exists, just update data.
       if (savedData !== undefined) {
-        await this.db.set(mapKey, encodedData);
+        await this.db.set(dataKey, encodedData);
       } else {
         // Else, append the key to key list, update the length of key list,
         //    and set data to the key in map.
@@ -271,9 +193,8 @@ export class DBMap<T extends object> implements IDBMap<T> {
         //  - 2. Set data to key.
         const keysLength = await this._getLength();
         await this.db.batch([
-          { type: "put", key: this.getIndexKey(keysLength), value: mapKey }, // Append key to keys
-          { type: "put", key: this.getLengthKey(), value: keysLength + 1 }, // Update keys length
-          { type: "put", key: mapKey, value: encodedData } // Set data to the corresponding key
+          { type: "put", key: this.getLengthKey(), value: keysLength + 1 }, // Update length
+          { type: "put", key: dataKey, value: encodedData } // Set data to the corresponding key
         ]);
       }
     } finally {
@@ -281,28 +202,44 @@ export class DBMap<T extends object> implements IDBMap<T> {
     }
   }
 
-  private getKeysKeyPrefix() {
-    return `${this.prefix}-keys`;
+  async del(key: string): Promise<void> {
+    await this.lock.acquireAsync();
+    try {
+      const dataKey = this.getDataKey(key);
+      const savedData = await this.db.get(dataKey);
+      // Only delete data if the key exists.
+      if (savedData !== undefined) {
+        // Else, append the key to key list, update the length of key list,
+        //    and set data to the key in map.
+        // Atomically, execute the following operations.
+        //  - 1. Append mapKey to list.
+        //  - 2. Set data to key.
+        const keysLength = await this._getLength();
+        await this.db.batch([
+          { type: "put", key: this.getLengthKey(), value: keysLength - 1 }, // Update length
+          { type: "del", key: dataKey } // Set data to the corresponding key
+        ]);
+      }
+    } finally {
+      this.lock.release();
+    }
   }
 
-  private getValuesKeyPrefix() {
-    return `${this.prefix}-keys`;
+
+  private getDataKeyPrefix() {
+    return `${this.prefix}-data-`;
   }
 
   private getLengthKey() {
-    return `${this.getKeysKeyPrefix()}-length`;
+    return `${this.prefix}-length`;
   }
 
-  private getIndexKey(index: number) {
-    return `${this.getKeysKeyPrefix()}-${index}`;
+  private getDataKey(key: string) {
+    return `${this.getDataKeyPrefix()}${key}`;
   }
 
-  private getMapKey(key: string) {
-    return `${this.getValuesKeyPrefix()}-${key}`;
-  }
-
-  private mapKeyToKey(mapKey: string) {
-    return mapKey.slice(`${this.getValuesKeyPrefix()}-`.length);
+  private mapDataKeyToKey(mapKey: string) {
+    return mapKey.slice(`${this.getDataKeyPrefix()}`.length);
   }
 
   private encodeBigInts(rawObj: T): object {
