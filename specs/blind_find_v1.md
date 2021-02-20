@@ -164,7 +164,7 @@ Assuming H initiates SMP with A.
 || |  | Compute `Rea = Rh * a3` |
 || |  | Check `Rea == Ph - Pa` and learn the result |
 
-## Circuits
+## Proof Statements
 
 Continue using the example from the section [SMP Protocol](#Protocol). We assume another user C has joined hub H, and now A is searching for user C through hub H.
 
@@ -251,7 +251,7 @@ Constraints
 
 ### Proof of Indirect Connection
 
-A Proof of Indirect Connection is a combined proof from two proof above:
+A Proof of Indirect Connection is composed of the two proofs above:
 1. [Proof of SMP](#Proof-of-SMP), provided by hub H.
 2. [Proof of Successful SMP](#Proof-of-Successful-SMP) created by user A itself.
 
