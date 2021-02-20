@@ -170,13 +170,13 @@ Continue using the example from the section [SMP Protocol](#Protocol). We assume
 
 ![](assets/user_a_search_for_user_c_through_hub_h.png)
 
-In Blind Find v1, a user runs SMP multiple times with a hub to search for other users. For each SMP run, the secret on the user side is the public key of the user whom is being searched for, while the secret on the hub side is the public key of one of the user who has joined the hub. Assuming the hub has `N` joined users, then the hub runs SMP `N` times with the user and stops until all joined users are compared.
+In Blind Find v1, a user runs SMP multiple times with a hub to search for other users. For each run of SMP, the secret on the user side is the public key of the user whom is being searched for, while the secret on the hub side is the public key of one of the user who has joined the hub. Assuming the hub has `N` joined users, then the hub runs SMP `N` times with the user and stops.
 
 ### Proof of SMP
 
-After each run of SMP, a Proof of SMP is created by H to prove to A that:
-1) C has joined a valid hub who has been permissioned by the admin. I.e. H indeed has an entry in the hub merkle tree and its signature on [`REGISTER_NEW_HUB` message](/jvyE2cDqRqyybxiHBDCerQ#REGISTER_NEW_HUB-message) is valid.
-2) SMP is run correctly on H's side, and C is the search term.
+After each run of SMP, a Proof of SMP is created by hub H to prove to user A that:
+1) User C has joined a valid hub who has been permissioned by the admin. I.e. Hub H has an entry in the hub merkle tree and the signature in the entry is valid.
+2) SMP is run correctly on H's side, and the public key of user C is H's secret.
 
 ```
 Private inputs
