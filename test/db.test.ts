@@ -6,6 +6,7 @@ import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 
 import tmp from 'tmp-promise';
+import { IAtomicDB } from "../src/interfaces";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -100,22 +101,9 @@ const isPubkeySame = (a: PubKey, b: PubKey) => {
 };
 
 describe("DBMap", () => {
-  let db: LevelDB;
-  let dbMap: DBMap<PubKey>;
-  let tmpDir: tmp.DirectoryResult;
 
-  before(async () => {
-    tmpDir = await tmp.dir({ unsafeCleanup: true });
-    db = new LevelDB(tmpDir.path);
-    dbMap = new DBMap("map", db);
-  });
-
-  after(async () => {
-    await db.close();
-    await tmpDir.cleanup();
-  });
-
-  it("operations", async () => {
+  const testAtomicDB = async (db: IAtomicDB) => {
+    const dbMap = new DBMap<PubKey>("map", db);
     // Initially length = 0;
     expect(await dbMap.getLength()).to.eql(0);
     const key0 = "key0";
@@ -167,6 +155,20 @@ describe("DBMap", () => {
     expect(await dbMap.getLength()).to.eql(1);
     await dbMap.del(key1);
     expect(await dbMap.getLength()).to.eql(0);
+  }
+
+  it("MemoryDB", async () => {
+    const db = new MemoryDB();
+    await testAtomicDB(db);
+    await db.close();
+  });
+
+  it("LevelDB", async () => {
+    const tmpDir = await tmp.dir({ unsafeCleanup: true });
+    const db = new LevelDB(tmpDir.path);
+    await testAtomicDB(db);
+    await db.close();
+    await tmpDir.cleanup();
   });
 
 });
