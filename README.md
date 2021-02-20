@@ -6,17 +6,14 @@
 *Blind Find* is a peer-to-peer network allowing private peer search proposed by Barry Whitehat and Kobi Gurkan. This repo implements the first version of Blind Find (i.e. **Blind Find v1**). Please read [Blind Find v1 Spec](specs/blind_find_v1.md) to learn how it works.
 
 ## Install
-
 You can install Blind Find either with [npm](#Install-with-npm) or building it from the [repo](#Build-from-the-repo).
 
 ### Install with npm
-
 ```bash
 npm install -g blind-find
 ```
 
 ### Build from the repo
-
 ```bash
 git clone git@github.com:mhchia/blind-find.git
 cd blind-find
@@ -44,27 +41,24 @@ npm install
 npm link
 ```
 
-## Command Line Interface (CLI)
+## Get Started
+Before proceeding, you should read sections Introduction and Roles in the [spec](specs/blind_find_v1.md) to know what the roles are doing.
 
-See [CLI document][cli-doc] for all available commands.
-
-## Testnet
+### Testnet
 Blind Find v1 [contract](https://kovan.etherscan.io/address/0xe57881d655309c9a20f469a95564beaeb93ce73a#code) is on [Kovan][kovan-etherscan] already.
 
 ### Public Hub
-A testing public hub is available for users to play with on Kovan.
+A testing public [hub][spec-hub] is available for users to play with on Kovan.
 - `hostname`: `blindfind.mhchia.com`
 - `port`: `5566`
 - `hubPubkeyBased64`: `WyI5NzA4ODY0Mjc4NjQxNzIwMjA3MzQwNjQwODk5MDQ5MDU0MjM5MTgwNDY2ODQzNzU0OTUyMzAxMTc1MzgxNTQ4NTMyMDc0MTc4NDM4IiwiMjEwOTg3MjgxMDM0MDU0ODg1NjYyMTY3MjI3OTI3NDExMzc3MzcxMzgxODg0MDAxOTUzMzY0NjE1MTQ2NjA5MDkxMTQyOTkzNDcyNzEiXQ==`
 
 \[WARNING\]: It's just a small testing hub server right now. There is no guarantee on its running and all data are subject to be erased.
 
-## Get Started
-
-Before proceding, you should read through the sections Introduction and Roles in the [spec](specs/blind_find_v1.md) to the roles in Blind Find v1.
+### Command Line Interface (CLI)
+See [CLI document][cli-doc] for all available commands.
 
 ### Play with User CLI
-
 This section goes through how to run CLI as a [User][spec-user] and interact with the [public hub](#Public-Hub). You will learn how to use CLI to join the hub, search for yourself through the hub and generate a [Proof of Indirect Connection][spec-proof-of-indirect-connection], and verify the proof.
 
 Recap: A user can do the following things with a hub
