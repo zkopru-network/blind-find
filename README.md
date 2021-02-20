@@ -2,8 +2,8 @@
   <a href="https://github.com/mhchia/blind-find/actions?workflow=nodejs"><img alt="GitHub Actions status" src="https://github.com/mhchia/blind-find/workflows/nodejs/badge.svg"></a>
 </p>
 
-# Blind Find
-*Blind Find* is a peer-to-peer network allowing private peer search proposed by Barry Whitehat and Kobi Gurkan. For the detail specification, please read the [post][blind-find-ethresearch] on ethresearch.
+# Blind Find v1
+*Blind Find* is a peer-to-peer network allowing private peer search proposed by Barry Whitehat and Kobi Gurkan. This repo implements the first version of Blind Find (i.e. **Blind Find v1**). Please read [Blind Find v1 Spec](specs/blind_find_v1.md) to learn how it works.
 
 ## Install
 
@@ -61,7 +61,11 @@ A testing public hub is available for users to play with on Kovan.
 
 ## Get Started
 
-This section goes through how to run CLI as a `User` and interact with the [public hub](#Public-Hub). You will learn how to join the hub, search for yourself through the hub and generate a Proof of Indirect Connection, and verify the proof.
+Before proceding, you should read through the sections Introduction and Roles in the [spec](specs/blind_find_v1.md) to the roles in Blind Find v1.
+
+### Play with User CLI
+
+This section goes through how to run CLI as a [User][spec-user] and interact with the [public hub](#Public-Hub). You will learn how to use CLI to join the hub, search for yourself through the hub and generate a [Proof of Indirect Connection][spec-proof-of-indirect-connection], and verify the proof.
 
 Recap: A user can do the following things with a hub
 1. Join a hub and can be searched by other users.
@@ -193,3 +197,8 @@ Proof is correct!
 [kovan-etherscan]: https://kovan.etherscan.io/
 [cli-doc]: src/cli/README.md
 [infura]: https://infura.io
+
+[spec-admin]: specs/blind_find_v1.md#Admin
+[spec-hub]: specs/blind_find_v1.md#Hub
+[spec-user]: specs/blind_find_v1.md#User1
+[spec-proof-of-indirect-connection]: specs/blind_find_v1.md#Proof-of-Indirect-Connection
