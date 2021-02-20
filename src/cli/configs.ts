@@ -147,17 +147,33 @@ export class BlindFindConfig {
         rateLimit: defaults.defaultHubRateLimit
       };
     }
+
+    const validateRateLimitParams = (params: TRateLimitParams) => {
+      if (params.numAccess === undefined || typeof params.numAccess !== 'number') {
+        throw new ConfigError(`wrong params: numAccess=${params.numAccess}`);
+      }
+      if (params.refreshPeriod === undefined || typeof params.refreshPeriod !== 'number') {
+        throw new ConfigError(`wrong params: refreshPeriod=${params.refreshPeriod}`);
+      }
+    }
+
     if (hub.rateLimit === undefined) {
       hub.rateLimit = defaults.defaultHubRateLimit;
     } else {
       if (hub.rateLimit.join === undefined) {
         hub.rateLimit.join = defaults.defaultHubRateLimit.join;
+      } else {
+        validateRateLimitParams(hub.rateLimit.join);
       }
       if (hub.rateLimit.search === undefined) {
         hub.rateLimit.search = defaults.defaultHubRateLimit.search;
+      } else {
+        validateRateLimitParams(hub.rateLimit.search);
       }
       if (hub.rateLimit.global === undefined) {
         hub.rateLimit.global = defaults.defaultHubRateLimit.global;
+      } else {
+        validateRateLimitParams(hub.rateLimit.global);
       }
     }
     return hub;
