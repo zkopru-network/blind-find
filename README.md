@@ -191,7 +191,7 @@ Proof is correct!
 For normal users, it should be just enough to play with User CLI. If you want to set up your own hub or admin, you can follow the following instructions.
 
 #### Play with Hub CLI
-To setup a new [hub][spec-hub], you need to be registered by the admin first.
+To set up a new [hub][spec-hub], you need to be registered by the admin first.
 
 Call `createHubRegistry` to get your hub registry encoded in base64, i.e. the content inside the field `base64Encoded` in the output.
 
@@ -207,7 +207,7 @@ $ blind-find hub createHubRegistry
 }
 ```
 
-Send the hub registry encoded in base64 to admin. Admin should then call [`admin addHub`](#Play-with-Admin-CLI) to add your hub registry to the merkle tree and commit it on chain, and then send you your hub registry along with the merkle proof encoded in base64.
+Send the hub registry encoded in base64 to admin. Admin should then call [`admin addHub`](#Play-with-Admin-CLI) to add your hub registry to the merkle tree and commit it on chain, and then send you back your hub registry along with the merkle proof encoded in base64.
 
 Set your hub registry along with the merkle proof encoded in base64 in your database. If the command succeeds, then registration is done.
 
