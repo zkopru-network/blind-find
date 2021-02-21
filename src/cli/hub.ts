@@ -5,7 +5,7 @@ import {
   base64ToObj,
   objToBase64,
   keypairToCLIFormat,
-  printObj
+  printObj, pubkeyFromCLIFormat, pubkeyToCLIFormat
 } from "./utils";
 import { hubRegistryToObj, objToHubRegistry } from "../dataProvider";
 import { hashLeftRight, IncrementalQuinTree } from "maci-crypto";
@@ -22,7 +22,9 @@ export const buildCommandHub = (config: IConfig) => {
     .addCommand(buildCommandSetHubRegistryWithProof(config))
     .addCommand(buildCommandStart(config))
     .addCommand(buildCommandGetKeypair(config))
-    .addCommand(buildCommandListJoinedUsers(config));
+    .addCommand(buildCommandGetJoinedUsers(config))
+    .addCommand(buildCommandRemoveUser(config))
+    .addCommand(buildCommandRemoveAllUsers(config));
   return command;
 };
 
@@ -133,7 +135,7 @@ const buildCommandGetKeypair = (config: IConfig) => {
   return command;
 };
 
-const buildCommandListJoinedUsers = (config: IConfig) => {
+const buildCommandGetJoinedUsers = (config: IConfig) => {
   const command = new Command("getJoinedUsers");
   command
     .description("list the users who has have joined the hub")
@@ -141,9 +143,35 @@ const buildCommandListJoinedUsers = (config: IConfig) => {
       const { hubServer } = await getHub(config);
       const userPubkeys: string[] = [];
       for await (const user of hubServer.userStore) {
-        userPubkeys.push(objToBase64(user[0]));
+        userPubkeys.push(pubkeyToCLIFormat(user[0]));
       }
       printObj(userPubkeys);
+    });
+  return command;
+};
+
+const buildCommandRemoveUser = (config: IConfig) => {
+  const command = new Command("removeUser");
+  command
+    .arguments("[userPubkeyB64]")
+    .description("remove a joined user", {
+      userPubkeyB64: "user's public key in base64"
+    })
+    .action(async (userPubkeyB64: string) => {
+      const userPubkey = pubkeyFromCLIFormat(userPubkeyB64);
+      const { hubServer } = await getHub(config);
+      await hubServer.removeUser(userPubkey);
+    });
+  return command;
+};
+
+const buildCommandRemoveAllUsers = (config: IConfig) => {
+  const command = new Command("removeAllUsers");
+  command
+    .description("remove all joined users")
+    .action(async () => {
+      const { hubServer } = await getHub(config);
+      await hubServer.removeAllUsers();
     });
   return command;
 };

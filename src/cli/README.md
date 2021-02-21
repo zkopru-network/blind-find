@@ -145,6 +145,21 @@ npx ts-node src/cli/index.ts hub getJoinedUsers
 
 List the public keys of users who have joined the hub.
 
+### removeUser
+
+```bash
+npx ts-node src/cli/index.ts hub removeUser [userPubkeyInBase64]
+```
+
+Remove the joined user.
+
+### removeAllUsers
+
+```bash
+npx ts-node src/cli/index.ts hub removeAllUsers
+```
+
+Remove all joined users.
 
 ## User
 

@@ -97,6 +97,8 @@ describe("Integration test for roles", function () {
   let hub: Role;
   let userJoined: Role;
   let userAnother: Role;
+  let user3: Role;
+  let user4: Role;
   let contractAddress: string;
 
   const createRole = async (
@@ -181,6 +183,8 @@ describe("Integration test for roles", function () {
     hub = await createRole(contractAddress, "hub");
     userJoined = await createRole(contractAddress, "user");
     userAnother = await createRole(contractAddress, "user");
+    user3 = await createRole(contractAddress, "user");
+    user4 = await createRole(contractAddress, "user");
   });
 
   after(async () => {
@@ -189,6 +193,8 @@ describe("Integration test for roles", function () {
     await hub.cleanup();
     await userJoined.cleanup();
     await userAnother.cleanup();
+    await user3.cleanup();
+    await user4.cleanup();
   })
 
   it("general", async () => {
@@ -292,6 +298,39 @@ describe("Integration test for roles", function () {
     const wrongProofBase64 = proofIndirectConnectionToCLIFormat(wrongProof).base64Encoded;
     const resUserAnotherVerifyProofFailed = userAnother.exec(`verifyProof ${wrongProofBase64}`);
     expect(resUserAnotherVerifyProofFailed.code).to.eql(1);
+
+    // Test: `hub.removeUser` and `hub.removeAllUsers`
+
+    // Let more users join
+    const user3Keypair = parseCLIKeypair(user3.exec('getKeypair').stdout);
+    const resUser3Join = user3.exec(`join ${hostname} ${hubPort} ${hubKeypair.pubKeyBase64Encoded}`);
+    expect(resUser3Join.code).to.eql(0);
+    const user4Keypair = parseCLIKeypair(user4.exec('getKeypair').stdout);
+    const resUser4Join = user4.exec(`join ${hostname} ${hubPort} ${hubKeypair.pubKeyBase64Encoded}`);
+    expect(resUser4Join.code).to.eql(0);
+
+    // Stop the hub process and see joinedUsers
+    hubStartProcess.kill();
+
+    // Hub should have 3 joined users now
+    const joinedUsers = new Set(jsonStringToObj(hub.exec('getJoinedUsers').stdout));
+    expect(joinedUsers.size).to.eql(3);
+    expect(joinedUsers.has(userJoinedKeypair.pubKeyBase64Encoded)).to.be.true;
+    expect(joinedUsers.has(user3Keypair.pubKeyBase64Encoded)).to.be.true;
+    expect(joinedUsers.has(user4Keypair.pubKeyBase64Encoded)).to.be.true;
+
+    // Remove user3, and there should only be 2 users except for user3
+    const resHubRemoveUser = hub.exec(`removeUser ${user3Keypair.pubKeyBase64Encoded}`);
+    expect(resHubRemoveUser.code).to.eql(0);
+    const joinedUsers2Left = new Set(jsonStringToObj(hub.exec('getJoinedUsers').stdout));
+    expect(joinedUsers2Left.size).to.eql(2);
+    expect(joinedUsers2Left.has(user3Keypair.pubKeyBase64Encoded)).to.be.false;
+
+    // Remove all remaining users, and there should be no user now
+    const resHubRemoveAllUsers = hub.exec('removeAllUsers');
+    expect(resHubRemoveAllUsers.code).to.eql(0);
+    const joinedUsers0Left = jsonStringToObj(hub.exec('getJoinedUsers').stdout);
+    expect(joinedUsers0Left.length).to.eql(0);
   });
 });
 

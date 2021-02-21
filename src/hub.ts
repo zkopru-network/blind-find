@@ -43,7 +43,6 @@ import {
   SMPMessage3Wire
 } from "./smp/v4/serialization";
 import { BabyJubPoint } from "./smp/v4/babyJub";
-import AwaitLock from "await-lock";
 
 type TUserRegistry = { userSig: Signature; hubSig: Signature };
 type TIterItem = [PubKey, TUserRegistry];
@@ -70,11 +69,9 @@ const USER_STORE_PREFIX = "blind-find-hub-users";
 export class UserStore implements IUserStore {
   private mapStore: IDBMap<TUserRegistry>;
   maxKeyLength = Point.size * 2;
-  lock: AwaitLock;
 
   constructor(db: IAtomicDB) {
     this.mapStore = new DBMap<TUserRegistry>(USER_STORE_PREFIX, db, this.maxKeyLength);
-    this.lock = new AwaitLock();
   }
 
   async getLength() {
@@ -341,6 +338,14 @@ export class HubServer extends BaseServer {
         logger.error(`${this.name}: type ${tlvType} is unsupported`);
         rwtor.terminate();
     }
+  }
+
+  async removeUser(pubkey: PubKey) {
+    await this.userStore.remove(pubkey);
+  }
+
+  async removeAllUsers() {
+    await this.userStore.removeAll();
   }
 }
 
