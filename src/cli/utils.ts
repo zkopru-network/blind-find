@@ -6,6 +6,7 @@ import {
   stringifyBigInts,
   unstringifyBigInts
 } from "maci-crypto";
+import { Point } from "../smp/v4/serialization";
 
 export const objToBase64 = (obj: any): string => {
   const objWithBigIntStringified = stringifyBigInts(obj);
@@ -33,11 +34,11 @@ export const privkeyToKeypair = (privkey: PrivKey): Keypair => {
 };
 
 export const pubkeyToCLIFormat = (pubkey: PubKey) => {
-  return objToBase64(pubkey)
+  return Buffer.from(new Point(pubkey).serialize()).toString("base64");
 }
 
 export const pubkeyFromCLIFormat = (s: string) => {
-  return base64ToObj(s) as PubKey
+  return Point.deserialize(Buffer.from(s, "base64")).point;
 }
 
 export const keypairToCLIFormat = (keypair: Keypair) => {

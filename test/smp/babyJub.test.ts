@@ -55,20 +55,20 @@ const g3Squared = new BabyJubPoint([
 ]);
 
 describe("equal", () => {
-  it("should be equal if both `n` and `value` are the same", () => {
+  it("should be equal if comparing same points", () => {
     expect(g1.equal(g1)).to.be.true;
   });
-  it("should not be equal if `value`s are not the same", () => {
+  it("should not be equal if comparing different points", () => {
     expect(g1.equal(g2)).to.be.false;
   });
 });
 
 describe("isValid", () => {
-  it("should be invalid if the value and modulus are not co-prime", () => {
+  it("should be invalid a wrong point used", () => {
     const gInvalid = new BabyJubPoint([BigInt(1), BigInt(0)]);
     expect(gInvalid.isValid()).to.be.false;
   });
-  it("should be valid if the value and modulus are co-prime", () => {
+  it("should be valid", () => {
     expect(gIdentity.isValid()).to.be.true;
     expect(gBase.isValid()).to.be.true;
     expect(g1.isValid()).to.be.true;
@@ -84,7 +84,7 @@ describe("identity", () => {
   it("hardcoded test", () => {
     expect(g1.identity().equal(gIdentity)).to.be.true;
   });
-  it("every group element with the same modulus shares the same identity", () => {
+  it("every group element shares the same identity", () => {
     expect(g1.identity().equal(g2.identity())).to.be.true;
   });
 });
