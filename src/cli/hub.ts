@@ -114,7 +114,7 @@ const buildCommandStart = (config: IConfig) => {
         const port: number | undefined =
           portString === undefined ? undefined : Number(portString);
         await hubServer.start(port, hostname);
-        const hubPubkeyB64 = objToBase64(hubServer.keypair.pubKey);
+        const hubPubkeyB64 = pubkeyToCLIFormat(hubServer.keypair.pubKey);
         console.log(
           `Hub is listening on`,
           hubServer.address,
