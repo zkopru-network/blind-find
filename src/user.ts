@@ -11,8 +11,9 @@ import { DBMap } from "./db";
 import { sendJoinHubReq, sendSearchReq } from "./hub";
 import { IAtomicDB } from "./interfaces";
 import { InvalidProof } from "./smp/exceptions";
+import { Scalar } from "./smp/v4/serialization";
 import { TEthereumAddress } from "./types";
-import { hashPointToScalar } from "./utils";
+import { bigIntToHexString, hashPointToScalar } from "./utils";
 import { BlindFindContract } from "./web3";
 
 export type TJoinedHubEntry = {
@@ -29,6 +30,7 @@ const JOINED_HUBS_PREFIX = "blind-find-user-joined-hubs";
 
 export class User {
   joinedHubsDB: TJoinedHubDB;
+  maxKeyLength = Scalar.size * 2;
 
   constructor(
     readonly keypair: Keypair,
@@ -38,7 +40,7 @@ export class User {
     readonly timeoutSmall = TIMEOUT,
     readonly timeoutLarge = TIMEOUT_LARGE
   ) {
-    this.joinedHubsDB = new DBMap(JOINED_HUBS_PREFIX, db);
+    this.joinedHubsDB = new DBMap(JOINED_HUBS_PREFIX, db, this.maxKeyLength);
   }
 
   async join(ip: string, port: number, hubPubkey: PubKey) {
@@ -113,7 +115,13 @@ export class User {
   }
 
   private getDBEntryKey(hubPubkey: PubKey): string {
-    return hashPointToScalar(hubPubkey).toString();
+    const key = bigIntToHexString(hashPointToScalar(hubPubkey));
+    if (key.length > this.maxKeyLength) {
+      throw new Error(
+        `key length is larger than maxKeyLength: key.length=${key.length}, maxKeyLength=${this.maxKeyLength}`
+      );
+    }
+    return key;
   }
 
   private async saveJoinedHub(

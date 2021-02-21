@@ -19,6 +19,8 @@ import {
   TRateLimitParams,
   IWebSocketReadWriter
 } from "./websocket";
+import { bigIntToHexString } from "./utils";
+import { Scalar } from "./smp/v4/serialization";
 
 const LEAVES_PREFIX = "blind-find-data-provider-leaves";
 
@@ -40,16 +42,19 @@ export const objToHubRegistry = (obj: THubRegistryObj) => {
   return new HubRegistry(obj.sig, obj.pubkey, obj.adminAddress);
 };
 
+// Result from `hash` is at most 32 bytes, to hex string it is length 64.
+const maxHubRegistryKeyLength = Scalar.size * 2;
+
 export class HubRegistryTreeDB {
   dbMap: IDBMap<THubRegistryObj>;
 
   constructor(readonly tree: HubRegistryTree, db: IAtomicDB) {
-    this.dbMap = new DBMap<THubRegistryObj>(LEAVES_PREFIX, db);
+    this.dbMap = new DBMap<THubRegistryObj>(LEAVES_PREFIX, db, maxHubRegistryKeyLength);
   }
 
   static async fromDB(db: IAtomicDB, levels = LEVELS) {
     const tree = new HubRegistryTree(levels);
-    const dbMap = new DBMap<THubRegistryObj>(LEAVES_PREFIX, db);
+    const dbMap = new DBMap<THubRegistryObj>(LEAVES_PREFIX, db, maxHubRegistryKeyLength);
     // Load leaves from DB.
     for await (const l of dbMap) {
       tree.insert(objToHubRegistry(l.value));
@@ -57,8 +62,15 @@ export class HubRegistryTreeDB {
     return new HubRegistryTreeDB(tree, db);
   }
 
-  private getDBKey(e: HubRegistry) {
-    return e.hash().toString();
+  private getDBKey(e: HubRegistry): string {
+    const h = e.hash();
+    const keyHex = bigIntToHexString(h);
+    if (keyHex.length > maxHubRegistryKeyLength) {
+      throw new Error(
+        `keyHex is longer than maxKeyLength: keyHex=${keyHex}, maxKeyLength=${maxHubRegistryKeyLength}`
+      );
+    }
+    return keyHex;
   }
 
   async insert(e: HubRegistry) {

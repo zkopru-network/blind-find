@@ -1,8 +1,8 @@
 import AwaitLock from "await-lock";
 
-import { IAtomicDB, TCreateReadStreamOptions, TLevelDBOp } from "./interfaces";
-import { ValueError } from "./exceptions";
+import { IAtomicDB, TRangeOptions, TLevelDBOp } from "./interfaces";
 import { stringifyBigInts, unstringifyBigInts } from "maci-crypto";
+import { ValueError } from "./exceptions";
 const level = require("level");
 
 export class MemoryDB implements IAtomicDB {
@@ -30,31 +30,54 @@ export class MemoryDB implements IAtomicDB {
     }
   }
 
-  async createReadStream(options: TCreateReadStreamOptions): Promise<AsyncIterable<any>> {
+  async createReadStream(options?: TRangeOptions): Promise<AsyncIterable<any>> {
     const m = this.map;
-    const keys = m.keys();
     return {
       async *[Symbol.asyncIterator]() {
-        for (const key of keys) {
-          const value = m.get(key);
+        for (const entry of m) {
+          const [ key, value ] = entry;
           if (value === undefined) {
             throw new Error('should never happen');
           }
-          if (options.gt !== undefined && options.gt < key) {
-            yield { key, value };
+          if (options !== undefined) {
+            if (options.gt !== undefined && !(options.gt < key)) {
+              continue;
+            } else if (options.gte !== undefined && !(options.gte <= key)) {
+              continue;
+            } else if (options.lt !== undefined && !(key < options.lt)) {
+              continue;
+            } else if (options.lte !== undefined && !(key <= options.lte)) {
+              continue;
+            }
           }
-          if (options.gte !== undefined && options.gte <= key) {
-            yield { key, value };
-          }
-          if (options.lt !== undefined && key < options.lt) {
-            yield { key, value };
-          }
-          if (options.lte !== undefined && key <= options.lte) {
-            yield { key, value };
-          }
+          yield { key, value };
         }
       }
     }
+  }
+
+  async del(key: string) {
+    this.map.delete(key);
+  }
+
+  async clear(options?: TRangeOptions) {
+    const newMap = new Map<string, any>();
+    if (options !== undefined) {
+      for (const entry of this.map) {
+        const [ key, value ] = entry;
+        if (options.gt !== undefined && options.gt < key) {
+          continue;
+        } else if (options.gte !== undefined && options.gte <= key) {
+          continue;
+        } else if (options.lt !== undefined && key < options.lt) {
+          continue;
+        } else if (options.lte !== undefined && key <= options.lte) {
+          continue;
+        }
+        newMap.set(key, value);
+      }
+    }
+    this.map = newMap;
   }
 
   async close() {}
@@ -103,10 +126,28 @@ export class LevelDB implements IAtomicDB {
     }
   }
 
-  async createReadStream(options: TCreateReadStreamOptions): Promise<AsyncIterable<any>> {
+  async createReadStream(options?: TRangeOptions): Promise<AsyncIterable<any>> {
     await this.lock.acquireAsync();
     try {
       return await this.db.createReadStream(options);
+    } finally {
+      this.lock.release();
+    }
+  }
+
+  async del(key: string): Promise<void> {
+    await this.lock.acquireAsync();
+    try {
+      await this.db.del(key);
+    } finally {
+      this.lock.release();
+    }
+  }
+
+  async clear(options?: TRangeOptions): Promise<void> {
+    await this.lock.acquireAsync();
+    try {
+      await this.db.clear(options);
     } finally {
       this.lock.release();
     }
@@ -126,25 +167,33 @@ export interface IDBMap<T extends object> extends AsyncIterable<TKeyValue<T>> {
   getLength(): Promise<number>;
   get(key: string): Promise<T | undefined>;
   set(key: string, data: T): Promise<void>;
+  del(key: string): Promise<void>;
+  clear(): Promise<void>;
 }
 
 export class DBMap<T extends object> implements IDBMap<T> {
+
   lock: AwaitLock;
-  constructor(readonly prefix: string, readonly db: IAtomicDB) {
+  /**
+   *
+   * @param prefix key prefix used for this map
+   * @param db
+   * @param maxKeyLength max length of a key in bytes
+   */
+  constructor(private readonly prefix: string, private readonly db: IAtomicDB, private readonly maxKeyLength: number) {
     this.lock = new AwaitLock();
   }
 
   async getLength(): Promise<number> {
-    await this.lock.acquireAsync();
-    try {
-      return await this._getLength();
-    } finally {
-      this.lock.release();
+    const allData: any[] = [];
+    for await (const kv of this) {
+      allData.push(kv);
     }
+    return allData.length;
   }
 
-  // Return directly.
   async get(key: string): Promise<T | undefined> {
+    this.validateDataKey(key);
     await this.lock.acquireAsync();
     try {
       const data = await this.db.get(this.getDataKey(key));
@@ -163,12 +212,9 @@ export class DBMap<T extends object> implements IDBMap<T> {
     try {
       const readStream = await this.db.createReadStream({
         gt: this.getDataKeyPrefix(),
+        lte: this.getMaxDataKey(),
       });
       for await (const kv of readStream) {
-        // Skip the length key.
-        if (kv.key === this.getLengthKey()) {
-          continue;
-        }
         yield { key: this.mapDataKeyToKey(kv.key), value: this.decodeBigInts(kv.value) };
       }
     } finally {
@@ -181,22 +227,7 @@ export class DBMap<T extends object> implements IDBMap<T> {
     try {
       const dataKey = this.getDataKey(key);
       const encodedData = this.encodeBigInts(data);
-      const savedData = await this.db.get(dataKey);
-      // If the key exists, just update data.
-      if (savedData !== undefined) {
-        await this.db.set(dataKey, encodedData);
-      } else {
-        // Else, append the key to key list, update the length of key list,
-        //    and set data to the key in map.
-        // Atomically, execute the following operations.
-        //  - 1. Append mapKey to list.
-        //  - 2. Set data to key.
-        const keysLength = await this._getLength();
-        await this.db.batch([
-          { type: "put", key: this.getLengthKey(), value: keysLength + 1 }, // Update length
-          { type: "put", key: dataKey, value: encodedData } // Set data to the corresponding key
-        ]);
-      }
+      await this.db.set(dataKey, encodedData);
     } finally {
       this.lock.release();
     }
@@ -206,32 +237,37 @@ export class DBMap<T extends object> implements IDBMap<T> {
     await this.lock.acquireAsync();
     try {
       const dataKey = this.getDataKey(key);
-      const savedData = await this.db.get(dataKey);
-      // Only delete data if the key exists.
-      if (savedData !== undefined) {
-        // Else, append the key to key list, update the length of key list,
-        //    and set data to the key in map.
-        // Atomically, execute the following operations.
-        //  - 1. Append mapKey to list.
-        //  - 2. Set data to key.
-        const keysLength = await this._getLength();
-        await this.db.batch([
-          { type: "put", key: this.getLengthKey(), value: keysLength - 1 }, // Update length
-          { type: "del", key: dataKey } // Set data to the corresponding key
-        ]);
-      }
+      await this.db.del(dataKey);
     } finally {
       this.lock.release();
     }
   }
 
+  async clear() {
+    await this.lock.acquireAsync();
+    try {
+      await this.db.clear({
+        gt: this.getDataKeyPrefix(),
+        lte: this.getMaxDataKey(),
+      });
+    } finally {
+      this.lock.release();
+    }
+  }
+
+  // A workaround to make range iteration work.
+  private getMaxDataKey() {
+    return `${this.getDataKeyPrefix()}` + '\xff'.repeat(this.maxKeyLength);
+  }
+
+  private validateDataKey(key: string) {
+    if (key.length > this.maxKeyLength) {
+      throw new ValueError(`key is too long: key.length=${key.length}`);
+    }
+  }
 
   private getDataKeyPrefix() {
     return `${this.prefix}-data-`;
-  }
-
-  private getLengthKey() {
-    return `${this.prefix}-length`;
   }
 
   private getDataKey(key: string) {
@@ -250,15 +286,4 @@ export class DBMap<T extends object> implements IDBMap<T> {
     return unstringifyBigInts(encodedObj);
   }
 
-  private async _getLength(): Promise<number> {
-    const key = this.getLengthKey();
-    const length = await this.db.get(key);
-    if (length === undefined) {
-      // Store length if it's not found.
-      await this.db.set(key, 0);
-      return 0;
-    } else {
-      return length;
-    }
-  }
 }

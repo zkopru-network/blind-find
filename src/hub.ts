@@ -43,6 +43,7 @@ import {
   SMPMessage3Wire
 } from "./smp/v4/serialization";
 import { BabyJubPoint } from "./smp/v4/babyJub";
+import AwaitLock from "await-lock";
 
 type TUserRegistry = { userSig: Signature; hubSig: Signature };
 type TIterItem = [PubKey, TUserRegistry];
@@ -58,6 +59,8 @@ interface IUserStore extends AsyncIterable<TIterItem> {
   get(pubkey: PubKey): Promise<TUserRegistry | undefined>;
   set(pubkey: PubKey, registry: TUserRegistry): Promise<void>;
   getLength(): Promise<number>;
+  remove(pubkey: PubKey): Promise<void>;
+  removeAll(): Promise<void>;
 }
 
 const USER_STORE_PREFIX = "blind-find-hub-users";
@@ -66,9 +69,12 @@ const USER_STORE_PREFIX = "blind-find-hub-users";
  */
 export class UserStore implements IUserStore {
   private mapStore: IDBMap<TUserRegistry>;
+  maxKeyLength = Point.size * 2;
+  lock: AwaitLock;
 
   constructor(db: IAtomicDB) {
-    this.mapStore = new DBMap<TUserRegistry>(USER_STORE_PREFIX, db);
+    this.mapStore = new DBMap<TUserRegistry>(USER_STORE_PREFIX, db, this.maxKeyLength);
+    this.lock = new AwaitLock();
   }
 
   async getLength() {
@@ -76,6 +82,7 @@ export class UserStore implements IUserStore {
   }
 
   async *[Symbol.asyncIterator]() {
+
     for await (const obj of this.mapStore) {
       const pubkey = this.decodePubkey(obj.key);
       yield [pubkey, obj.value] as TIterItem;
@@ -84,7 +91,13 @@ export class UserStore implements IUserStore {
 
   private encodePubkey(pubkey: PubKey): string {
     const bytes = new Point(pubkey).serialize();
-    return Buffer.from(bytes).toString("hex");
+    const key = Buffer.from(bytes).toString("hex");
+    if (key.length > this.maxKeyLength) {
+      throw new Error(
+        `key length is larger than maxKeyLength: key.length=${key.length}, maxKeyLength=${this.maxKeyLength}`
+      );
+    }
+    return key;
   }
 
   private decodePubkey(pubkeyHex: string): PubKey {
@@ -101,12 +114,22 @@ export class UserStore implements IUserStore {
     const mapKey = this.encodePubkey(pubkey);
     await this.mapStore.set(mapKey, registry);
   }
+
+  async remove(pubkey: PubKey) {
+    const mapKey = this.encodePubkey(pubkey);
+    await this.mapStore.del(mapKey);
+  }
+
+  async removeAll() {
+    await this.mapStore.clear();
+  }
 }
 
 export type THubRegistryWithProof = {
   hubRegistry: THubRegistryObj;
   merkleProof: MerkleProof;
 };
+
 const REGISTRY_STORE_PREFIX = "blind-find-hub-registry";
 /**
  * `RegistryStore` stores the mapping from `adminAddress` to `TUserRegistry`.
@@ -114,10 +137,10 @@ const REGISTRY_STORE_PREFIX = "blind-find-hub-registry";
 export class RegistryStore {
   private dbMap: IDBMap<THubRegistryWithProof>;
   constructor(private readonly adminAddress: BigInt, db: IAtomicDB) {
-    this.dbMap = new DBMap<THubRegistryWithProof>(REGISTRY_STORE_PREFIX, db);
+    this.dbMap = new DBMap<THubRegistryWithProof>(REGISTRY_STORE_PREFIX, db, this.getRegistryKey().length);
   }
 
-  private getRegistryKey() {
+  private getRegistryKey(): string {
     return "key";
   }
 

@@ -11,89 +11,78 @@ import { IAtomicDB } from "../src/interfaces";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 
-describe("LevelDB", () => {
-  let db: LevelDB;
-  let tmpDir: tmp.DirectoryResult;
+describe("AtomicDB", () => {
 
-  before(async () => {
-    tmpDir = await tmp.dir({ unsafeCleanup: true });
-    db = new LevelDB(tmpDir.path);
+  const testAtomicDB = async (db: IAtomicDB) => {
+    /* set and get */
+    const key0 = "key0";
+    const key1 = "key1";
+    const key2 = "key2";
+    const key3 = "key3";
+    // Get undefined when key is not found.p
+    expect(await db.get(key0)).to.be.undefined;
+    // Get the same data when succeeds.
+    const data = "456";
+    await db.set(key0, data);
+    expect(await db.get(key0)).to.eql(data);
+    // Get the latest set data.
+    const dataAnother = "789";
+    await db.set(key0, dataAnother);
+    expect(await db.get(key0)).to.eql(dataAnother);
+
+    /* set batch */
+    // Both succeed and are executed **atomically**.
+    await db.batch([
+      { type: "put", key: key1, value: "value1" },
+      { type: "put", key: key2, value: "value2" }
+    ]);
+    expect(await db.get(key1)).to.eql("value1");
+    expect(await db.get(key2)).to.eql("value2");
+
+    /* del */
+    // It's fine to delete a inexistent key
+    await db.del("keyInexistent");
+
+    // Delete and will get undefined.
+    await db.del(key0);
+    expect(await db.get(key0)).to.be.undefined;
+
+    // Clear
+    await db.set(key3, "value3");
+    await db.clear({gt: key3});
+    expect(await db.get(key1)).to.eql("value1");
+    expect(await db.get(key2)).to.eql("value2");
+    expect(await db.get(key3)).to.eql("value3");
+    await db.clear({lt: key1});
+    expect(await db.get(key1)).to.eql("value1");
+    expect(await db.get(key2)).to.eql("value2");
+    expect(await db.get(key3)).to.eql("value3");
+    await db.clear({lte: key1});
+    expect(await db.get(key1)).to.be.undefined;
+    expect(await db.get(key2)).to.eql("value2");
+    expect(await db.get(key3)).to.eql("value3");
+    await db.clear({gte: key3});
+    expect(await db.get(key1)).to.be.undefined;
+    expect(await db.get(key2)).to.eql("value2");
+    expect(await db.get(key3)).to.be.undefined;
+    await db.clear();
+    expect(await db.get(key2)).to.be.undefined;
+  }
+
+  it("MemoryDB", async () => {
+    const db = new MemoryDB();
+    await testAtomicDB(db);
+    await db.close();
   });
 
-  after(async () => {
+  it("LevelDB", async () => {
+    const tmpDir = await tmp.dir({ unsafeCleanup: true });
+    const db = new LevelDB(tmpDir.path);
+    await testAtomicDB(db);
     await db.close();
     await tmpDir.cleanup();
   });
 
-  it("set and get", async () => {
-    const key = "123";
-    // Get undefined when key is not found.
-    expect(await db.get(key)).to.be.undefined;
-    // Get the same data when succeeds.
-    const data = "456";
-    await db.set(key, data);
-    expect(await db.get(key)).to.eql(data);
-    // Get the latest set data.
-    const dataAnother = "789";
-    await db.set(key, dataAnother);
-    expect(await db.get(key)).to.to.eql(dataAnother);
-  });
-
-  it("batch", async () => {
-    // Both succeed and are executed **atomically**.
-    await db.batch([
-      { type: "put", key: "key0", value: "value0" },
-      { type: "put", key: "key1", value: "value1" }
-    ]);
-    expect(await db.get("key0")).to.eql("value0");
-    expect(await db.get("key1")).to.eql("value1");
-
-    // `del` fails with the key=null and thus put fails as well.
-    // NOTE: Use db.db to avoid type check on `key`.
-    await expect(
-      db.db.batch([
-        { type: "del", key: null },
-        { type: "put", key: "key2", value: "value2" }
-      ])
-    ).to.be.rejected;
-    expect(await db.get("key2")).to.be.undefined;
-  });
-});
-
-describe("MemoryDB", () => {
-  let db: MemoryDB;
-
-  before(() => {
-    db = new MemoryDB();
-  });
-
-  after(async () => {
-    await db.close();
-  });
-
-  it("set and get", async () => {
-    const key = "123";
-    // Get undefined when key is not found.p
-    expect(await db.get(key)).to.be.undefined;
-    // Get the same data when succeeds.
-    const data = "456";
-    await db.set(key, data);
-    expect(await db.get(key)).to.eql(data);
-    // Get the latest set data.
-    const dataAnother = "789";
-    await db.set(key, dataAnother);
-    expect(await db.get(key)).to.eql(dataAnother);
-  });
-
-  it("batch", async () => {
-    // Both succeed and are executed **atomically**.
-    await db.batch([
-      { type: "put", key: "key0", value: "value0" },
-      { type: "put", key: "key1", value: "value1" }
-    ]);
-    expect(await db.get("key0")).to.eql("value0");
-    expect(await db.get("key1")).to.eql("value1");
-  });
 });
 
 const isPubkeySame = (a: PubKey, b: PubKey) => {
@@ -102,8 +91,9 @@ const isPubkeySame = (a: PubKey, b: PubKey) => {
 
 describe("DBMap", () => {
 
-  const testAtomicDB = async (db: IAtomicDB) => {
-    const dbMap = new DBMap<PubKey>("map", db);
+  const testDBMap = async (db: IAtomicDB) => {
+    const maxKeyLength = 32;
+    const dbMap = new DBMap<PubKey>("map", db, maxKeyLength);
     // Initially length = 0;
     expect(await dbMap.getLength()).to.eql(0);
     const key0 = "key0";
@@ -148,6 +138,7 @@ describe("DBMap", () => {
     }
     expect(data.length).to.eql(2);
 
+    // Delete key
     await dbMap.del(key0);
     expect(await dbMap.getLength()).to.eql(1);
     // No warning when deleting an inexistent key.
@@ -155,20 +146,26 @@ describe("DBMap", () => {
     expect(await dbMap.getLength()).to.eql(1);
     await dbMap.del(key1);
     expect(await dbMap.getLength()).to.eql(0);
+
+    // Clear
+    await dbMap.set(key0, pubkey0);
+    await dbMap.set(key1, pubkey1);
+    expect(await dbMap.getLength()).to.eql(2);
+    await dbMap.clear();
+    expect(await dbMap.getLength()).to.eql(0);
   }
 
   it("MemoryDB", async () => {
     const db = new MemoryDB();
-    await testAtomicDB(db);
+    await testDBMap(db);
     await db.close();
   });
 
   it("LevelDB", async () => {
     const tmpDir = await tmp.dir({ unsafeCleanup: true });
     const db = new LevelDB(tmpDir.path);
-    await testAtomicDB(db);
+    await testDBMap(db);
     await db.close();
     await tmpDir.cleanup();
   });
-
 });
