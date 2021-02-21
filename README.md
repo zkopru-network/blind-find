@@ -48,10 +48,10 @@ Before proceeding, you should read sections Introduction and Roles in the [spec]
 Blind Find v1 [contract](https://kovan.etherscan.io/address/0xe57881d655309c9a20f469a95564beaeb93ce73a#code) is on [Kovan][kovan-etherscan] already.
 
 ### Public Hub
-A testing public [hub][spec-hub] is available for users to play with on Kovan.
+A public [hub][spec-hub] is available for users to play with on Kovan.
 - `hostname`: `blindfind.mhchia.com`
 - `port`: `5566`
-- `hubPubkeyBased64`: `WyI5NzA4ODY0Mjc4NjQxNzIwMjA3MzQwNjQwODk5MDQ5MDU0MjM5MTgwNDY2ODQzNzU0OTUyMzAxMTc1MzgxNTQ4NTMyMDc0MTc4NDM4IiwiMjEwOTg3MjgxMDM0MDU0ODg1NjYyMTY3MjI3OTI3NDExMzc3MzcxMzgxODg0MDAxOTUzMzY0NjE1MTQ2NjA5MDkxMTQyOTkzNDcyNzEiXQ==`
+- `hubPubkeyBased64`: `R3GJfyLwN3JjHyfnBLHhCPannm1rr1XBlMJAh/h0pS4=`
 
 \[WARNING\]: It's just a small testing hub server right now. There is no guarantee on its running and all data are subject to be erased.
 
