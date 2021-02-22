@@ -227,7 +227,7 @@ describe("Integration test for roles", function () {
     await general.cleanup();
   });
 
-  it.only("roles", async () => {
+  it("roles", async () => {
     /*
         Scenario 1: a hub candidate wants to register as a hub.
     */
@@ -289,38 +289,38 @@ describe("Integration test for roles", function () {
     expect(resUserJoinedGetJoinedHubsAfterParsed.length).to.eql(1);
     expect(resUserJoinedGetJoinedHubsAfterParsed[0].hubPubkey).to.eql(hubKeypair.pubKeyBase64Encoded);
 
-    // // Let `userAnother` search
-    // // Test: succeeds when searching for a user who has joined the hub.
-    // // Use tmpFile to store the result to workaround an issue in child_process
-    // //   Ref: https://stackoverflow.com/questions/59200052/nodejs-exec-spawn-stdout-cuts-off-the-stream-at-8192-characters/59322701#59322701
-    // const tmpFile = await tmp.tmpName();
-    // const userAnotherKeypair = parseCLIKeypair(userAnother.exec('getKeypair').stdout);
-    // const resUserAnotherSearch = userAnother.exec(`search ${hostname} ${hubPort} ${userJoinedKeypair.pubKeyBase64Encoded} > ${tmpFile}`);
-    // expect(resUserAnotherSearch.code).to.eql(0);
-    // const data = await fs.promises.readFile(tmpFile, { encoding: 'utf-8' });
-    // const proofBase64 = JSON.parse(data).base64Encoded;
-    // const proof = parseProofIndirectConnectionBase64Encoded(proofBase64);
-    // expect(proof.pubkeyA).to.eql(userAnotherKeypair.pubKey);
-    // expect(proof.pubkeyC).to.eql(userJoinedKeypair.pubKey);
+    // Let `userAnother` search
+    // Test: succeeds when searching for a user who has joined the hub.
+    // Use tmpFile to store the result to workaround an issue in child_process
+    //   Ref: https://stackoverflow.com/questions/59200052/nodejs-exec-spawn-stdout-cuts-off-the-stream-at-8192-characters/59322701#59322701
+    const tmpFile = await tmp.tmpName();
+    const userAnotherKeypair = parseCLIKeypair(userAnother.exec('getKeypair').stdout);
+    const resUserAnotherSearch = userAnother.exec(`search ${hostname} ${hubPort} ${userJoinedKeypair.pubKeyBase64Encoded} > ${tmpFile}`);
+    expect(resUserAnotherSearch.code).to.eql(0);
+    const data = await fs.promises.readFile(tmpFile, { encoding: 'utf-8' });
+    const proofBase64 = JSON.parse(data).base64Encoded;
+    const proof = parseProofIndirectConnectionBase64Encoded(proofBase64);
+    expect(proof.pubkeyA).to.eql(userAnotherKeypair.pubKey);
+    expect(proof.pubkeyC).to.eql(userJoinedKeypair.pubKey);
 
-    // // Test: fails when searching for a user who hasn't joined the hub.
-    // const randomPubkeyB64 = keypairToCLIFormat(genKeypair()).pubKeyBase64Encoded;
-    // const resUserAnotherSearchFailure = userAnother.exec(`search ${hostname} ${hubPort} ${randomPubkeyB64}`, { fatal: false });
-    // expect(resUserAnotherSearchFailure.code).to.eql(1);
+    // Test: fails when searching for a user who hasn't joined the hub.
+    const randomPubkeyB64 = keypairToCLIFormat(genKeypair()).pubKeyBase64Encoded;
+    const resUserAnotherSearchFailure = userAnother.exec(`search ${hostname} ${hubPort} ${randomPubkeyB64}`, { fatal: false });
+    expect(resUserAnotherSearchFailure.code).to.eql(1);
 
-    // // Test: Verify the proof with `verifyProof`
-    // const resUserAnotherVerifyProof = userAnother.exec(`verifyProof ${proofBase64}`);
-    // expect(resUserAnotherVerifyProof.code).to.eql(0);
-    // const wrongProof = {
-    //     pubkeyA: proof.pubkeyA,
-    //     pubkeyC: pubkeyFactoryExclude([proof.pubkeyC]),
-    //     adminAddress: proof.adminAddress,
-    //     proofOfSMP: proof.proofOfSMP,
-    //     proofSuccessfulSMP: proof.proofSuccessfulSMP,
-    // }
-    // const wrongProofBase64 = proofIndirectConnectionToCLIFormat(wrongProof).base64Encoded;
-    // const resUserAnotherVerifyProofFailed = userAnother.exec(`verifyProof ${wrongProofBase64}`);
-    // expect(resUserAnotherVerifyProofFailed.code).to.eql(1);
+    // Test: Verify the proof with `verifyProof`
+    const resUserAnotherVerifyProof = userAnother.exec(`verifyProof ${proofBase64}`);
+    expect(resUserAnotherVerifyProof.code).to.eql(0);
+    const wrongProof = {
+        pubkeyA: proof.pubkeyA,
+        pubkeyC: pubkeyFactoryExclude([proof.pubkeyC]),
+        adminAddress: proof.adminAddress,
+        proofOfSMP: proof.proofOfSMP,
+        proofSuccessfulSMP: proof.proofSuccessfulSMP,
+    }
+    const wrongProofBase64 = proofIndirectConnectionToCLIFormat(wrongProof).base64Encoded;
+    const resUserAnotherVerifyProofFailed = userAnother.exec(`verifyProof ${wrongProofBase64}`);
+    expect(resUserAnotherVerifyProofFailed.code).to.eql(1);
 
     // Test: `hub.removeUser` and `hub.removeAllUsers`
 
