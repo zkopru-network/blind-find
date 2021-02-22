@@ -312,6 +312,13 @@ describe("Integration test for roles", function () {
     // Kill the hub start process to release the lock on db, to read joinedUsers.
     hubStartProcess.kill("SIGKILL");
 
+    // Sleep 1 sec
+    await new Promise((res, rej) => {
+        setTimeout(() => {
+            res();
+        }, 1000);
+    });
+
     // Hub should have 3 joined users now
     const out = hub.exec('getJoinedUsers').stdout;
     console.log(`!@# out = `, out);
