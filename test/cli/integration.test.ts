@@ -309,11 +309,16 @@ describe("Integration test for roles", function () {
     const resUser4Join = user4.exec(`join ${hostname} ${hubPort} ${hubKeypair.pubKeyBase64Encoded}`);
     expect(resUser4Join.code).to.eql(0);
 
-    // Stop the hub process and see joinedUsers
-    hubStartProcess.kill();
+    // Kill the hub start process to release the lock on db, to read joinedUsers.
+    hubStartProcess.kill("SIGKILL");
 
     // Hub should have 3 joined users now
-    const joinedUsers = new Set(jsonStringToObj(hub.exec('getJoinedUsers').stdout));
+    const out = hub.exec('getJoinedUsers').stdout;
+    console.log(`!@# out = `, out);
+    const json = jsonStringToObj(out);
+    console.log(`!@# json = `, json);
+    const joinedUsers = new Set(json);
+    console.log(`!@# joinedUsers = `, joinedUsers);
     expect(joinedUsers.size).to.eql(3);
     expect(joinedUsers.has(userJoinedKeypair.pubKeyBase64Encoded)).to.be.true;
     expect(joinedUsers.has(user3Keypair.pubKeyBase64Encoded)).to.be.true;
