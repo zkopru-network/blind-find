@@ -5,6 +5,8 @@ import * as fs from "fs";
 import YAML from "yaml";
 import tmp from "tmp-promise";
 
+const { execFile } = require('child_process');
+
 import { expect } from 'chai';
 import { ethers } from "ethers";
 
@@ -12,7 +14,6 @@ import { configsFileName } from "../../src/cli/constants";
 import { jsonStringToObj, keypairToCLIFormat } from "../../src/cli/utils";
 import { parseProofIndirectConnectionBase64Encoded, proofIndirectConnectionToCLIFormat } from "../../src/cli/user";
 
-import { exec } from './utils';
 import { genKeypair, genPrivKey, PubKey, stringifyBigInts } from "maci-crypto";
 import { abi, bytecode } from "../../src/cli/contractInfo";
 
@@ -40,6 +41,10 @@ const getFreePort = async () => {
 
 tmp.setGracefulCleanup();
 
+const npx = 'npx';
+const tsNode = 'ts-node';
+const cliPath = path.join(__dirname, "../../src/cli/index.ts");
+
 class Role {
     constructor(
         readonly dataDir: tmp.DirectoryResult,
@@ -49,10 +54,28 @@ class Role {
     }
 
     exec(cmd: string, options?: any, loggerSilent?: boolean) {
-        if (!loggerSilent) {
-            return exec(`--data-dir ${this.dataDir.path} ${this.roleName} ${cmd}`, options);
+        if (options === undefined) {
+            options = { silent: true };
+        } else if (options.silent === undefined) {
+            options.silent = true;
+        }
+        // Don't throw when command fails.
+        shell.config.fatal = false;
+        let fullShellCmd: string;
+        if (loggerSilent) {
+            fullShellCmd = `${npx} ${tsNode} ${cliPath} --silent --data-dir ${this.dataDir.path} ${this.roleName} ${cmd}`;
         } else {
-            return exec(`--silent --data-dir ${this.dataDir.path} ${this.roleName} ${cmd}`, options);
+            fullShellCmd = `${npx} ${tsNode} ${cliPath}  --data-dir ${this.dataDir.path} ${this.roleName} ${cmd}`;
+        }
+        console.log("!@# fullShellCmd = ", fullShellCmd);
+        return shell.exec(fullShellCmd, options);
+    }
+
+    execFile(args: string[], loggerSilent?: boolean) {
+        if (loggerSilent) {
+            return execFile(npx, [tsNode, cliPath, '--silent', '--data-dir', this.dataDir.path, this.roleName, ...args]);
+        } else {
+            return execFile(npx, [tsNode, cliPath, '--data-dir', this.dataDir.path, this.roleName, ...args]);
         }
     }
 
@@ -230,7 +253,7 @@ describe("Integration test for roles", function () {
     */
     const hubKeypair = jsonStringToObj(hub.exec('getKeypair').stdout);
     // command: blind-find hub start
-    const hubStartProcess = hub.exec(`start`, { async: true }, false);
+    const hubStartProcess = hub.execFile(['start'], false);
     // Wait until hub is started
     const regex = /Listening on port (\d+)/;
     const hubPort = await new Promise<number>((res, rej) => {
@@ -310,18 +333,13 @@ describe("Integration test for roles", function () {
     expect(resUser4Join.code).to.eql(0);
 
     // Kill the hub start process to release the lock on db, to read joinedUsers.
-    hubStartProcess.kill("SIGKILL");
-
-    // Sleep 1 sec
-    await new Promise((res, rej) => {
-        setTimeout(() => {
-            res();
-        }, 1000);
-    });
+    hubStartProcess.kill();
 
     // Hub should have 3 joined users now
-    const out = hub.exec('getJoinedUsers').stdout;
+    const process = hub.exec('getJoinedUsers');
+    const out = process.stdout;
     console.log(`!@# out = `, out);
+    console.log(`!@# stderr = `, process.stderr);
     const json = jsonStringToObj(out);
     console.log(`!@# json = `, json);
     const joinedUsers = new Set(json);
