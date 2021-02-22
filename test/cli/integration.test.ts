@@ -204,7 +204,7 @@ describe("Integration test for roles", function () {
     await general.cleanup();
   });
 
-  it("roles", async () => {
+  it.only("roles", async () => {
     /*
         Scenario 1: a hub candidate wants to register as a hub.
     */
@@ -320,8 +320,10 @@ describe("Integration test for roles", function () {
     });
 
     // Hub should have 3 joined users now
-    const out = hub.exec('getJoinedUsers').stdout;
+    const process = hub.exec('getJoinedUsers');
+    const out = process.stdout;
     console.log(`!@# out = `, out);
+    console.log(`!@# stderr = `, process.stderr);
     const json = jsonStringToObj(out);
     console.log(`!@# json = `, json);
     const joinedUsers = new Set(json);
