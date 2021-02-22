@@ -3,7 +3,7 @@
 </p>
 
 # Blind Find v1
-*Blind Find* is a peer-to-peer network allowing private peer search proposed by Barry Whitehat and Kobi Gurkan. This repo implements the first version of Blind Find (i.e. **Blind Find v1**). Please read [Blind Find v1 Spec](specs/blind_find_v1.md) to learn how it works.
+*Blind Find* is a peer-to-peer network allowing private peer search proposed by Barry Whitehat and Kobi Gurkan. This repo implements the first version of Blind Find, **Blind Find v1**. Please read [Blind Find v1 Spec](specs/blind_find_v1.md) to learn how it works.
 
 ## Install
 You can install Blind Find either with [npm](#Install-with-npm) or building it from the [repo](#Build-from-the-repo).
@@ -42,30 +42,29 @@ npm link
 ```
 
 ## Get Started
-Before proceeding, you should read sections Introduction and Roles in the [spec](specs/blind_find_v1.md) to know what the roles are doing.
+Before proceeding, you should read the sections Introduction and Roles in the [spec](specs/blind_find_v1.md) to understand what each role is doing.
 
 ### Testnet
-Blind Find v1 [contract](https://kovan.etherscan.io/address/0xe57881d655309c9a20f469a95564beaeb93ce73a#code) is on [Kovan][kovan-etherscan] already.
+- [Kovan](https://kovan.etherscan.io/address/0xe57881d655309c9a20f469a95564beaeb93ce73a#code)
 
 ### Public Hub
-A public [hub][spec-hub] is available for users to play with on Kovan.
-- `hostname`: `blindfind.mhchia.com`
-- `port`: `5566`
-- `hubPubkeyBased64`: `R3GJfyLwN3JjHyfnBLHhCPannm1rr1XBlMJAh/h0pS4=`
+- Kovan
+  - `hostname`: `blindfind.mhchia.com`
+  - `port`: `5566`
+  - `hubPubkeyBased64`: `R3GJfyLwN3JjHyfnBLHhCPannm1rr1XBlMJAh/h0pS4=`
 
-\[WARNING\]: It's just a small testing hub server right now. There is no guarantee on its running and all data are subject to be erased.
+\[WARNING\]: There is no guarantee on public hubs' running and all data are subject to be erased.
 
 ### Command Line Interface (CLI)
 See [CLI document][cli-doc] for all available commands.
 
 ### Play with User CLI
-This section goes through how to run CLI as a [User][spec-user] and interact with the [public hub](#Public-Hub). You will learn how to use CLI to join the hub, search for yourself through the hub and generate a [Proof of Indirect Connection][spec-proof-of-indirect-connection], and verify the proof.
+This section goes through how to use [User][spec-user] CLI to interact with the [public hub](#Public-Hub). You will learn how to
+1. Join a hub.
+2. Search for yourself through the hub and generate a [Proof of Indirect Connection][spec-proof-of-indirect-connection].
+3. Verify the proof.
 
-Recap: A user can do the following things with a hub
-1. Join a hub and can be searched by other users.
-2. Search for other users. If user A successfully finds user B, user A can generate a Proof of Indirect Connection to prove it can reach B through some hub.
-
-Then let's try Blind Find [CLI][cli-doc]. Assume Blind Find is correctly [installed](#Install) and shell command `blind-find` exists. If not, run CLI with `npx ts-node src/cli/index.ts`.
+Ensure Blind Find is correctly [installed](#Install) and shell command `blind-find` exists. If not, run CLI with `npx ts-node src/cli/index.ts` instead.
 
 A data directory `$HOME/.blind_find` along with a config file `$HOME/.blind_find/configs.yaml` are created when you execute the command first time.
 
@@ -76,7 +75,7 @@ ConfigError: ~/.blind_find/configs.yaml is not found and thus a template is gene
     at async main (/Users/mhchia/projects/work/applied-zkp/blind-find/lib/cli/index.js:52:20)
 ```
 
-Open `configs.yaml`. You can see network configurations and a pre-generated valid `blindFindPrivkey`, i.e. the `"XXXXXXXXXXXX"` below.
+Open `~/.blind_find/configs.yaml`. You will see the network configurations and a pre-generated valid `blindFindPrivkey`, i.e. the `"XXXXXXXXXXXX"` below.
 
 ```yaml
 network:
@@ -87,7 +86,7 @@ network:
 blindFindPrivkey: "XXXXXXXXXXXX"
 ```
 
-By default, we're using [Infura][infura]. We need an API key to access Infura API. Register an account, create a project, and find the API key. It should be the hexidecimal postfix in your project endpoint. For example, if your endpoint is `https://kovan.infura.io/v3/123456abcdef123456abcdef`, then `123456abcdef123456abcdef` is the the API key. Paste it to the field `apiKey` like the following.
+By default, we use [Infura][infura] as the network provider. We need an API key to access Infura API. Register an account, create a project, and find the API key. It should be the hexidecimal postfix in your project endpoint. For example, if your endpoint is `https://kovan.infura.io/v3/123456abcdef123456abcdef`, then `123456abcdef123456abcdef` is the the API key. Paste it to the field `apiKey` like the following.
 
 ```yaml
 network:
@@ -124,12 +123,12 @@ Commands:
   join <hostname> <port> <hubPubkey>       join a hub
   search <hostname> <port> <targetPubkey>  search for a user through a hub
   getKeypair                               get user's keypair
-  verifyProof <proofBase64Encoded>         verify a Proof Of Indirect Connection
+  verifyProof <proofBase64Encoded>         verify a Proof of Indirect Connection
   getJoinedHubs                            get the hubs user already joined before
   help [command]                           display help for command
 ```
 
-Postfix the flag `--help` behind a command whenever you want to learn more about the command.
+Postfix the flag `--help` behind a command whenever you want to learn more about a command.
 
 ```bash
 $ blind-find user getKeypair --help
@@ -141,13 +140,13 @@ Options:
   -h, --help  display help for command
 ```
 
-To join the [public hub](#Public-Hub), run `join` with the hub's information. The command succeeds if there is no error coming out.
+Join the [public hub](#Public-Hub). The command succeeds if there is no error.
 
 ```bash
-$ blind-find user join blindfind.mhchia.com 5566 WyI5NzA4ODY0Mjc4NjQxNzIwMjA3MzQwNjQwODk5MDQ5MDU0MjM5MTgwNDY2ODQzNzU0OTUyMzAxMTc1MzgxNTQ4NTMyMDc0MTc4NDM4IiwiMjEwOTg3MjgxMDM0MDU0ODg1NjYyMTY3MjI3OTI3NDExMzc3MzcxMzgxODg0MDAxOTUzMzY0NjE1MTQ2NjA5MDkxMTQyOTkzNDcyNzEiXQ==
+$ blind-find user join blindfind.mhchia.com 5566 R3GJfyLwN3JjHyfnBLHhCPannm1rr1XBlMJAh/h0pS4=
 ```
 
-Then, you should be able to search for yourself. Use `getKeypair` to know your Blind Find keypair.
+You should be able to search for yourself. Use `getKeypair` to learn your keypair. Copy the content in the field `pubKeyBase64Encoded`.
 
 ```bash
 $ blind-find user getKeypair
@@ -161,7 +160,9 @@ $ blind-find user getKeypair
 }
 ```
 
-Run `search` with the hub's information and your public key encoded in base64 (i.e. the value in `pubKeyBase64Encoded` field) as the public key of the target user. It will take a few minutes or longer depending on how many users have joined the hub. When the command finishes, you will get a Proof Of Indirect Connection encoded in base64 in `base64Encoded` field. Because you are simultaneously the searcher and the target, both `pubkeySearcher` and `pubkeyTarget` fields should be your public key encoded in base64.
+Call `search` with public hub's hostname, port, and paste your public key encoded in base64.
+
+It will take a few minutes or longer depending on how many users have joined the hub. When the command finishes, you will get a [Proof of Indirect Connection][spec-proof-of-indirect-connection] encoded in base64 in `base64Encoded` field. Because you are simultaneously the searcher and the target, both `pubkeySearcher` and `pubkeyTarget` fields should be your public key encoded in base64.
 
 ```bash
 $ blind-find user search blindfind.mhchia.com 5566 PUBKEY_BASE64_ENCODED
@@ -188,46 +189,14 @@ Proof is correct!
 ```
 
 ### More about Hub and Admin
-For normal users, it should be just enough to play with User CLI. If you want to set up your own hub or admin, you can follow the following instructions.
-
-#### Play with Hub CLI
-To set up a new [hub][spec-hub], you need to be registered by the admin first.
-
-Call `createHubRegistry` to get your hub registry encoded in base64, i.e. the content inside the field `base64Encoded` in the output.
-
-```bash
-$ blind-find hub createHubRegistry
-{
-        "sig": {
-          ...
-        },
-        "pubkey": ...,
-        "adminAddress": ...,
-        "base64Encoded": "HUB_REGISTRY_BASE64_ENCODED"
-}
-```
-
-Send the hub registry encoded in base64 to admin. Admin should then call [`admin addHub`](#Play-with-Admin-CLI) to add your hub registry to the merkle tree and commit it on chain, and then send you back your hub registry along with the merkle proof encoded in base64.
-
-Set your hub registry along with the merkle proof encoded in base64 in your database. If the command succeeds, then registration is done.
-
-```bash
-$ blind-find hub setHubRegistryWithProof <HUB_REGISTRY_WITH_PROOF_BASE64>
-```
-
-Serve as a hub server, which allows users to join and search. Users need your `hostname`, `port`, and your hub public key to `join`, while they only need `hostname` and `port` to `search`. To stop the hub server, just press `Ctrl-C`.
-
-```bash
-$ blind-find hub start
-{"message":"HubServer: Listening on port 5566","level":"info"}
-Hub is listening on { address: '0.0.0.0', family: 'IPv4', port: 5566 } , with pubkey in base64 = ...
-Press Ctrl-C to exit
-```
+For normal users, it should be just enough to play with [user CLI](#Play-with-User-CLI). Read the following sections to learn how to
+1. Set up your own Blind Find v1 network.
+2. Register a new hub in a Blind Find v1 network.
 
 #### Play with Admin CLI
-Admin is the admin of [Blind Find v1 contract](contracts/BlindFindContract.sol). To become the admin of your own Blind Find v1 network, you need to deploy a Blind Find v1 contract on Ethereum network. [Admin CLI](src/cli/README.md#Admin) now only works with an [Externally Owned Account (EOA)](#eoa), instead of contracts.
+To run a new Blind Find v1 network, deploy a [Blind Find v1 contract](contracts/BlindFindContract.sol) on Ethereum network and the deployer is the admin. [Admin CLI](src/cli/README.md#Admin) now only works with an [Externally Owned Account (EOA)](#eoa), instead of contracts.
 
-To make CLI work with your deployed Blind Find v1 contract, you need to add the `address` and `atBlock` (block number where the contract resides) of the contract in the field `customContractAddress` in `configs.yaml`.
+To make CLI work with the deployed Blind Find v1 contract, add the `address` and `atBlock` (block number where the contract resides) of the contract in the field `customContractAddress` in `configs.yaml`.
 
 ```yaml
 network:
@@ -241,7 +210,7 @@ network:
 blindFindPrivkey: "XXXXXXXXXXXX"
 ```
 
-Also, to allow CLI to commit merkle roots to the contract, you need to add the private key of the EOA which deployed the contract in `admin.adminEthereumPrivkey` your `configs.yaml`.
+To allow CLI to commit merkle roots on the contract, add the private key of the EOA which deployed the contract in `admin.adminEthereumPrivkey` your `configs.yaml`.
 
 ```yaml
 network:
@@ -257,11 +226,45 @@ admin:
   adminEthereumPrivkey: "0x1234567890123456789012345678901234567890123456789012345678901234"
 ```
 
-To register a hub, call `addHub` and input the `hubRegistry` encoded in base64 generated by the hub requesting to be registered. Output is the merkle proof of the `hubRegistry` in the hub merkle tree. Make sure to send it back to the hub so that the hub can prove it has been registered.
+To register a hub, get the hub's registry encoded in base64 and add it. Output is the merkle proof of the hub registry in the hub merkle tree. Make sure to send it back to the hub so that the hub can prove itself has been registered.
 
 ```bash
 $ blind-find admin addHub <hubRegistryBase64>
 HUB_REGISTRY_WITH_PROOF_BASE64
+```
+
+#### Play with Hub CLI
+To set up a new [hub][spec-hub], be registered by the admin first.
+
+Get your hub registry encoded in base64, i.e. the content inside the field `base64Encoded` in the output.
+
+```bash
+$ blind-find hub createHubRegistry
+{
+        "sig": {
+          ...
+        },
+        "pubkey": ...,
+        "adminAddress": ...,
+        "base64Encoded": "HUB_REGISTRY_BASE64_ENCODED"
+}
+```
+
+Send the hub registry encoded in base64 to the admin. Admin should then call [`admin addHub`](#Play-with-Admin-CLI) to add your hub registry to the merkle tree and commit it on chain, and then send you back your hub registry along with the merkle proof encoded in base64.
+
+Set your hub registry along with the merkle proof encoded in base64 in your database. If the command succeeds, then registration is done.
+
+```bash
+$ blind-find hub setHubRegistryWithProof <HUB_REGISTRY_WITH_PROOF_BASE64>
+```
+
+Serve as a hub server, which allows users to join and search. Users need your `hostname`, `port`, and your hub public key to `join`, while they only need `hostname` and `port` to `search`. To stop the hub server, just press `Ctrl-C`.
+
+```bash
+$ blind-find hub start
+{"message":"HubServer: Listening on port 5566","level":"info"}
+Hub is listening on { address: '0.0.0.0', family: 'IPv4', port: 5566 } , with pubkey in base64 = ...
+Press Ctrl-C to exit
 ```
 
 [blind-find-ethresearch]: https://ethresear.ch/t/blind-find-private-social-network-search/6988
