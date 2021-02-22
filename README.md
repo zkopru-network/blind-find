@@ -3,7 +3,7 @@
 </p>
 
 # Blind Find v1
-*Blind Find* is a peer-to-peer network allowing private peer search proposed by Barry Whitehat and Kobi Gurkan. This repo implements the first version of Blind Find, **Blind Find v1**. Please read [Blind Find v1 Spec](specs/blind_find_v1.md) to learn how it works.
+*Blind Find* is a peer-to-peer network allowing private peer search proposed by Barry Whitehat and Kobi Gurkan. This repo implements the first version of Blind Find, **Blind Find v1**. Please read the [spec](specs/blind_find_v1.md) to learn how it works.
 
 ## Install
 You can install Blind Find either with [npm](#Install-with-npm) or building it from the [repo](#Build-from-the-repo).
