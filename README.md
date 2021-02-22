@@ -258,7 +258,7 @@ Set your hub registry along with the merkle proof encoded in base64 in your data
 $ blind-find hub setHubRegistryWithProof <HUB_REGISTRY_WITH_PROOF_BASE64>
 ```
 
-Serve as a hub server, which allows users to join and search. Users need your `hostname`, `port`, and your hub public key to `join`, while they only need `hostname` and `port` to `search`. To stop the hub server, just press `Ctrl-C`.
+Listen to users requests.
 
 ```bash
 $ blind-find hub start
