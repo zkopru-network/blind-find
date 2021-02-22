@@ -16,8 +16,8 @@ Unlike the ultimate version, Blind Find v1 is hierarchical. We have three roles 
 
 ### Hub
 
-A hub is essentially a [super node](https://en.wikipedia.org/wiki/Supernode_(networking)) which can serve multiple user requests simultaneously. Users can
-- Join a hub and then be searchable.
+A hub is a [super node](https://en.wikipedia.org/wiki/Supernode_(networking)) which can serve multiple user requests simultaneously. Users can
+- Join a hub and then be found by other users.
 - Search for other users who has joined the hub before.
 
 #### Registered as a hub
@@ -38,15 +38,15 @@ A user can join a [hub](#Hub) to make itself searchable by other users. It can a
 
 `joinHub(userPubkey: PublicKey, userSig: Signature, hubPubkey: PublicKey)`
 
-To join a hub, a user is required to sign a `hash(userPubkey ++ hubPubkey)` with their private key and hand the signature `userSig` with the corresponding `userPubkey` to the hub. The signature is to avoid hubs from arbitrarily adding a user without the user's authentication. Then, the hub also countersigns on the `joinMsg` and add it to its own database. These information is only stored by the hub privately.
+To join a hub, a user is required to sign a `hash(userPubkey ++ hubPubkey)` using their private key and send the signature `userSig` with the corresponding `userPubkey` to the hub. The signature is to avoid hubs from arbitrarily adding a user without their authentication. Then, the hub also countersigns on the `joinMsg` and add it to its own database. These information is only stored inside the hub and is used to generate zero-knowledge proofs.
 
 #### Search for user
 
 `searchForUser(hub: TCPIPAddress, target_user: PublicKey)`
 
-A user can ask a hub if it can reach another user *target user* through the hub. The search does not reveal the *target user* whom the user is searching for. Also, `hub` does not learn 1) if the search succeeds or not 2) who initiated the search (though the hub learns the initiator's TCP/IP address).
+A user search for other users by asking a hub if it can reach a *target user* through the hub. The search does not reveal the *target user* whom the user is searching for. Also, `hub` does not learn 1) if the search succeeds or not 2) who initiated the search (though the hub learns the initiator's TCP/IP address).
 
-To avoid the hub learning whom the user is looking for, [SMP](#SMP) is used to compare user identities, i.e. public ids. Only the user can learn whether *target user* is found.
+To avoid hubs learning whom the user is looking for, [SMP](#SMP) is used to compare user identities, i.e. public ids. Only the user can learn whether *target user* is found.
 
 After successfully finding the *target user* through a hub, the user can generate a [Proof of Indirect Connection][proof-of-indirect-connection-v1] to prove that it can reach the target peer through *some* hub, without leaking the hub's identity.
 
@@ -54,11 +54,9 @@ After successfully finding the *target user* through a hub, the user can generat
 
 [SMP][smp-wiki] protocol allows two entities to compare if their secrets are the same or not, without revealing other information.
 
-### ECC related Values and Functions
+We modified the ECC based SMP protocol from [OTR v4][otr-spec-v4] for performance purpose. Baby Jubjub and Poseidon hash are used due to their efficiency in zk-SNARK, instead of the original Ed448 with SHAKE-256. The following contents are largely referenced from [maci-crypto](https://github.com/appliedzkp/maci/blob/master/crypto/ts/index.ts) and [baby-jubjub](https://github.com/iden3/circomlib/blob/master/src/babyjub.js#L21).
 
-We modified the ECC based SMP protocol from [OTR v4][otr-spec-v4] for performance purpose. We use Baby Jubjub with Poseidon hash which runs efficiently in zk-SNARK, instead of the original Ed448 with SHAKE-256. The following contents are largely referenced from [maci-crypto](https://github.com/appliedzkp/maci/blob/master/crypto/ts/index.ts) and [baby-jubjub](https://github.com/iden3/circomlib/blob/master/src/babyjub.js#L21).
-
-#### Constants
+### Constants
 ```typescript
 // Generator of the subgroup of Baby Jubjub curve points group.
 G: babyJub.Base8 = (
@@ -69,7 +67,7 @@ G: babyJub.Base8 = (
 q = 21888242871839275222246405745257275088614511777268538073601725287587578984328 >> 8;
 ```
 
-#### Functions
+### Functions
 ```typescript
 // Poseidon hash. It's just an abstraction here. Which exactly we're going to call depends on the number of parameters.
 hash(params...): BigInt;
@@ -166,23 +164,23 @@ Assuming H initiates SMP with A.
 
 ## Proof Statements
 
-Continue using the example from the section [SMP Protocol](#Protocol). We assume another user C has joined hub H, and now A is searching for user C through hub H.
+Continue with the example we used in the section [SMP Protocol](#Protocol). Assume another user C has joined hub H, and now user A is searching for user C through hub H.
 
 ![](assets/user_a_search_for_user_c_through_hub_h.png)
 
-In Blind Find v1, a user runs SMP multiple times with a hub to search for other users. For each run of SMP, the secret on the user side is the public key of the user whom is being searched for, while the secret on the hub side is the public key of one of the user who has joined the hub. Assuming the hub has `N` joined users, then the hub runs SMP `N` times with the user and stops.
+In a search request, a user runs SMP multiple times with a hub, depending on how many users have joined the hub. For each run of SMP, the secret used by the user is the public key of the user whom is being searched for, while the secret used by the hub is the public key of one of the users who has joined the hub. Assuming the hub has `N` joined users, then the hub runs SMP `N` times with the user and then stops.
 
 ### Proof of SMP
 
 After each run of SMP, a Proof of SMP is created by hub H to prove to user A that:
-1) User C has joined a valid hub who has been permissioned by the admin. I.e. Hub H has an entry in the hub merkle tree and the signature in the entry is valid.
-2) SMP is run correctly on H's side, and the public key of user C is H's secret.
+1) User C has joined a valid hub who has been permissioned by the admin. I.e. hub H has an entry in the hub merkle tree and the signature in the entry is valid.
+2) SMP is run correctly on H's side, and the public key of user C is used as H's secret.
 
 ```
 Private inputs
     # To prove H is a hub, i.e. has an entry in the hub merkle tree on chain.
     registerNewHubMsg: the message for H to sign when registered as a hub.
-    merkleEntryH = (pubkeyH, sigH, sigAdmin): This is H's entry in the hub merkle tree. It should include H's signature, its public key, and admin's signature and public key.
+    merkleEntryH = (pubkeyH, sigH, sigAdmin): This is H's entry in the hub merkle tree. It must include H's signature, its public key, and admin's signature and public key.
     merklePathH: Merkle path to the hash of H's entry in the hub registry tree.
 
     # Both the hub and the user's authentication on the joining.
@@ -226,7 +224,7 @@ Constraints
 
 ### Proof of Successful SMP
 
-If any run SMP succeeds, this mean user A has found user C through hub H. Then, user A generates a Proof Of Successful SMP to prove
+If a SMP run succeeds, user A finds user C. User A then generates a Proof Of Successful SMP to prove
 - Secrets of both sides match in SMP, i.e. user C is found.
 - SMP is run by user A: only the user who has actually run this SMP can create this proof because it is the only one who knows `a3`. Also, user A signs on the final result of SMP, binding `pubkeyA` with this SMP run.
 
@@ -263,7 +261,7 @@ With two proofs, user A can prove that **user A can reach user C through a valid
 
 ### Defects of the current design
 
-Hubs can recognize proofs with SMP messages: if user A sends a Proof of Indirect Connection to the others and unfortunately the hub H gets the proof somehow. Hub H can identify the SMP messages in the proof and learn that user A has run SMP with hub H itself before. This makes hub H can correlate the public key and underlay address of user A. Currently, SMP messages must be public to correlate Proof Of SMP and Proof of Successful SMP, and thus we have this defect. We can later solve it if we change to a proof system with recursive proof construction.
+If user A sends a Proof of Indirect Connection to the others and the hub H receives the proof somehow, H can identify the SMP messages in the proof and learn that user A has run SMP with hub H itself before. This makes hub H can correlate the public key and underlay address of user A. Currently, SMP messages must be public to correlate Proof Of SMP and Proof of Successful SMP. We can later solve it if we change to a proof system with recursive proof construction.
 
 ## Future Works
 
@@ -275,7 +273,7 @@ However, decentralization is the trade-off because the admin can censor hubs and
 
 ### Blind Find v1.5
 
-In v1, a user can only search for the users who has joined the same hub as the hub it performs `search`. In other words, users are not able to search for others across hubs. In v1.5, we will support cross-hubs searches by connecting hubs with each other and supporting message proxying.
+In Blind Find v1, if users search for others through a hub, then they can only find the users who have joined the hub. In other words, users are not able to search for others across hubs. In v1.5, we will support cross-hubs searches by connecting hubs with each other and supporting message proxying.
 
 ![](assets/blind_find_v1.5.png)
 
