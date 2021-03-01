@@ -77,9 +77,9 @@ type TProofIndirectConnection = {
   proofSuccessfulSMP: TProof;
 };
 
-const genProofOfSMP = async (inputs: ProofOfSMPInput, circuit?: any) => {
+const genProofOfSMP = async (inputs: ProofOfSMPInput) => {
   const args = proofOfSMPInputsToCircuitArgs(inputs);
-  return await genProof(proofOfSMPPath, args, circuit);
+  return await genProof(proofOfSMPPath, args);
 };
 
 const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
@@ -151,12 +151,10 @@ const proofSuccessfulSMPInputsToCircuitArgs = (
 
 const genProofSuccessfulSMP = async (
   inputs: ProofSuccessfulSMPInput,
-  circuit?: any
 ) => {
   return await genProof(
     proofSuccessfulSMPPath,
     proofSuccessfulSMPInputsToCircuitArgs(inputs),
-    circuit
   );
 };
 
@@ -182,7 +180,7 @@ const getCircuitName = (circomFileBasename: string): string => {
  * @param inputs
  * @param circuit
  */
-const genProof = async (circomFullPath: string, inputs: any, circuit?: any) => {
+const genProof = async (circomFullPath: string, inputs: any) => {
   const circomFileBasename = path.basename(circomFullPath);
   const circuitName = getCircuitName(circomFileBasename);
   const circuitR1csPath = `${circuitName}.r1cs`;
@@ -190,21 +188,17 @@ const genProof = async (circomFullPath: string, inputs: any, circuit?: any) => {
   const paramsPath = `${circuitName}.params`;
   return await genProofAndPublicSignals(
     inputs,
-    circomFullPath,
     circuitR1csPath,
     wasmPath,
     paramsPath,
-    circuit
   );
 };
 
 const genProofAndPublicSignals = async (
   inputs: any,
-  circuitFilename: string,
   circuitR1csFilename: string,
   circuitWasmFilename: string,
   paramsFilename: string,
-  circuit?: any
 ) => {
   const paramsPath = path.join(buildDir, paramsFilename);
   const circuitR1csPath = path.join(buildDir, circuitR1csFilename);
@@ -218,10 +212,6 @@ const genProofAndPublicSignals = async (
 
   // TODO: should be changed to async later
   fs.writeFileSync(inputJsonPath, JSON.stringify(stringifyBigInts(inputs)));
-
-  if (!circuit) {
-    circuit = await compileAndLoadCircuit(circuitFilename);
-  }
 
   const snarkjsCmd = `node ${snarkjsCLI}`;
   const witnessCmd = `${snarkjsCmd} wc ${circuitWasmPath} ${inputJsonPath} ${witnessPath}`;
@@ -246,10 +236,9 @@ const genProofAndPublicSignals = async (
   );
   // TODO: should be changed to async later
   const proof = JSON.parse(fs.readFileSync(proofPath).toString());
-  await circuit.checkConstraints(witness);
 
   await tmpDir.cleanup();
-  return { proof, publicSignals, witness, circuit };
+  return { proof, publicSignals, witness };
 };
 
 const verifyProof = async (circomFilePath: string, proof: TProof) => {
