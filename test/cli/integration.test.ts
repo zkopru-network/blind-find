@@ -67,7 +67,6 @@ class Role {
         } else {
             fullShellCmd = `${npx} ${tsNode} ${cliPath}  --data-dir ${this.dataDir.path} ${this.roleName} ${cmd}`;
         }
-        console.log("!@# fullShellCmd = ", fullShellCmd);
         return shell.exec(fullShellCmd, options);
     }
 
@@ -336,14 +335,9 @@ describe("Integration test for roles", function () {
     hubStartProcess.kill();
 
     // Hub should have 3 joined users now
-    const process = hub.exec('getJoinedUsers');
-    const out = process.stdout;
-    console.log(`!@# out = `, out);
-    console.log(`!@# stderr = `, process.stderr);
+    const out = hub.exec('getJoinedUsers').stdout;
     const json = jsonStringToObj(out);
-    console.log(`!@# json = `, json);
     const joinedUsers = new Set(json);
-    console.log(`!@# joinedUsers = `, joinedUsers);
     expect(joinedUsers.size).to.eql(3);
     expect(joinedUsers.has(userJoinedKeypair.pubKeyBase64Encoded)).to.be.true;
     expect(joinedUsers.has(user3Keypair.pubKeyBase64Encoded)).to.be.true;
