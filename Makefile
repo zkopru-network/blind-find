@@ -27,7 +27,7 @@ $(BUILD_DIR)/%_pk.json $(BUILD_DIR)/%_vk.json: $(BUILD_DIR)/%.params $(BUILD_DIR
 
 # Compile circuits and perform trusted setup.
 # NOTE: It will be more precise to consider not only the entry circom files,
-#	but also the libraries used.
+#	but also the libraries on which they depend.
 $(BUILD_DIR)/%.r1cs $(BUILD_DIR)/%.wasm $(BUILD_DIR)/%.params: $(CIRCOM_DIR)/%.circom
 	@mkdir -p $(BUILD_DIR)
 	node ./node_modules/circom/cli.js $< -r $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.r1cs,$<) -w $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.wasm,$<)
