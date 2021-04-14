@@ -1,2 +1,3 @@
 export const PREFIX_REGISTER_NEW_HUB = "REGISTER_NEW_HUB";
 export const PREFIX_JOIN = "JOIN";
+export const PREFIX_HUB_CONNECTION = "HUB_CONNECTION";

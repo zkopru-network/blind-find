@@ -13,7 +13,7 @@ import {
   Keypair
 } from "maci-crypto";
 
-import { PREFIX_JOIN, PREFIX_REGISTER_NEW_HUB } from "./constants";
+import { PREFIX_JOIN, PREFIX_REGISTER_NEW_HUB, PREFIX_HUB_CONNECTION } from "./constants";
 import { ValueError } from "./smp/exceptions";
 import { bigIntMod } from "./smp/utils";
 import { LEVELS, ZERO_VALUE } from "./configs";
@@ -30,6 +30,7 @@ const hashStringToField = (s: string): BigInt => {
 const prefixJoinMsg = hashStringToField(PREFIX_JOIN);
 // should be 1122637059787783884121270614611449342946993875255423905974201070879309325140
 const prefixRegisterNewHub = hashStringToField(PREFIX_REGISTER_NEW_HUB);
+const prefixHubConnection = hashStringToField(PREFIX_HUB_CONNECTION);
 
 const signMsg = (privkey: PrivKey, hashedData: BigInt): Signature => {
   return sign(privkey, hashedData);
@@ -68,6 +69,19 @@ const getJoinHubMsgHashedData = (
   ]);
 };
 
+const getHubConnectionHashedData = (
+  hubPubkey0: PubKey,
+  hubPubkey1: PubKey,
+): BigInt => {
+  return hash5([
+    prefixHubConnection,
+    hubPubkey0[0],
+    hubPubkey0[1],
+    hubPubkey1[0],
+    hubPubkey1[1]
+  ]);
+};
+
 const getCounterSignHashedData = (sigToBeCounterSigned: Signature): BigInt => {
   return hash5([
     sigToBeCounterSigned.R8[0],
@@ -78,7 +92,11 @@ const getCounterSignHashedData = (sigToBeCounterSigned: Signature): BigInt => {
   ]);
 };
 
-class HubRegistry {
+interface ILeafEntry {
+  hash(): BigInt;
+}
+
+class HubRegistry implements ILeafEntry {
   constructor(
     readonly sig: Signature,
     readonly pubkey: PubKey,
@@ -98,7 +116,7 @@ class HubRegistry {
     return verifySignedMsg(signingMsg, this.sig, this.pubkey);
   }
 
-  hash() {
+  hash(): BigInt {
     return hash11([
       this.sig.R8[0],
       this.sig.R8[1],
@@ -110,8 +128,8 @@ class HubRegistry {
   }
 }
 
-class HubRegistryTree {
-  leaves: HubRegistry[];
+class MerkleTree<T extends ILeafEntry> {
+  leaves: T[];
   tree: IncrementalQuinTree;
   private mapHashToIndex: Map<BigInt, number>;
 
@@ -125,10 +143,7 @@ class HubRegistryTree {
     return this.leaves.length;
   }
 
-  insert(e: HubRegistry) {
-    if (!e.verify()) {
-      throw new ValueError(`registry is not valid: e=${e}`);
-    }
+  insert(e: T) {
     const registryHash = e.hash();
     const index = this.leaves.length;
     this.leaves.push(e);
@@ -136,11 +151,66 @@ class HubRegistryTree {
     this.mapHashToIndex.set(registryHash, index);
   }
 
-  getIndex(e: HubRegistry): number | undefined {
+  getIndex(e: T): number | undefined {
     const key = e.hash();
     return this.mapHashToIndex.get(key);
   }
 }
+
+class HubRegistryTree extends MerkleTree<HubRegistry> {
+}
+
+
+class HubConnectionRegistry implements ILeafEntry {
+  constructor(
+    readonly hubPubkey0: PubKey,
+    readonly hubSig0: Signature,
+    readonly hubPubkey1: PubKey,
+    readonly hubSig1: Signature,
+  ) {}
+
+  static fromKeypairs(hubKeypair0: Keypair, hubKeypair1: Keypair) {
+    const hubPubkey0 = hubKeypair0.pubKey;
+    const hubPubkey1 = hubKeypair1.pubKey;
+    const signingData = getHubConnectionHashedData(hubPubkey0, hubPubkey1);
+    const hubSig0 = signMsg(
+      hubKeypair0.privKey,
+      signingData,
+    );
+    const hubSig1 = signMsg(
+      hubKeypair1.privKey,
+      signingData,
+    );
+    return new HubConnectionRegistry(hubPubkey0, hubSig0, hubPubkey1, hubSig1);
+  }
+
+  verify(): boolean {
+    const signingMsg = getHubConnectionHashedData(this.hubPubkey0, this.hubPubkey1);
+    return (
+      verifySignedMsg(signingMsg, this.hubSig0, this.hubPubkey0) &&
+      verifySignedMsg(signingMsg, this.hubSig1, this.hubPubkey1)
+    );
+  }
+
+  hash(): BigInt {
+    return hash11([
+      this.hubSig0.R8[0],
+      this.hubSig0.R8[1],
+      this.hubSig0.S,
+      this.hubPubkey0[0],
+      this.hubPubkey0[1],
+      this.hubSig1.R8[0],
+      this.hubSig1.R8[1],
+      this.hubSig1.S,
+      this.hubPubkey1[0],
+      this.hubPubkey1[1],
+    ]);
+  }
+}
+
+class HubConnectionTree extends MerkleTree<HubConnectionRegistry> {
+}
+
 
 export {
   signMsg,
@@ -149,5 +219,7 @@ export {
   getCounterSignHashedData,
   getRegisterNewHubHashedData,
   HubRegistryTree,
-  HubRegistry
+  HubRegistry,
+  HubConnectionTree,
+  HubConnectionRegistry
 };

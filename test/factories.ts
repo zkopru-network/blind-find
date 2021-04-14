@@ -8,6 +8,7 @@ import {
 import {
   getCounterSignHashedData,
   getJoinHubMsgHashedData,
+  HubConnectionRegistry,
   HubRegistry,
   HubRegistryTree,
   signMsg
@@ -97,6 +98,19 @@ export const hubRegistryTreeFactory = (
     tree.insert(registry);
   }
   return tree;
+};
+
+export const hubConnectionRegistryFactory = (
+  hubKeypair0?: Keypair,
+  hubKeypair1?: Keypair,
+): HubConnectionRegistry => {
+  if (hubKeypair0 === undefined) {
+    hubKeypair0 = genKeypair();
+  }
+  if (hubKeypair1 === undefined) {
+    hubKeypair1 = genKeypair();
+  }
+  return HubConnectionRegistry.fromKeypairs(hubKeypair0, hubKeypair1);
 };
 
 export const successfulSMPMessagesFactory = (secret: BigInt = BigInt(1)) => {
