@@ -3,7 +3,7 @@ import { Keypair, PubKey, Signature } from "maci-crypto";
 import { AddressInfo } from "ws";
 
 import { logger } from "./logger";
-import { getCounterSignHashedData, signMsg, verifySignedMsg } from ".";
+import { getCounterSignHashedData, HubRegistry, signMsg, verifySignedMsg } from ".";
 import {
   RequestFailed,
   DatabaseCorrupted,
@@ -29,7 +29,7 @@ import {
   IWebSocketReadWriter
 } from "./websocket";
 import { TIMEOUT, MAXIMUM_TRIALS, TIMEOUT_LARGE } from "./configs";
-import { objToHubRegistry, THubRegistryObj } from "./dataProvider";
+import { THubRegistryObj } from "./";
 import { SMPStateMachine } from "./smp";
 import { hashPointToScalar } from "./utils";
 import { IAtomicDB, MerkleProof } from "./interfaces";
@@ -286,7 +286,7 @@ export class HubServer extends BaseServer {
         msg2: SMPMessage2Wire.fromTLV(msg2),
         msg3: SMPMessage3Wire.fromTLV(smpMsg3),
         proof: this.hubRegistryWithProof.merkleProof,
-        hubRegistry: objToHubRegistry(this.hubRegistryWithProof.hubRegistry),
+        hubRegistry: new HubRegistry(this.hubRegistryWithProof.hubRegistry),
         pubkeyC: pubkey,
         pubkeyHub: this.keypair.pubKey,
         sigJoinMsgC: userRegistry.userSig,

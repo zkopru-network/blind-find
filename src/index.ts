@@ -92,15 +92,20 @@ const getCounterSignHashedData = (sigToBeCounterSigned: Signature): BigInt => {
   ]);
 };
 
-interface ILeafEntry {
+interface ILeafEntry<T extends Object> {
   hash(): BigInt;
+  toObj(): T;
 }
 
-class HubRegistry implements ILeafEntry {
+type THubRegistryObj = {
+  sig: Signature;
+  pubkey: PubKey;
+  adminAddress: TEthereumAddress;
+};
+
+class HubRegistry implements ILeafEntry<THubRegistryObj> {
   constructor(
-    readonly sig: Signature,
-    readonly pubkey: PubKey,
-    readonly adminAddress: TEthereumAddress
+    readonly obj: THubRegistryObj
   ) {}
 
   static fromKeypair(keypair: Keypair, adminAddress: TEthereumAddress) {
@@ -108,65 +113,85 @@ class HubRegistry implements ILeafEntry {
       keypair.privKey,
       getRegisterNewHubHashedData(adminAddress)
     );
-    return new HubRegistry(sig, keypair.pubKey, adminAddress);
+    return new HubRegistry({
+      sig: sig,
+      pubkey: keypair.pubKey,
+      adminAddress: adminAddress
+    });
   }
 
   verify(): boolean {
-    const signingMsg = getRegisterNewHubHashedData(this.adminAddress);
-    return verifySignedMsg(signingMsg, this.sig, this.pubkey);
+    const signingMsg = getRegisterNewHubHashedData(this.obj.adminAddress);
+    return verifySignedMsg(signingMsg, this.obj.sig, this.obj.pubkey);
   }
 
   hash(): BigInt {
     return hash11([
-      this.sig.R8[0],
-      this.sig.R8[1],
-      this.sig.S,
-      this.pubkey[0],
-      this.pubkey[1],
-      this.adminAddress
+      this.obj.sig.R8[0],
+      this.obj.sig.R8[1],
+      this.obj.sig.S,
+      this.obj.pubkey[0],
+      this.obj.pubkey[1],
+      this.obj.adminAddress
     ]);
+  }
+
+  toObj() {
+    return this.obj;
   }
 }
 
-class MerkleTree<T extends ILeafEntry> {
-  leaves: T[];
+class IncrementalSMT<T extends Object> {
+  _leaves: ILeafEntry<T>[];
   tree: IncrementalQuinTree;
   private mapHashToIndex: Map<BigInt, number>;
 
   constructor(levels = LEVELS) {
     this.tree = new IncrementalQuinTree(levels, ZERO_VALUE, 2);
-    this.leaves = [];
+    this._leaves = [];
     this.mapHashToIndex = new Map<BigInt, number>();
   }
 
   public get length() {
-    return this.leaves.length;
+    return this._leaves.length;
   }
 
-  insert(e: T) {
+  insert(e: ILeafEntry<T>) {
     const registryHash = e.hash();
-    const index = this.leaves.length;
-    this.leaves.push(e);
+    const index = this._leaves.length;
+    this._leaves.push(e);
     this.tree.insert(registryHash);
     this.mapHashToIndex.set(registryHash, index);
   }
 
-  getIndex(e: T): number | undefined {
+  getIndex(e: ILeafEntry<T>): number | undefined {
     const key = e.hash();
     return this.mapHashToIndex.get(key);
   }
 }
 
-class HubRegistryTree extends MerkleTree<HubRegistry> {
+class HubRegistryTree extends IncrementalSMT<THubRegistryObj> {
+  public get leaves(): Array<HubRegistry> {
+    return this._leaves as Array<HubRegistry>;
+  }
+  insert(e: HubRegistry) {
+    return super.insert(e);
+  }
+  getIndex(e: HubRegistry) {
+    return super.getIndex(e);
+  }
 }
 
+type THubConnectionObj = {
+  hubPubkey0: PubKey;
+  hubSig0: Signature;
+  hubPubkey1: PubKey;
+  hubSig1: Signature;
+}
 
-class HubConnectionRegistry implements ILeafEntry {
+class HubConnectionRegistry implements ILeafEntry<THubConnectionObj> {
   constructor(
-    readonly hubPubkey0: PubKey,
-    readonly hubSig0: Signature,
-    readonly hubPubkey1: PubKey,
-    readonly hubSig1: Signature,
+    readonly obj: THubConnectionObj
   ) {}
 
   static fromKeypairs(hubKeypair0: Keypair, hubKeypair1: Keypair) {
@@ -181,36 +206,53 @@ class HubConnectionRegistry implements ILeafEntry {
       hubKeypair1.privKey,
       signingData,
     );
-    return new HubConnectionRegistry(hubPubkey0, hubSig0, hubPubkey1, hubSig1);
+    return new HubConnectionRegistry({
+      hubPubkey0,
+      hubSig0,
+      hubPubkey1,
+      hubSig1,
+    });
   }
 
   verify(): boolean {
-    const signingMsg = getHubConnectionHashedData(this.hubPubkey0, this.hubPubkey1);
+    const signingMsg = getHubConnectionHashedData(this.obj.hubPubkey0, this.obj.hubPubkey1);
     return (
-      verifySignedMsg(signingMsg, this.hubSig0, this.hubPubkey0) &&
-      verifySignedMsg(signingMsg, this.hubSig1, this.hubPubkey1)
+      verifySignedMsg(signingMsg, this.obj.hubSig0, this.obj.hubPubkey0) &&
+      verifySignedMsg(signingMsg, this.obj.hubSig1, this.obj.hubPubkey1)
     );
   }
 
   hash(): BigInt {
     return hash11([
-      this.hubSig0.R8[0],
-      this.hubSig0.R8[1],
-      this.hubSig0.S,
-      this.hubPubkey0[0],
-      this.hubPubkey0[1],
-      this.hubSig1.R8[0],
-      this.hubSig1.R8[1],
-      this.hubSig1.S,
-      this.hubPubkey1[0],
-      this.hubPubkey1[1],
+      this.obj.hubSig0.R8[0],
+      this.obj.hubSig0.R8[1],
+      this.obj.hubSig0.S,
+      this.obj.hubPubkey0[0],
+      this.obj.hubPubkey0[1],
+      this.obj.hubSig1.R8[0],
+      this.obj.hubSig1.R8[1],
+      this.obj.hubSig1.S,
+      this.obj.hubPubkey1[0],
+      this.obj.hubPubkey1[1],
     ]);
+  }
+
+  toObj(): THubConnectionObj {
+    return this.obj;
   }
 }
 
-class HubConnectionTree extends MerkleTree<HubConnectionRegistry> {
+class HubConnectionRegistryTree extends IncrementalSMT<THubConnectionObj> {
+  public get leaves(): Array<HubConnectionRegistry> {
+    return this._leaves as Array<HubConnectionRegistry>;
+  }
+  insert(e: HubConnectionRegistry) {
+    return super.insert(e);
+  }
+  getIndex(e: HubConnectionRegistry) {
+    return super.getIndex(e);
+  }
 }
-
 
 export {
   signMsg,
@@ -218,8 +260,12 @@ export {
   getJoinHubMsgHashedData,
   getCounterSignHashedData,
   getRegisterNewHubHashedData,
-  HubRegistryTree,
+  IncrementalSMT,
   HubRegistry,
-  HubConnectionTree,
-  HubConnectionRegistry
+  HubConnectionRegistry,
+  THubRegistryObj,
+  THubConnectionObj,
+  ILeafEntry,
+  HubRegistryTree,
+  HubConnectionRegistryTree,
 };

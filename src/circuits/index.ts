@@ -86,13 +86,14 @@ const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
   if (!inputs.hubRegistry.verify()) {
     throw new ValueError("registry is invalid");
   }
+  const hubRegistryObj = inputs.hubRegistry.toObj();
   const args = stringifyBigInts({
     merklePathElements: inputs.proof.pathElements,
     merklePathIndices: inputs.proof.indices,
     merkleRoot: inputs.proof.root,
-    sigHubRegistryR8: inputs.hubRegistry.sig.R8,
-    sigHubRegistryS: inputs.hubRegistry.sig.S,
-    adminAddress: inputs.hubRegistry.adminAddress,
+    sigHubRegistryR8: hubRegistryObj.sig.R8,
+    sigHubRegistryS: hubRegistryObj.sig.S,
+    adminAddress: hubRegistryObj.adminAddress,
     pubkeyC: inputs.pubkeyC,
     sigCR8: inputs.sigJoinMsgC.R8,
     sigCS: inputs.sigJoinMsgC.S,

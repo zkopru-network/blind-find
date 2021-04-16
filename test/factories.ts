@@ -11,7 +11,7 @@ import {
   HubConnectionRegistry,
   HubRegistry,
   HubRegistryTree,
-  signMsg
+  signMsg,
 } from "../src";
 import { SMPStateMachine } from "../src/smp";
 import { SMPState1, SMPState2 } from "../src/smp/state";
@@ -159,7 +159,7 @@ export const proofOfSMPInputsFactory = (levels: number = 32) => {
   const sigJoinMsgC = signedJoinMsg.userSig;
   const sigJoinMsgHub = signedJoinMsg.hubSig;
   const tree = hubRegistryTreeFactory(hubs, levels, adminAddress);
-  const hubRegistry = tree.leaves[hubIndex];
+  const hubRegistry = tree.leaves[hubIndex] as HubRegistry;
   const root = tree.tree.root;
   const proof = tree.tree.genMerklePath(hubIndex);
   const secret = hashPointToScalar(keypairC.pubKey);
@@ -174,9 +174,6 @@ export const proofOfSMPInputsFactory = (levels: number = 32) => {
     r4h
   } = successfulSMPMessagesFactory(secret);
 
-  if (!hubRegistry.verify()) {
-    throw new Error(`registry is invalid: hubIndex=${hubIndex}`);
-  }
   return {
     root,
     proof: proof as any,

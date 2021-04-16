@@ -25,7 +25,8 @@ const expect = chai.expect;
 describe("Serialization and Deserialization of wire messages", () => {
   it("GetMerkleProofReq", () => {
     const hubRegistry = hubRegistryFactory();
-    const req = new GetMerkleProofReq(hubRegistry.pubkey, hubRegistry.sig);
+    const hubRegistryObj = hubRegistry.toObj();
+    const req = new GetMerkleProofReq(hubRegistryObj.pubkey, hubRegistryObj.sig);
     const bytes = req.serialize();
     const reqFromBytes = GetMerkleProofReq.deserialize(bytes);
     expect(req.hubPubkey).to.eql(reqFromBytes.hubPubkey);

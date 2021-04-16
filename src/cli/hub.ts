@@ -7,7 +7,6 @@ import {
   keypairToCLIFormat,
   printObj, pubkeyFromCLIFormat, pubkeyToCLIFormat
 } from "./utils";
-import { hubRegistryToObj, objToHubRegistry } from "../dataProvider";
 import { hashLeftRight, IncrementalQuinTree } from "maci-crypto";
 import { HubRegistry } from "..";
 import { ValueError } from "../exceptions";
@@ -39,7 +38,7 @@ const buildCommandCreateHubRegistry = (config: IConfig) => {
       const { adminAddress, hubKeypair } = await loadHubSettings(config);
 
       const hubRegistry = HubRegistry.fromKeypair(hubKeypair, adminAddress);
-      const obj = hubRegistryToObj(hubRegistry);
+      const obj = hubRegistry.toObj();
       printObj({
         sig: obj.sig,
         pubkey: obj.pubkey,
@@ -74,11 +73,12 @@ const buildCommandSetHubRegistryWithProof = (config: IConfig) => {
           `hubRegistryWithProofObj does not have valid properties: hubRegistryWithProofObj=${hubRegistryWithProofObj}`
         );
       }
-      const hubRegistry = objToHubRegistry(hubRegistryWithProofObj.hubRegistry);
+      const hubRegistryObj = hubRegistryWithProofObj.hubRegistry;
+      const hubRegistry = new HubRegistry(hubRegistryObj);
       // Verify hubRegistry
-      if (hubRegistry.adminAddress !== adminAddress) {
+      if (hubRegistryObj.adminAddress !== adminAddress) {
         throw new ValueError(
-          `adminAddresses mismatch: hubRegistry.adminAddress=${hubRegistry.adminAddress}, ` +
+          `adminAddresses mismatch: hubRegistry.adminAddress=${hubRegistryObj.adminAddress}, ` +
             `adminAddress=${adminAddress}`
         );
       }
@@ -93,7 +93,7 @@ const buildCommandSetHubRegistryWithProof = (config: IConfig) => {
       // Store this valid hub registry and its proof.
       const db = config.getDB();
       await HubServer.setHubRegistryToDB(db, {
-        hubRegistry: hubRegistryToObj(hubRegistry),
+        hubRegistry: hubRegistryObj,
         merkleProof: merkleProof
       });
     });

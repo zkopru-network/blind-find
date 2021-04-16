@@ -157,14 +157,15 @@ describe("HubRegistry", function() {
       if (!registry.verify()) {
         throw new Error(`registry is invalid: leafIndex=${leafIndex}`);
       }
+      const obj = registry.toObj();
       const circuitInputs = {
-        pubkeyHub: registry.pubkey,
-        sigHubR8: registry.sig.R8,
-        sigHubS: registry.sig.S,
+        pubkeyHub: obj.pubkey,
+        sigHubR8: obj.sig.R8,
+        sigHubS: obj.sig.S,
         merklePathElements: proof.pathElements,
         merklePathIndices: proof.indices,
         merkleRoot: root,
-        adminAddress: registry.adminAddress
+        adminAddress: obj.adminAddress
       };
       const witness = await executeCircuit(circuit, circuitInputs);
       const isValid = getSignalByName(

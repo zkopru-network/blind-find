@@ -1,7 +1,6 @@
 import { hubConnectionRegistryFactory } from "./factories";
-import { HubConnectionRegistry, HubConnectionTree } from "../src";
+import { HubConnectionRegistry, HubConnectionRegistryTree } from "../src";
 import { secretFactory } from "../src/smp/v4/factories";
-import { genKeypair } from "maci-crypto";
 
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
@@ -17,17 +16,17 @@ describe("HubConnectionRegistry", () => {
   });
 
   it("`verify` fails if a signature is wrong", () => {
-    registry.hubSig0.S = secretFactory();
+    registry.obj.hubSig0.S = secretFactory();
     expect(registry.verify()).to.be.false;
   });
 });
 
 describe("HubConnectionTree", () => {
-  let tree: HubConnectionTree;
+  let tree: HubConnectionRegistryTree;
   let hubConnection0: HubConnectionRegistry;
   let hubConnection1: HubConnectionRegistry;
   before(() => {
-    tree = new HubConnectionTree();
+    tree = new HubConnectionRegistryTree();
   });
   it("insert", () => {
     expect(tree.length).to.eql(0);

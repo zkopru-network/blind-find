@@ -111,7 +111,7 @@ describe("HubServer", function() {
     }
     const db = new MemoryDB();
     await HubServer.setHubRegistryToDB(db, {
-      hubRegistry: hubRegistry,
+      hubRegistry: hubRegistry.toObj(),
       merkleProof: merkleProof
     });
     hub = new HubServer(
@@ -207,7 +207,7 @@ describe("HubServer", function() {
     const createHub = async (rateLimit: THubRateLimit) => {
       const db = new MemoryDB();
       await HubServer.setHubRegistryToDB(db, {
-        hubRegistry: hubRegistry,
+        hubRegistry: hubRegistry.toObj(),
         merkleProof: merkleProof
       });
       const hub = new HubServer(

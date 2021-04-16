@@ -67,12 +67,12 @@ describe("DataProviderServer", () => {
   it("request fails when registry is invalid", async () => {
     // Invalid registry because of the wrong pubkey
     const validRegistry = hubRegistryFactory();
-    const anotherPubkey = pubkeyFactoryExclude([validRegistry.pubkey]);
-    const invalidHubRegistry = new HubRegistry(
-      validRegistry.sig,
-      anotherPubkey,
-      validRegistry.adminAddress
-    );
+    const anotherPubkey = pubkeyFactoryExclude([validRegistry.obj.pubkey]);
+    const invalidHubRegistry = new HubRegistry({
+      sig: validRegistry.obj.sig,
+      pubkey: anotherPubkey,
+      adminAddress: validRegistry.obj.adminAddress
+    });
     await expect(
       sendGetMerkleProofReq(ip, port, invalidHubRegistry)
     ).to.be.rejectedWith(ValueError);
