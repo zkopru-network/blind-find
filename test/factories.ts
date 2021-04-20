@@ -8,6 +8,7 @@ import {
 import {
   getCounterSignHashedData,
   getJoinHubMsgHashedData,
+  getHubConnectionHashedData,
   HubConnectionRegistry,
   HubRegistry,
   HubRegistryTree,
@@ -110,7 +111,12 @@ export const hubConnectionRegistryFactory = (
   if (hubKeypair1 === undefined) {
     hubKeypair1 = genKeypair();
   }
-  return HubConnectionRegistry.fromKeypairs(hubKeypair0, hubKeypair1);
+  return new HubConnectionRegistry({
+    hubPubkey0: hubKeypair0.pubKey,
+    hubSig0: HubConnectionRegistry.partialSign(hubKeypair0, hubKeypair1.pubKey),
+    hubPubkey1: hubKeypair1.pubKey,
+    hubSig1: HubConnectionRegistry.partialSign(hubKeypair1, hubKeypair0.pubKey),
+  })
 };
 
 export const successfulSMPMessagesFactory = (secret: BigInt = BigInt(1)) => {

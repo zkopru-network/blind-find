@@ -3,7 +3,7 @@ import { Keypair, PubKey, Signature } from "maci-crypto";
 import { AddressInfo } from "ws";
 
 import { logger } from "./logger";
-import { getCounterSignHashedData, HubRegistry, signMsg, verifySignedMsg } from ".";
+import { getCounterSignHashedData, HubConnectionRegistry, HubRegistry, signMsg, verifySignedMsg } from ".";
 import {
   RequestFailed,
   DatabaseCorrupted,
@@ -346,6 +346,10 @@ export class HubServer extends BaseServer {
 
   async removeAllUsers() {
     await this.userStore.removeAll();
+  }
+
+  signConnection(targetHubPubkey: PubKey): Signature {
+    return HubConnectionRegistry.partialSign(this.keypair, targetHubPubkey);
   }
 }
 

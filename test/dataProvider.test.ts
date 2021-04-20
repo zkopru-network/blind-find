@@ -1,12 +1,13 @@
-import { hubRegistryFactory, adminAddressFactory } from "./factories";
+import { hubRegistryFactory, adminAddressFactory, hubConnectionRegistryFactory } from "./factories";
 import {
   DataProviderServer,
   sendGetMerkleProofReq,
-  HubRegistryTreeDB
+  HubRegistryTreeDB,
+  HubConnectionRegistryTreeDB,
 } from "../src/dataProvider";
 import { genKeypair, Keypair } from "maci-crypto";
 import { LEVELS } from "../src/configs";
-import { HubRegistry, HubRegistryTree } from "../src";
+import { HubRegistry, HubRegistryTree, HubConnectionRegistryTree } from "../src";
 import WebSocket from "ws";
 import { ValueError } from "../src/exceptions";
 import { TEthereumAddress } from "../src/types";
@@ -21,12 +22,14 @@ chai.use(chaiAsPromised);
 const expect = chai.expect;
 
 describe("DataProviderServer", () => {
-  let dataProvider: DataProviderServer;
-  let tree: HubRegistryTree;
-  let treeDB: HubRegistryTreeDB;
   let hub: Keypair;
   let adminAddress: TEthereumAddress;
   let hubRegistry: HubRegistry;
+  let dataProvider: DataProviderServer;
+  let hubRegistryTree: HubRegistryTree;
+  let hubRegistryTreeDB: HubRegistryTreeDB;
+  let hubConnectionRegistryTree: HubConnectionRegistryTree;
+  let hubConnectionRegistryTreeDB: HubConnectionRegistryTreeDB;
   let ip: string;
   let port: number;
   let atomicDB: IAtomicDB;
@@ -34,13 +37,20 @@ describe("DataProviderServer", () => {
   before(async () => {
     hub = genKeypair();
     adminAddress = adminAddressFactory();
-    atomicDB = new MemoryDB();
-    tree = new HubRegistryTree(LEVELS);
-    treeDB = new HubRegistryTreeDB(tree, atomicDB);
     hubRegistry = hubRegistryFactory(hub, adminAddress);
-    await treeDB.insert(hubRegistry);
-    expect(tree.length).to.eql(1);
-    dataProvider = new DataProviderServer(adminAddress, treeDB, {
+    atomicDB = new MemoryDB();
+    // HubRegistryTree
+    hubRegistryTree = new HubRegistryTree(LEVELS);
+    hubRegistryTreeDB = new HubRegistryTreeDB(hubRegistryTree, atomicDB);
+    await hubRegistryTreeDB.insert(hubRegistry);
+    // HubConnectionRegistryTree
+    hubConnectionRegistryTree = new HubConnectionRegistryTree(LEVELS);
+    hubConnectionRegistryTreeDB = new HubConnectionRegistryTreeDB(hubConnectionRegistryTree, atomicDB);
+    const anotherHub = genKeypair();
+    const hubConnectionRegistry = hubConnectionRegistryFactory(hub, anotherHub);
+    await hubConnectionRegistryTreeDB.insert(hubConnectionRegistry);
+
+    dataProvider = new DataProviderServer(adminAddress, hubRegistryTreeDB, {
       numAccess: 1000,
       refreshPeriod: 100000
     });
@@ -54,11 +64,21 @@ describe("DataProviderServer", () => {
     dataProvider.close();
   });
 
-  it("treeDB persistence", async () => {
+  it("hubRegistryTreeDB persistence", async () => {
     const treeDBFromDB = await HubRegistryTreeDB.fromDB(atomicDB, LEVELS);
-    expect(treeDBFromDB.tree.length).to.eql(treeDB.tree.length);
+    expect(treeDBFromDB.tree.length).to.eql(hubRegistryTreeDB.tree.length);
     for (const index in treeDBFromDB.tree.leaves) {
-      const leafOrig = treeDB.tree.leaves[index];
+      const leafOrig = hubRegistryTreeDB.tree.leaves[index];
+      const leafFromDB = treeDBFromDB.tree.leaves[index];
+      expect(leafOrig.hash()).to.eql(leafFromDB.hash());
+    }
+  });
+
+  it("hubConnectionRegistryTreeDB persistence", async () => {
+    const treeDBFromDB = await HubConnectionRegistryTreeDB.fromDB(atomicDB, LEVELS);
+    expect(treeDBFromDB.tree.length).to.eql(hubConnectionRegistryTreeDB.tree.length);
+    for (const index in treeDBFromDB.tree.leaves) {
+      const leafOrig = hubConnectionRegistryTreeDB.tree.leaves[index];
       const leafFromDB = treeDBFromDB.tree.leaves[index];
       expect(leafOrig.hash()).to.eql(leafFromDB.hash());
     }
@@ -90,7 +110,7 @@ describe("DataProviderServer", () => {
 
   it("requests fail when rate limit is reached", async () => {
     const ip = "localhost";
-    const dataProvider = new DataProviderServer(adminAddress, treeDB, {
+    const dataProvider = new DataProviderServer(adminAddress, hubRegistryTreeDB, {
       numAccess: 1,
       refreshPeriod: 100000
     });

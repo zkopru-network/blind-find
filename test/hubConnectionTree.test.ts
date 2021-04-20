@@ -21,7 +21,7 @@ describe("HubConnectionRegistry", () => {
   });
 });
 
-describe("HubConnectionTree", () => {
+describe("HubConnectionRegistryTree", () => {
   let tree: HubConnectionRegistryTree;
   let hubConnection0: HubConnectionRegistry;
   let hubConnection1: HubConnectionRegistry;

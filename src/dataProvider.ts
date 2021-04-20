@@ -1,5 +1,4 @@
 import * as http from "http";
-import { PubKey, Signature } from "maci-crypto";
 import { AddressInfo } from "ws";
 
 import { logger } from "./logger";
@@ -27,7 +26,7 @@ const PREFIX_HUB_CONNECTION = "blind-find-data-provider-hub-connection-leaves";
 // Result from `hash` is at most 32 bytes, to hex string it is length 64.
 const maxHubRegistryKeyLength = Scalar.size * 2;
 
-export class TreeDB<T extends Object> {
+class TreeDB<T extends Object> {
   dbMap: IDBMap<T>;
 
   constructor(readonly tree: IncrementalSMT<T>, dbPrefix: string, db: IAtomicDB) {
@@ -75,7 +74,7 @@ export class HubRegistryTreeDB extends TreeDB<THubRegistryObj> {
   }
 }
 
-export class HubConnectionTreeDB extends TreeDB<THubConnectionObj> {
+export class HubConnectionRegistryTreeDB extends TreeDB<THubConnectionObj> {
   constructor(readonly tree: HubConnectionRegistryTree, db: IAtomicDB) {
     super(tree, PREFIX_HUB_CONNECTION, db);
   }
@@ -87,7 +86,7 @@ export class HubConnectionTreeDB extends TreeDB<THubConnectionObj> {
       const registry = new HubConnectionRegistry(l.value);
       tree.insert(registry);
     }
-    return new HubConnectionTreeDB(tree, db);
+    return new HubConnectionRegistryTreeDB(tree, db);
   }
 }
 

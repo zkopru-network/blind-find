@@ -17,6 +17,7 @@ import { PREFIX_JOIN, PREFIX_REGISTER_NEW_HUB, PREFIX_HUB_CONNECTION } from "./c
 import { bigIntMod } from "./smp/utils";
 import { LEVELS, ZERO_VALUE } from "./configs";
 import { TEthereumAddress } from "./types";
+import { hashPointToScalar } from "./utils";
 
 const hashStringToField = (s: string): BigInt => {
   return bigIntMod(
@@ -68,16 +69,27 @@ const getJoinHubMsgHashedData = (
   ]);
 };
 
-const getHubConnectionHashedData = (
+const sortPubkeys = (pubkey0: PubKey, pubkey1: PubKey): [PubKey, PubKey] => {
+  const scalar0 = hashPointToScalar(pubkey0);
+  const scalar1 = hashPointToScalar(pubkey1);
+  if (scalar0 <= scalar1) {
+    return [pubkey0, pubkey1];
+  } else {
+    return [pubkey1, pubkey0];
+  }
+}
+
+export const getHubConnectionHashedData = (
   hubPubkey0: PubKey,
   hubPubkey1: PubKey,
 ): BigInt => {
+  const [sortedPubkey0, sortedPubkey1] = sortPubkeys(hubPubkey0, hubPubkey1);
   return hash5([
     prefixHubConnection,
-    hubPubkey0[0],
-    hubPubkey0[1],
-    hubPubkey1[0],
-    hubPubkey1[1]
+    sortedPubkey0[0],
+    sortedPubkey0[1],
+    sortedPubkey1[0],
+    sortedPubkey1[1],
   ]);
 };
 
@@ -193,24 +205,9 @@ class HubConnectionRegistry implements ILeafEntry<THubConnectionObj> {
     readonly obj: THubConnectionObj
   ) {}
 
-  static fromKeypairs(hubKeypair0: Keypair, hubKeypair1: Keypair) {
-    const hubPubkey0 = hubKeypair0.pubKey;
-    const hubPubkey1 = hubKeypair1.pubKey;
-    const signingData = getHubConnectionHashedData(hubPubkey0, hubPubkey1);
-    const hubSig0 = signMsg(
-      hubKeypair0.privKey,
-      signingData,
-    );
-    const hubSig1 = signMsg(
-      hubKeypair1.privKey,
-      signingData,
-    );
-    return new HubConnectionRegistry({
-      hubPubkey0,
-      hubSig0,
-      hubPubkey1,
-      hubSig1,
-    });
+  static partialSign(localKeypair: Keypair, targetHubPukey: PubKey): Signature {
+    const signingMsg = getHubConnectionHashedData(localKeypair.pubKey, targetHubPukey);
+    return signMsg(localKeypair.privKey, signingMsg);
   }
 
   verify(): boolean {
