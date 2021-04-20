@@ -1,5 +1,6 @@
 import {
   adminAddressFactory,
+  hubConnectionRegistryFactory,
   hubRegistryTreeFactory,
   signedJoinMsgFactory
 } from "./factories";
@@ -8,7 +9,7 @@ import {
   sendJoinHubReq,
   sendSearchReq,
   UserStore,
-  THubRateLimit
+  THubRateLimit, HubConnectionRegistryStore
 } from "../src/hub";
 import { genKeypair, Signature } from "maci-crypto";
 import { LEVELS, TIMEOUT, TIMEOUT_LARGE } from "../src/configs";
@@ -20,6 +21,7 @@ import { MemoryDB } from "../src/db";
 
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
+import { HubConnectionRegistry } from "../src";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -81,6 +83,46 @@ describe("UserStore", () => {
   });
 });
 
+describe("HubConnectionRegistryStore", () => {
+  const db = new MemoryDB();
+  const hubConnectionStore = new HubConnectionRegistryStore(db);
+  const hub0 = genKeypair();
+  const hub1 = genKeypair();
+  const hub2 = genKeypair();
+  const hubConnections = [
+    hubConnectionRegistryFactory(hub0, hub1).toObj(),
+    hubConnectionRegistryFactory(hub0, hub2).toObj(),
+  ];
+
+  it("set, get, and size succeed when adding reigstry", async () => {
+    await hubConnectionStore.set(hub1.pubKey, hubConnections[0]);
+    expect(await hubConnectionStore.getLength()).to.eql(1);
+    const registry = await hubConnectionStore.get(hub1.pubKey);
+    if (!registry) {
+      throw new Error("should not be undefined");
+    }
+    await hubConnectionStore.set(hub2.pubKey, hubConnections[1]);
+    expect(await hubConnectionStore.getLength()).to.eql(2);
+    const registryAnother = await hubConnectionStore.get(hub2.pubKey);
+    if (!registryAnother) {
+      throw new Error("should not be undefined");
+    }
+  });
+
+  it("HubConnectionRegistryStore is an Iterable", async () => {
+    const a: any[] = [];
+    for await (const item of hubConnectionStore) {
+      a.push(item);
+    }
+    expect(a.length).to.eql(await hubConnectionStore.getLength());
+  });
+
+  it("get fails when no matched entry", async () => {
+    const anotherUser = genKeypair();
+    expect(await hubConnectionStore.get(anotherUser.pubKey)).to.be.undefined;
+  });
+});
+
 describe("HubServer", function() {
   this.timeout(timeoutTotal);
 
@@ -90,11 +132,11 @@ describe("HubServer", function() {
   let hub: HubServer;
   let ip: string;
   let port: number;
-  const hubkeypair = genKeypair();
+  const hubKeypair = genKeypair();
   const adminAddress = adminAddressFactory();
   const user1 = genKeypair();
   const user2 = genKeypair();
-  const tree = hubRegistryTreeFactory([hubkeypair], LEVELS, adminAddress);
+  const tree = hubRegistryTreeFactory([hubKeypair], LEVELS, adminAddress);
   expect(tree.length).to.eql(1);
   const hubRegistry = tree.leaves[0];
   const merkleProof = tree.tree.genMerklePath(0);
@@ -115,7 +157,7 @@ describe("HubServer", function() {
       merkleProof: merkleProof
     });
     hub = new HubServer(
-      hubkeypair,
+      hubKeypair,
       adminAddress,
       hubRateLimit,
       db
@@ -141,7 +183,7 @@ describe("HubServer", function() {
   });
 
   it("`Join` request should succeed with correct request data", async () => {
-    const signedMsg = signedJoinMsgFactory(user1, hubkeypair);
+    const signedMsg = signedJoinMsgFactory(user1, hubKeypair);
     await sendJoinHubReq(
       ip,
       port,
@@ -154,7 +196,7 @@ describe("HubServer", function() {
 
     // Another request
 
-    const signedMsgAnother = signedJoinMsgFactory(user2, hubkeypair);
+    const signedMsgAnother = signedJoinMsgFactory(user2, hubKeypair);
     await sendJoinHubReq(
       ip,
       port,
@@ -182,7 +224,7 @@ describe("HubServer", function() {
     //  the request is indeed valid. We can let the server revert if timeout happens.
     //  However, it requires additional designs.
     // Invalid registry because of the wrong pubkey
-    const signedMsg = signedJoinMsgFactory(undefined, hubkeypair);
+    const signedMsg = signedJoinMsgFactory(undefined, hubKeypair);
     const timeoutExpectedToFail = 10;
     await expect(
       sendJoinHubReq(
@@ -197,9 +239,9 @@ describe("HubServer", function() {
   });
 
   it("requests fail when rate limit is reached", async () => {
-    const hubkeypair = genKeypair();
+    const hubKeypair = genKeypair();
     const adminAddress = adminAddressFactory();
-    const tree = hubRegistryTreeFactory([hubkeypair], LEVELS, adminAddress);
+    const tree = hubRegistryTreeFactory([hubKeypair], LEVELS, adminAddress);
     expect(tree.length).to.eql(1);
     const hubRegistry = tree.leaves[0];
     const merkleProof = tree.tree.genMerklePath(0);
@@ -211,7 +253,7 @@ describe("HubServer", function() {
         merkleProof: merkleProof
       });
       const hub = new HubServer(
-        hubkeypair,
+        hubKeypair,
         adminAddress,
         rateLimit,
         db
@@ -231,7 +273,7 @@ describe("HubServer", function() {
         search: normalRateLimit,
         global: normalRateLimit,
       });
-      const signedMsg = signedJoinMsgFactory(user1, hubkeypair);
+      const signedMsg = signedJoinMsgFactory(user1, hubKeypair);
       await expect(
         sendJoinHubReq(
           ip,
@@ -264,7 +306,7 @@ describe("HubServer", function() {
         search: normalRateLimit,
         global: zeroRateLimit,
       });
-      const signedMsg = signedJoinMsgFactory(user1, hubkeypair);
+      const signedMsg = signedJoinMsgFactory(user1, hubKeypair);
       await expect(
         sendJoinHubReq(
           ip,
@@ -278,4 +320,18 @@ describe("HubServer", function() {
       hub.close();
     })();
   });
+
+  it('Hub.signHubConnectionRegistry', async () => {
+    const hubKeypair1 = genKeypair();
+    const sig0 = hub.signHubConnectionRegistry(hubKeypair1.pubKey);
+    const sig1 = HubConnectionRegistry.partialSign(hubKeypair1, hubKeypair.pubKey);
+    const hubConnectionRegistry = new HubConnectionRegistry({
+      hubPubkey0: hubKeypair.pubKey,
+      hubPubkey1: hubKeypair1.pubKey,
+      hubSig0: sig0,
+      hubSig1: sig1,
+    });
+    expect(hubConnectionRegistry.verify()).to.be.true;
+  });
+
 });

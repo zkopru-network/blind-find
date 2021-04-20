@@ -3,7 +3,7 @@ import { Keypair, PubKey, Signature } from "maci-crypto";
 import { AddressInfo } from "ws";
 
 import { logger } from "./logger";
-import { getCounterSignHashedData, HubConnectionRegistry, HubRegistry, signMsg, verifySignedMsg } from ".";
+import { getCounterSignHashedData, HubConnectionRegistry, HubRegistry, signMsg, THubConnectionObj, verifySignedMsg } from ".";
 import {
   RequestFailed,
   DatabaseCorrupted,
@@ -54,35 +54,30 @@ type TSMPResult = {
   proofOfSMP: TProof;
 };
 
-interface IUserStore extends AsyncIterable<TIterItem> {
-  get(pubkey: PubKey): Promise<TUserRegistry | undefined>;
-  set(pubkey: PubKey, registry: TUserRegistry): Promise<void>;
+interface IMapPubkeyStore<T extends Object> extends AsyncIterable<[PubKey, T]> {
+  get(pubkey: PubKey): Promise<T | undefined>;
+  set(pubkey: PubKey, registry: T): Promise<void>;
   getLength(): Promise<number>;
   remove(pubkey: PubKey): Promise<void>;
   removeAll(): Promise<void>;
 }
 
-const USER_STORE_PREFIX = "blind-find-hub-users";
-/**
- * `UserStore` stores the mapping from `Pubkey` to `TUserRegistry`.
- */
-export class UserStore implements IUserStore {
-  private mapStore: IDBMap<TUserRegistry>;
+class MapPubkeyStore<T extends Object> implements IMapPubkeyStore<T> {
+  private mapStore: IDBMap<T>;
   maxKeyLength = Point.size * 2;
 
-  constructor(db: IAtomicDB) {
-    this.mapStore = new DBMap<TUserRegistry>(USER_STORE_PREFIX, db, this.maxKeyLength);
+  constructor(prefix: string, db: IAtomicDB) {
+    this.mapStore = new DBMap<T>(prefix, db, this.maxKeyLength);
   }
 
   async getLength() {
     return await this.mapStore.getLength();
   }
 
-  async *[Symbol.asyncIterator]() {
-
+  async *[Symbol.asyncIterator](){
     for await (const obj of this.mapStore) {
       const pubkey = this.decodePubkey(obj.key);
-      yield [pubkey, obj.value] as TIterItem;
+      yield [pubkey, obj.value] as [PubKey, T];
     }
   }
 
@@ -107,7 +102,7 @@ export class UserStore implements IUserStore {
     return await this.mapStore.get(mapKey);
   }
 
-  async set(pubkey: PubKey, registry: TUserRegistry) {
+  async set(pubkey: PubKey, registry: T) {
     const mapKey = this.encodePubkey(pubkey);
     await this.mapStore.set(mapKey, registry);
   }
@@ -122,6 +117,16 @@ export class UserStore implements IUserStore {
   }
 }
 
+const USER_STORE_PREFIX = "blind-find-hub-users";
+/**
+ * `UserStore` stores the mapping from `Pubkey` to `TUserRegistry`.
+ */
+export class UserStore extends MapPubkeyStore<TUserRegistry> {
+  constructor(db: IAtomicDB) {
+    super(USER_STORE_PREFIX, db);
+  }
+}
+
 export type THubRegistryWithProof = {
   hubRegistry: THubRegistryObj;
   merkleProof: MerkleProof;
@@ -131,7 +136,7 @@ const REGISTRY_STORE_PREFIX = "blind-find-hub-registry";
 /**
  * `RegistryStore` stores the mapping from `adminAddress` to `TUserRegistry`.
  */
-export class RegistryStore {
+class RegistryStore {
   private dbMap: IDBMap<THubRegistryWithProof>;
   constructor(private readonly adminAddress: BigInt, db: IAtomicDB) {
     this.dbMap = new DBMap<THubRegistryWithProof>(REGISTRY_STORE_PREFIX, db, this.getRegistryKey().length);
@@ -162,6 +167,16 @@ export class RegistryStore {
   }
 }
 
+const CONNECTION_REGISTRY_STORE_PREFIX = "blind-find-hub-connection-registry";
+/**
+ * `HubConnectionRegistryStore` stores the mapping from `targetHubPubkey` to `THubConnectionRegistry`.
+ */
+export class HubConnectionRegistryStore extends MapPubkeyStore<THubConnectionObj> {
+  constructor(db: IAtomicDB) {
+    super(CONNECTION_REGISTRY_STORE_PREFIX, db);
+  }
+}
+
 export type THubRateLimit = {
   global: TRateLimitParams;
   join: TRateLimitParams;
@@ -177,8 +192,9 @@ export type THubRateLimit = {
  */
 export class HubServer extends BaseServer {
   name = "HubServer";
-  userStore: IUserStore;
+  userStore: UserStore;
   registryStore: RegistryStore;
+  connectionRegistryStore: HubConnectionRegistryStore;
 
   joinRateLimiter: IIPRateLimiter;
   searchRateLimiter: IIPRateLimiter;
@@ -197,6 +213,7 @@ export class HubServer extends BaseServer {
     super();
     this.userStore = new UserStore(db);
     this.registryStore = new RegistryStore(adminAddress, db);
+    this.connectionRegistryStore = new HubConnectionRegistryStore(db);
     this.joinRateLimiter = new TokenBucketRateLimiter(rateLimit.join);
     this.searchRateLimiter = new TokenBucketRateLimiter(rateLimit.search);
     this.globalRateLimiter = new TokenBucketRateLimiter(rateLimit.global);
@@ -348,9 +365,14 @@ export class HubServer extends BaseServer {
     await this.userStore.removeAll();
   }
 
-  signConnection(targetHubPubkey: PubKey): Signature {
+  signHubConnectionRegistry(targetHubPubkey: PubKey): Signature {
     return HubConnectionRegistry.partialSign(this.keypair, targetHubPubkey);
   }
+
+  async setHubConnectionRegistry(remotePubkey: PubKey, r: HubConnectionRegistry) {
+    await this.connectionRegistryStore.set(remotePubkey, r.toObj());
+  }
+
 }
 
 export const sendJoinHubReq = async (
