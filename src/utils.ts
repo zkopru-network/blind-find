@@ -1,4 +1,3 @@
-import BN from "bn.js";
 import { hash5 } from "maci-crypto";
 import { ECPoint } from "./smp/v4/types";
 
@@ -51,7 +50,3 @@ export class AsyncEvent {
 export const hashPointToScalar = (point: ECPoint): BigInt => {
   return hash5([point[0], point[1], BigInt(0), BigInt(0), BigInt(0)]);
 };
-
-export const bigIntToHexString = (n: BigInt): string => {
-  return new BN(n.toString()).toString("hex");
-}

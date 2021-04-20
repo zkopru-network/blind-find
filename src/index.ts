@@ -14,7 +14,6 @@ import {
 } from "maci-crypto";
 
 import { PREFIX_JOIN, PREFIX_REGISTER_NEW_HUB, PREFIX_HUB_CONNECTION } from "./constants";
-import { ValueError } from "./smp/exceptions";
 import { bigIntMod } from "./smp/utils";
 import { LEVELS, ZERO_VALUE } from "./configs";
 import { TEthereumAddress } from "./types";

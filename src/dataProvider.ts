@@ -19,7 +19,6 @@ import {
   TRateLimitParams,
   IWebSocketReadWriter
 } from "./websocket";
-import { bigIntToHexString } from "./utils";
 import { Scalar } from "./smp/v4/serialization";
 
 const PREFIX_HUB_REGISTRY = "blind-find-data-provider-hub-registry-leaves";
@@ -37,7 +36,7 @@ export class TreeDB<T extends Object> {
 
   private getDBKey(e: ILeafEntry<T>): string {
     const h = e.hash();
-    const keyHex = bigIntToHexString(h);
+    const keyHex = h.toString(16);
     if (keyHex.length > maxHubRegistryKeyLength) {
       throw new Error(
         `keyHex is longer than maxKeyLength: keyHex=${keyHex}, maxKeyLength=${maxHubRegistryKeyLength}`

@@ -1,7 +1,5 @@
-import BN from "bn.js";
 import { BigNumber, Contract, ethers, Event } from "ethers";
 import { SNARK_FIELD_SIZE } from "maci-crypto";
-import { bigIntToHexString } from "./utils";
 
 const bigNumberToBigInt = (n: BigNumber) => {
   return BigInt(n.toString());
@@ -19,7 +17,7 @@ export const ethAddressToBigInt = (address: string): BigInt => {
 }
 
 export const bigIntToEthAddress = (n: BigInt): string => {
-  return ethers.utils.getAddress('0x' + bigIntToHexString(n));
+  return ethers.utils.getAddress('0x' + n.toString(16));
 }
 
 export class BlindFindContract {

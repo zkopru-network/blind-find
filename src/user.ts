@@ -13,7 +13,7 @@ import { IAtomicDB } from "./interfaces";
 import { InvalidProof } from "./smp/exceptions";
 import { Scalar } from "./smp/v4/serialization";
 import { TEthereumAddress } from "./types";
-import { bigIntToHexString, hashPointToScalar } from "./utils";
+import { hashPointToScalar } from "./utils";
 import { BlindFindContract } from "./web3";
 
 export type TJoinedHubEntry = {
@@ -115,7 +115,7 @@ export class User {
   }
 
   private getDBEntryKey(hubPubkey: PubKey): string {
-    const key = bigIntToHexString(hashPointToScalar(hubPubkey));
+    const key = hashPointToScalar(hubPubkey).toString(16);
     if (key.length > this.maxKeyLength) {
       throw new Error(
         `key length is larger than maxKeyLength: key.length=${key.length}, maxKeyLength=${this.maxKeyLength}`
