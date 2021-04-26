@@ -7,7 +7,7 @@ import { getCounterSignHashedData, HubConnectionRegistry, HubRegistry, signMsg, 
 import {
   RequestFailed,
   DatabaseCorrupted,
-  HubRegistryNotFound
+  HubRegistryNotFound, HubConnectionRegistryNotFound
 } from "./exceptions";
 import {
   JoinReq,
@@ -31,9 +31,9 @@ import {
 import { TIMEOUT, MAXIMUM_TRIALS, TIMEOUT_LARGE } from "./configs";
 import { THubRegistryObj } from "./";
 import { SMPStateMachine } from "./smp";
-import { hashPointToScalar } from "./utils";
+import { hashPointToScalar, isPubkeySame } from "./utils";
 import { IAtomicDB, MerkleProof } from "./interfaces";
-import { genProofOfSMP, TProof } from "./circuits";
+import { genProofOfSMP, genProofSaltedConnection, saltPubkey, TProof } from "./circuits";
 import { IDBMap, DBMap } from "./db";
 import { SMPState1, SMPState2 } from "./smp/state";
 import {
@@ -167,11 +167,16 @@ class RegistryStore {
   }
 }
 
+export type THubConnectionWithProof = {
+  hubConnection: THubConnectionObj;
+  merkleProof: MerkleProof;
+}
+
 const CONNECTION_REGISTRY_STORE_PREFIX = "blind-find-hub-connection-registry";
 /**
  * `HubConnectionRegistryStore` stores the mapping from `targetHubPubkey` to `THubConnectionRegistry`.
  */
-export class HubConnectionRegistryStore extends MapPubkeyStore<THubConnectionObj> {
+export class HubConnectionRegistryStore extends MapPubkeyStore<THubConnectionWithProof> {
   constructor(db: IAtomicDB) {
     super(CONNECTION_REGISTRY_STORE_PREFIX, db);
   }
@@ -365,12 +370,51 @@ export class HubServer extends BaseServer {
     await this.userStore.removeAll();
   }
 
-  signHubConnectionRegistry(targetHubPubkey: PubKey): Signature {
-    return HubConnectionRegistry.partialSign(this.keypair, targetHubPubkey);
+  async setHubConnectionRegistry(remotePubkey: PubKey, e: THubConnectionWithProof) {
+    await this.connectionRegistryStore.set(remotePubkey, e);
   }
 
-  async setHubConnectionRegistry(remotePubkey: PubKey, r: HubConnectionRegistry) {
-    await this.connectionRegistryStore.set(remotePubkey, r.toObj());
+  async genProofSaltedConnection(targetPubkey: PubKey) {
+    const hubConnectionRegistryWithProof = await this.connectionRegistryStore.get(targetPubkey);
+    if (hubConnectionRegistryWithProof === undefined) {
+      throw new HubConnectionRegistryNotFound();
+    }
+    const hubConectionRegistry = new HubConnectionRegistry(hubConnectionRegistryWithProof.hubConnection);
+    const sortedHubConnectionRegistry = hubConectionRegistry.toSorted();
+    // hubPubkey
+    let creatorIndex: number;
+    if (
+      isPubkeySame(this.keypair.pubKey, sortedHubConnectionRegistry.hubPubkey0)
+    ) {
+      if (!isPubkeySame(targetPubkey, sortedHubConnectionRegistry.hubPubkey1)) {
+        throw new Error(`targetPubkey mismatches sorted.hubPubkey1`);
+      }
+      creatorIndex = 0;
+    } else if (isPubkeySame(this.keypair.pubKey, sortedHubConnectionRegistry.hubPubkey1)) {
+      if (!isPubkeySame(targetPubkey, sortedHubConnectionRegistry.hubPubkey0)) {
+        throw new Error(`targetPubkey mismatches sorted.hubPubkey0`);
+      }
+      creatorIndex = 1;
+    } else {
+      throw new Error(
+        'creator\'s public key is not found in hub connection registry'
+      );
+    }
+    const hubRegistryWithProof = await this.registryStore.get();
+    const hubRegistry = new HubRegistry(hubRegistryWithProof.hubRegistry);
+    const proof = genProofSaltedConnection({
+      creator: BigInt(creatorIndex),
+      hubPubkey0: sortedHubConnectionRegistry.hubPubkey0,
+      hubPubkey1: sortedHubConnectionRegistry.hubPubkey1,
+      creatorHubRegistryMerkleProof: hubRegistryWithProof.merkleProof,
+      creatorHubRegistry: hubRegistry,
+      hubConnectionRegistry: hubConectionRegistry,
+      hubConnectionMerkleProof: hubConnectionRegistryWithProof.merkleProof,
+      adminAddress: this.adminAddress,
+      saltedHubPubkey0: saltPubkey(sortedHubConnectionRegistry.hubPubkey0),
+      saltedHubPubkey1: saltPubkey(sortedHubConnectionRegistry.hubPubkey1),
+    });
+    return proof;
   }
 
 }

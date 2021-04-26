@@ -16,7 +16,7 @@ describe("HubConnectionRegistry", () => {
   });
 
   it("`verify` fails if a signature is wrong", () => {
-    registry.obj.hubSig0.S = secretFactory();
+    registry.toObj().hubSig0.S = secretFactory();
     expect(registry.verify()).to.be.false;
   });
 });

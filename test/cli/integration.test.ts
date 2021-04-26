@@ -239,6 +239,7 @@ describe("Integration test for roles", function () {
     //  Then, admin sends back the merkle proof of this `hubRegistry` back to hub candidate,
     //  and the hub candidate becomes a valid hub.
     // command: blind-find admin addHub `hubRegistryB64`
+    // FIXME: this is currently broken right now.
     const printedHubRegistryWithProof = admin.exec(`addHub ${hubRegistryB64}`).stdout;
     const hubRegistryWithProofB64 = jsonStringToObj(printedHubRegistryWithProof).hubRegistryWithProofBase64Encoded;
     // After receiving the merkle proof, the hub candidate needs to set the `hubRegistry` and
@@ -316,6 +317,7 @@ describe("Integration test for roles", function () {
         adminAddress: proof.adminAddress,
         proofOfSMP: proof.proofOfSMP,
         proofSuccessfulSMP: proof.proofSuccessfulSMP,
+        proofSaltedConnections: proof.proofSaltedConnections,
     }
     const wrongProofBase64 = proofIndirectConnectionToCLIFormat(wrongProof).base64Encoded;
     const resUserAnotherVerifyProofFailed = userAnother.exec(`verifyProof ${wrongProofBase64}`);

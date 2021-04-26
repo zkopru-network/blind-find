@@ -54,6 +54,14 @@ export class HubRegistryNotFound extends StorageError {
   }
 }
 
+export class HubConnectionRegistryNotFound extends StorageError {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, HubConnectionRegistryNotFound.prototype);
+  }
+}
+
 export class NetworkingError extends BaseBlindFindError {
   constructor(m?: string) {
     super(m);

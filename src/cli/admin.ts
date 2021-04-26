@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { Admin } from "../admin";
-import { HubRegistryTreeDB } from "../dataProvider";
+import { HubConnectionRegistryTreeDB, HubRegistryTreeDB } from "../dataProvider";
 import { IConfig } from "./configs";
 import { base64ToObj, printObj, objToBase64 } from "./utils";
 import { THubRegistryWithProof } from "../hub";
@@ -27,13 +27,13 @@ const buildCommandAddHub = (config: IConfig) => {
       const hubRegistry = new HubRegistry(hubRegistryObj);
       const admin = await getAdmin(config);
       await admin.insertHubRegistry(hubRegistry);
-      const index = admin.treeDB.getIndex(hubRegistry);
+      const index = admin.hubRegistryTreeDB.getIndex(hubRegistry);
       if (index === undefined) {
         throw new Error("internal error: index shouldn't be undefined");
       }
       const hubRegistryWithProof: THubRegistryWithProof = {
         hubRegistry: hubRegistryObj,
-        merkleProof: admin.treeDB.tree.tree.genMerklePath(index)
+        merkleProof: admin.hubRegistryTreeDB.tree.tree.genMerklePath(index)
       };
       printObj({
         hubRegistry: hubRegistryWithProof.hubRegistry,
@@ -44,6 +44,11 @@ const buildCommandAddHub = (config: IConfig) => {
 };
 
 const getAdmin = async (config: IConfig) => {
-  const treeDB = await HubRegistryTreeDB.fromDB(config.getDB());
-  return new Admin(config.getBlindFindContract(), treeDB);
+  const hubRegistryTreeDB = await HubRegistryTreeDB.fromDB(config.getDB());
+  const hubConnectionRegistryDB = await HubConnectionRegistryTreeDB.fromDB(config.getDB());
+  return new Admin(
+    config.getBlindFindContract(),
+    hubRegistryTreeDB,
+    hubConnectionRegistryDB,
+  );
 };

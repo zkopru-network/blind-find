@@ -40,7 +40,7 @@ describe("Blind Find Contract", function() {
         contract.interface,
         nonAdmin
       );
-      await contractCallByNonAdmin.updateMerkleRoot(newMerkleRoot);
+      await contractCallByNonAdmin.updateHubRegistryTree(newMerkleRoot);
     };
     await expect(callByNonAdmin()).to.be.revertedWith(
       "only admin can update the latest merkle root"
@@ -50,14 +50,14 @@ describe("Blind Find Contract", function() {
   it("should succeed when admin update the merkle root", async () => {
     const firstMerkleRoot = BigInt(1);
     const secondMerkleRoot = BigInt(2);
-    // No `updateMerkleRoot` event before calling `updateMerkleRoot`.
+    // No `updateHubRegistryTree` event before calling `updateHubRegistryTree`.
     expect((await contract.getAllMerkleRoots()).size).to.eql(0);
     // Update 1st time.
-    await contract.updateMerkleRoot(firstMerkleRoot);
+    await contract.updateHubRegistryTree(firstMerkleRoot);
     expect(await contract.getLatestMerkleRoot()).to.eql(firstMerkleRoot);
     expect((await contract.getAllMerkleRoots()).size).to.eql(1);
     // Update second time.
-    await contract.updateMerkleRoot(secondMerkleRoot);
+    await contract.updateHubRegistryTree(secondMerkleRoot);
     expect(await contract.getLatestMerkleRoot()).to.eql(secondMerkleRoot);
     // Ensure all events are emitted and parsed correctly.
     const merkleRoots = await contract.getAllMerkleRoots();

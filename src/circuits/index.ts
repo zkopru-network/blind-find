@@ -3,6 +3,7 @@ import * as path from "path";
 import * as shell from "shelljs";
 
 import {
+  hash5,
   PubKey,
   Signature,
   stringifyBigInts,
@@ -14,12 +15,13 @@ import {
   SMPMessage2Wire,
   SMPMessage3Wire
 } from "../smp/v4/serialization";
-import { HubRegistry } from "..";
+import { HubConnectionRegistry, HubRegistry } from "..";
 import { BabyJubPoint } from "../smp/v4/babyJub";
 import { MerkleProof } from "../interfaces";
 import { TEthereumAddress } from "../types";
 const circom = require("circom");
 import tmp from 'tmp-promise';
+import { isPubkeySame } from "../utils";
 
 /**
  * Ref
@@ -37,6 +39,7 @@ const snarkjsCLI = path.join(
 );
 const proofOfSMPPath = path.join(circomDir, "instance/proofOfSMP.circom");
 const proofSuccessfulSMPPath = path.join(circomDir, "instance/proofSuccessfulSMP.circom");
+const proofSaltedConnectionPath = path.join(circomDir, "instance/proofSaltedConnection.circom");
 
 export const compileAndLoadCircuit = async (circuitPath: string) => {
   const circuit = await circom.tester(path.join(circuitPath));
@@ -68,12 +71,22 @@ type ProofSuccessfulSMPInput = {
   sigRh: Signature;
 };
 
+export type ProofSaltedConnectionInput = {
+  creator: BigInt;
+  creatorHubRegistryMerkleProof: MerkleProof;
+  creatorHubRegistry: HubRegistry;
+  hubConnectionRegistry: HubConnectionRegistry;
+  hubConnectionMerkleProof: MerkleProof;
+  adminAddress: TEthereumAddress;
+}
+
 type TProof = { proof: any; publicSignals: any };
 type TProofIndirectConnection = {
   pubkeyA: PubKey;
   pubkeyC: PubKey;
   adminAddress: TEthereumAddress;
   proofOfSMP: TProof;
+  proofSaltedConnections: TProof[];
   proofSuccessfulSMP: TProof;
 };
 
@@ -161,6 +174,44 @@ const genProofSuccessfulSMP = async (
 
 const verifyProofSuccessfulSMP = async (proof: TProof) => {
   return await verifyProof(proofSuccessfulSMPPath, proof);
+};
+
+const genProofSaltedConnection = async (
+  inputs: ProofSaltedConnectionInput,
+) => {
+  return await genProof(
+    proofSaltedConnectionPath,
+    proofSaltedConnectionInputToCircuitArgs(inputs),
+  );
+};
+
+const proofSaltedConnectionInputToCircuitArgs = (inputs: ProofSaltedConnectionInput) => {
+  const hubRegistry0Obj = inputs.creatorHubRegistry.toObj();
+  const hubConnectionRegistryObj = inputs.hubConnectionRegistry.toSorted();
+  return stringifyBigInts({
+    creator: inputs.creator,
+    hubPubkey0: hubConnectionRegistryObj.hubPubkey0,
+    hubPubkey1: hubConnectionRegistryObj.hubPubkey1,
+    creatorHubRegistryMerklePathElements: inputs.creatorHubRegistryMerkleProof.pathElements,
+    creatorHubRegistryMerklePathIndices: inputs.creatorHubRegistryMerkleProof.indices,
+    creatorHubRegistrySigR8: hubRegistry0Obj.sig.R8,
+    creatorHubRegistrySigS: hubRegistry0Obj.sig.S,
+    sigHubConnection0R8: hubConnectionRegistryObj.hubSig0.R8,
+    sigHubConnection0S: hubConnectionRegistryObj.hubSig0.S,
+    sigHubConnection1R8: hubConnectionRegistryObj.hubSig1.R8,
+    sigHubConnection1S: hubConnectionRegistryObj.hubSig1.S,
+    hubConnectionMerklePathElements: inputs.hubConnectionMerkleProof.pathElements,
+    hubConnectionMerklePathIndices: inputs.hubConnectionMerkleProof.indices,
+    adminAddress: inputs.adminAddress,
+    hubRegistryTreeMerkleRoot: inputs.creatorHubRegistryMerkleProof.root,
+    hubConnectionTreeMerkleRoot: inputs.hubConnectionMerkleProof.root,
+    saltedHubPubkey0: saltPubkey(hubConnectionRegistryObj.hubPubkey0),
+    saltedHubPubkey1: saltPubkey(hubConnectionRegistryObj.hubPubkey1),
+  });
+};
+
+const verifyProofSaltedConnection = async (proof: TProof) => {
+  return await verifyProof(proofSaltedConnectionPath, proof);
 };
 
 const getCircuitName = (circomFileBasename: string): string => {
@@ -308,14 +359,46 @@ const parseProofSuccessfulSMPPublicSignals = (publicSignals: BigInt[]) => {
   };
 };
 
-const isPubkeySame = (a: PubKey, b: PubKey) => {
-  return a.length === b.length && a[0] === b[0] && a[1] === b[1];
+export const parseProofSaltedConnectionPublicSignals = (publicSignals: BigInt[]) => {
+  if (publicSignals.length !== 7) {
+    throw new ValueError(
+      `length of publicSignals is not correct: publicSignals=${publicSignals}`
+    );
+  }
+  // Ignore the first `1n`.
+  const creator = publicSignals[1];
+  const adminAddress = publicSignals[2];
+  const hubRegistryTreeMerkleRoot = publicSignals[3];
+  const hubConnectionTreeMerkleRoot = publicSignals[4];
+  const saltedHubPubkey0 = publicSignals[5];
+  const saltedHubPubkey1 = publicSignals[6];
+
+  let creatorSaltedPubkey: BigInt;
+  let anotherSaltedPubkey: BigInt;
+  if (creator === BigInt(0)) {
+    creatorSaltedPubkey = saltedHubPubkey0;
+    anotherSaltedPubkey = saltedHubPubkey1;
+  } else if (creator === BigInt(1)) {
+    creatorSaltedPubkey = saltedHubPubkey1;
+    anotherSaltedPubkey = saltedHubPubkey0;
+  } else {
+    throw new ValueError(`\`creator\` should be either 0 or 1: creator=${creator}`);
+  }
+
+  return {
+    creatorSaltedPubkey,
+    anotherSaltedPubkey,
+    adminAddress,
+    hubRegistryTreeMerkleRoot,
+    hubConnectionTreeMerkleRoot,
+  };
 };
 
 const verifyProofIndirectConnection = async (
   proof: TProofIndirectConnection,
-  validMerkleRoots: Set<BigInt>
-) => {
+  validHubRegistryTreeRoots: Set<BigInt>,
+  validHubConnectionRegistryTreeRoots: Set<BigInt>,
+): Promise<boolean> => {
   if (!(await verifyProofOfSMP(proof.proofOfSMP))) {
     return false;
   }
@@ -328,6 +411,7 @@ const verifyProofIndirectConnection = async (
   const resProofSuccessfulSMP = parseProofSuccessfulSMPPublicSignals(
     proof.proofSuccessfulSMP.publicSignals
   );
+
   /**
    * Check pubkeys in `proofOfSMP` and `proofSuccessfulSMP`.
    */
@@ -343,7 +427,7 @@ const verifyProofIndirectConnection = async (
   /**
    * Check merkle root
    */
-  if (!validMerkleRoots.has(resProofOfSMP.merkleRoot)) {
+  if (!validHubRegistryTreeRoots.has(resProofOfSMP.merkleRoot)) {
     return false;
   }
   /**
@@ -358,16 +442,71 @@ const verifyProofIndirectConnection = async (
   if (!resProofOfSMP.rh.equal(resProofSuccessfulSMP.rh)) {
     return false;
   }
+
+  /**
+   * Verify Proof of Salted Connections
+   */
+  //  1. All proof of salted connections are valid.
+  //  2. All proof of salted connections are chained together correctly.
+  //  3. `anotherSaltedPubkey` of the last proof of salted connection is the creator of
+  //    the proof of SMP.
+  const proofSaltedConnections = proof.proofSaltedConnections;
+  //  - the last another should be the one creates proofOfSMP
+  let lastAnotherSaltedPubkey: BigInt | undefined = undefined;
+  for (const p of proofSaltedConnections) {
+    //  1. Verify Proof Salted Connection
+    //  2. Parse the proof and extract salted pubkeys, and find the creator.
+    if (!(await verifyProofSaltedConnection(p))) {
+      return false;
+    }
+    const publicInputs = parseProofSaltedConnectionPublicSignals(p.publicSignals);
+    if (publicInputs.adminAddress !== proof.adminAddress) {
+      return false;
+    }
+    if (!validHubRegistryTreeRoots.has(publicInputs.hubRegistryTreeMerkleRoot)) {
+      return false;
+    }
+    if (!validHubConnectionRegistryTreeRoots.has(publicInputs.hubConnectionTreeMerkleRoot)) {
+      return false;
+    }
+    // <creator, another>
+    // <A, B>, <B, C>
+    //    creator = A, another = B
+    //    this.creator === last.another
+    if (
+      lastAnotherSaltedPubkey !== undefined &&
+      lastAnotherSaltedPubkey !== publicInputs.creatorSaltedPubkey
+    ) {
+      return false;
+    }
+    lastAnotherSaltedPubkey = publicInputs.anotherSaltedPubkey;
+  }
+  // TODO: Ensure proof of SMP is created by the last another
+
   return true;
 };
+
+// TODO: Add salt
+export const saltPubkey = (pubkey: PubKey): BigInt => {
+  return hash5([
+    pubkey[0],
+    pubkey[1],
+    BigInt(0),
+    BigInt(0),
+    BigInt(0),
+  ]);
+}
 
 export {
   genProofOfSMP,
   verifyProofOfSMP,
   proofOfSMPInputsToCircuitArgs,
   genProofSuccessfulSMP,
+  genProofSaltedConnection,
+  proofSaltedConnectionInputToCircuitArgs,
   proofSuccessfulSMPInputsToCircuitArgs,
   verifyProofSuccessfulSMP,
+  verifyProofSaltedConnection,
   verifyProofIndirectConnection,
   TProof,
   TProofIndirectConnection

@@ -31,12 +31,12 @@ export class BlindFindContract {
     return this.contract.interface;
   }
 
-  async updateMerkleRoot(merkleRoot: BigInt): Promise<void> {
-    await this.contract.updateMerkleRoot(merkleRoot);
+  async updateHubRegistryTree(merkleRoot: BigInt): Promise<void> {
+    await this.contract.updateHubRegistryTree(merkleRoot);
   }
 
   async getLatestMerkleRoot(): Promise<BigInt> {
-    return bigNumberToBigInt(await this.contract.latestMerkleRoot());
+    return bigNumberToBigInt(await this.contract.latestHubRegistryTreeRoot());
   }
 
   async getAdmin(): Promise<BigInt> {
@@ -48,7 +48,7 @@ export class BlindFindContract {
     if (event.args === undefined) {
       throw new Error("event doesn't have args field");
     }
-    const merkleRoot = event.args.merkleRoot;
+    const merkleRoot = event.args.root;
     return bigNumberToBigInt(merkleRoot);
   }
 
@@ -56,7 +56,7 @@ export class BlindFindContract {
   //  To make it more efficient, we can cache and listen to new events.
   //  But this is a tradeoff between event maintainence due to reorg and efficiency.
   async getAllMerkleRoots(): Promise<Set<BigInt>> {
-    const eventFilter = this.contract.filters.UpdateMerkleRoot();
+    const eventFilter = this.contract.filters.UpdateHubRegistryTree();
     const events = await this.contract.queryFilter(
       eventFilter,
       this.startBlock

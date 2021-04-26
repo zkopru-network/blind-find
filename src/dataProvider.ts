@@ -98,7 +98,7 @@ export class DataProviderServer extends BaseServer {
   rateLimiter: IIPRateLimiter;
   constructor(
     readonly adminAddress: TEthereumAddress,
-    readonly treeDB: HubRegistryTreeDB,
+    readonly hubRegistryTreeDB: HubRegistryTreeDB,
     readonly rateLimitConfig: TRateLimitParams
   ) {
     super();
@@ -127,7 +127,7 @@ export class DataProviderServer extends BaseServer {
       rwtor.terminate();
       return;
     }
-    const index = this.treeDB.getIndex(hubRegistry);
+    const index = this.hubRegistryTreeDB.getIndex(hubRegistry);
     logger.debug(
       `${this.name}: received req: ${req.hubPubkey}, index=${index}`
     );
@@ -136,7 +136,7 @@ export class DataProviderServer extends BaseServer {
       rwtor.terminate();
       return;
     }
-    const merkleProof = this.treeDB.tree.tree.genMerklePath(index);
+    const merkleProof = this.hubRegistryTreeDB.tree.tree.genMerklePath(index);
     const resp = new GetMerkleProofResp(merkleProof);
     rwtor.write(resp.serialize());
     rwtor.close();
@@ -153,7 +153,8 @@ export const sendGetMerkleProofReq = async (
     throw new ValueError("invalid hub registry");
   }
   const rwtor = await connect(ip, port);
-  const req = new GetMerkleProofReq(hubRegistry.obj.pubkey, hubRegistry.obj.sig);
+  const hubRegistryObj = hubRegistry.toObj();
+  const req = new GetMerkleProofReq(hubRegistryObj.pubkey, hubRegistryObj.sig);
   rwtor.write(req.serialize());
   const bytes = await rwtor.read(timeout);
   const resp = GetMerkleProofResp.deserialize(bytes);

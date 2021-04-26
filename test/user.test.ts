@@ -65,7 +65,7 @@ describe("User", function() {
       db
     );
     await hub.start();
-    await blindFindContract.updateMerkleRoot(merkleProof.root);
+    await blindFindContract.updateHubRegistryTree(merkleProof.root);
     expect((await blindFindContract.getAllMerkleRoots()).size).to.eql(1);
 
     // User
@@ -119,8 +119,8 @@ describe("User", function() {
       throw new Error();
     }
     // Ensure the output proof is valid
-    const validMerkleRoots = await blindFindContract.getAllMerkleRoots();
-    expect(await verifyProofIndirectConnection(proof, validMerkleRoots)).to.be
+    const validHubRegistryTreeRoots = await blindFindContract.getAllMerkleRoots();
+    expect(await verifyProofIndirectConnection(proof, validHubRegistryTreeRoots)).to.be
       .true;
     // Search fails
     const keypairNotFound = genKeypair();

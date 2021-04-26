@@ -17,7 +17,7 @@ import { PREFIX_JOIN, PREFIX_REGISTER_NEW_HUB, PREFIX_HUB_CONNECTION } from "./c
 import { bigIntMod } from "./smp/utils";
 import { LEVELS, ZERO_VALUE } from "./configs";
 import { TEthereumAddress } from "./types";
-import { hashPointToScalar } from "./utils";
+import { hashPointToScalar, isPubkeySame } from "./utils";
 
 const hashStringToField = (s: string): BigInt => {
   return bigIntMod(
@@ -30,6 +30,7 @@ const hashStringToField = (s: string): BigInt => {
 const prefixJoinMsg = hashStringToField(PREFIX_JOIN);
 // should be 1122637059787783884121270614611449342946993875255423905974201070879309325140
 const prefixRegisterNewHub = hashStringToField(PREFIX_REGISTER_NEW_HUB);
+// should be 15775140326275327636461277643630368659324521625749033424352920874919079558886
 const prefixHubConnection = hashStringToField(PREFIX_HUB_CONNECTION);
 
 const signMsg = (privkey: PrivKey, hashedData: BigInt): Signature => {
@@ -79,6 +80,31 @@ const sortPubkeys = (pubkey0: PubKey, pubkey1: PubKey): [PubKey, PubKey] => {
   }
 }
 
+type TDataWithPubkey<T> = {
+  pubkey: PubKey;
+  data: T;
+};
+
+export const sortDataWithPubkey = <T>(
+    dataWithPubkey0: TDataWithPubkey<T>,
+    dataWithPubkey1: TDataWithPubkey<T>,
+): [TDataWithPubkey<T>, TDataWithPubkey<T>] => {
+  const sortedPubkeys = sortPubkeys(dataWithPubkey0.pubkey, dataWithPubkey1.pubkey);
+  if (
+    isPubkeySame(sortedPubkeys[0], dataWithPubkey0.pubkey) &&
+    isPubkeySame(sortedPubkeys[1], dataWithPubkey1.pubkey)
+  ) {
+    return [dataWithPubkey0, dataWithPubkey1];
+  } else if (
+    isPubkeySame(sortedPubkeys[0], dataWithPubkey1.pubkey) &&
+    isPubkeySame(sortedPubkeys[1], dataWithPubkey0.pubkey)
+  ) {
+    return [dataWithPubkey1, dataWithPubkey0];
+  } else {
+    throw new Error('sortedPubkeys mismatch the original ones')
+  }
+}
+
 export const getHubConnectionHashedData = (
   hubPubkey0: PubKey,
   hubPubkey1: PubKey,
@@ -116,7 +142,7 @@ type THubRegistryObj = {
 
 class HubRegistry implements ILeafEntry<THubRegistryObj> {
   constructor(
-    readonly obj: THubRegistryObj
+    private readonly obj: THubRegistryObj
   ) {}
 
   static fromKeypair(keypair: Keypair, adminAddress: TEthereumAddress) {
@@ -153,7 +179,7 @@ class HubRegistry implements ILeafEntry<THubRegistryObj> {
 }
 
 class IncrementalSMT<T extends Object> {
-  _leaves: ILeafEntry<T>[];
+  protected _leaves: ILeafEntry<T>[];
   tree: IncrementalQuinTree;
   private mapHashToIndex: Map<BigInt, number>;
 
@@ -201,36 +227,54 @@ type THubConnectionObj = {
 }
 
 class HubConnectionRegistry implements ILeafEntry<THubConnectionObj> {
+  // TODO: Sort data in constructor?
   constructor(
-    readonly obj: THubConnectionObj
-  ) {}
-
-  static partialSign(localKeypair: Keypair, targetHubPukey: PubKey): Signature {
-    const signingMsg = getHubConnectionHashedData(localKeypair.pubKey, targetHubPukey);
-    return signMsg(localKeypair.privKey, signingMsg);
+    private readonly obj: THubConnectionObj
+  ) {
   }
 
   verify(): boolean {
-    const signingMsg = getHubConnectionHashedData(this.obj.hubPubkey0, this.obj.hubPubkey1);
+    const sorted = this.toSorted();
+    const signingMsg = getHubConnectionHashedData(sorted.hubPubkey0, sorted.hubPubkey1);
     return (
-      verifySignedMsg(signingMsg, this.obj.hubSig0, this.obj.hubPubkey0) &&
-      verifySignedMsg(signingMsg, this.obj.hubSig1, this.obj.hubPubkey1)
+      verifySignedMsg(signingMsg, sorted.hubSig0, sorted.hubPubkey0) &&
+      verifySignedMsg(signingMsg, sorted.hubSig1, sorted.hubPubkey1)
     );
   }
 
+  static partialSign(keypair: Keypair, another: PubKey): Signature {
+    const signingMsg = getHubConnectionHashedData(keypair.pubKey, another);
+    return signMsg(keypair.privKey, signingMsg);
+  }
+
   hash(): BigInt {
+    const sorted = this.toSorted();
     return hash11([
-      this.obj.hubSig0.R8[0],
-      this.obj.hubSig0.R8[1],
-      this.obj.hubSig0.S,
-      this.obj.hubPubkey0[0],
-      this.obj.hubPubkey0[1],
-      this.obj.hubSig1.R8[0],
-      this.obj.hubSig1.R8[1],
-      this.obj.hubSig1.S,
-      this.obj.hubPubkey1[0],
-      this.obj.hubPubkey1[1],
+      sorted.hubSig0.R8[0],
+      sorted.hubSig0.R8[1],
+      sorted.hubSig0.S,
+      sorted.hubPubkey0[0],
+      sorted.hubPubkey0[1],
+      sorted.hubSig1.R8[0],
+      sorted.hubSig1.R8[1],
+      sorted.hubSig1.S,
+      sorted.hubPubkey1[0],
+      sorted.hubPubkey1[1],
     ]);
+  }
+
+  toSorted(): THubConnectionObj {
+    const obj = this.toObj();
+    const sorted = sortDataWithPubkey<Signature>(
+      { pubkey: obj.hubPubkey0, data: obj.hubSig0 },
+      { pubkey: obj.hubPubkey1, data: obj.hubSig1 },
+    );
+    return {
+      hubPubkey0: sorted[0].pubkey,
+      hubPubkey1: sorted[1].pubkey,
+      hubSig0: sorted[0].data,
+      hubSig1: sorted[1].data,
+    };
   }
 
   toObj(): THubConnectionObj {

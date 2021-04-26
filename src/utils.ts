@@ -1,4 +1,4 @@
-import { hash5 } from "maci-crypto";
+import { hash5, PubKey } from "maci-crypto";
 import { ECPoint } from "./smp/v4/types";
 
 /**
@@ -49,4 +49,8 @@ export class AsyncEvent {
 
 export const hashPointToScalar = (point: ECPoint): BigInt => {
   return hash5([point[0], point[1], BigInt(0), BigInt(0), BigInt(0)]);
+};
+
+export const isPubkeySame = (a: PubKey, b: PubKey) => {
+  return a.length === b.length && a[0] === b[0] && a[1] === b[1];
 };

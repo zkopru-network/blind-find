@@ -21,7 +21,7 @@ describe("HubRegistry", () => {
   });
 
   it("`verify` fails if the signature is wrong", () => {
-    registry.obj.sig.S = secretFactory();
+    registry.toObj().sig.S = secretFactory();
     expect(registry.verify()).to.be.false;
   });
 });
@@ -37,7 +37,7 @@ describe("HubRegistryTree", () => {
     for (let i = 0; i < tree.length; i++) {
       const leaf = tree.leaves[i] as HubRegistry;
       expect(leaf.verify()).to.be.true;
-      expect(leaf.obj.adminAddress).to.eql(adminAddress);
+      expect(leaf.toObj().adminAddress).to.eql(adminAddress);
     }
     // Fails when `hubs.length > 2 ** levels`
     expect(() => {

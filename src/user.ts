@@ -102,8 +102,8 @@ export class User {
   }
 
   async verifyProofOfIndirectConnection(proof: TProofIndirectConnection): Promise<boolean> {
-    const validMerkleRoots = await this.contract.getAllMerkleRoots();
-    return await verifyProofIndirectConnection(proof, validMerkleRoots);
+    const validHubRegistryTreeRoots = await this.contract.getAllMerkleRoots();
+    return await verifyProofIndirectConnection(proof, validHubRegistryTreeRoots);
   }
 
   async getJoinedHubs() {

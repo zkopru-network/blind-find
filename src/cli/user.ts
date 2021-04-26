@@ -214,6 +214,8 @@ export const parseProofIndirectConnectionBase64Encoded = (base64Encoded: string)
     adminAddress: ethAddressToBigInt(proofIndirectConnection.adminAddress),
     proofOfSMP: proofIndirectConnection.proofOfSMP,
     proofSuccessfulSMP: proofIndirectConnection.proofSuccessfulSMP,
+    // FIXME: this is just a workaround.
+    proofSaltedConnections: proofIndirectConnection.proofSaltedConnections,
   }
 }
 

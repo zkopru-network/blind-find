@@ -9,7 +9,7 @@ import {
   sendJoinHubReq,
   sendSearchReq,
   UserStore,
-  THubRateLimit, HubConnectionRegistryStore
+  THubRateLimit, HubConnectionRegistryStore, THubConnectionWithProof
 } from "../src/hub";
 import { genKeypair, Signature } from "maci-crypto";
 import { LEVELS, TIMEOUT, TIMEOUT_LARGE } from "../src/configs";
@@ -21,7 +21,8 @@ import { MemoryDB } from "../src/db";
 
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
-import { HubConnectionRegistry } from "../src";
+import { HubConnectionRegistryTree } from "../src";
+import { verifyProofSaltedConnection } from "../src/circuits";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -90,18 +91,29 @@ describe("HubConnectionRegistryStore", () => {
   const hub1 = genKeypair();
   const hub2 = genKeypair();
   const hubConnections = [
-    hubConnectionRegistryFactory(hub0, hub1).toObj(),
-    hubConnectionRegistryFactory(hub0, hub2).toObj(),
+    hubConnectionRegistryFactory(hub0, hub1),
+    hubConnectionRegistryFactory(hub0, hub2),
   ];
+  const hubConnectionRegistryTree = new HubConnectionRegistryTree();
+  hubConnectionRegistryTree.insert(hubConnections[0]);
+  hubConnectionRegistryTree.insert(hubConnections[1]);
+  const hubConnectionRegistryWithProof1: THubConnectionWithProof = {
+    hubConnection: hubConnections[0].toObj(),
+    merkleProof: hubConnectionRegistryTree.tree.genMerklePath(0),
+  };
+  const hubConnectionRegistryWithProof2: THubConnectionWithProof = {
+    hubConnection: hubConnections[1].toObj(),
+    merkleProof: hubConnectionRegistryTree.tree.genMerklePath(1),
+  };
 
   it("set, get, and size succeed when adding reigstry", async () => {
-    await hubConnectionStore.set(hub1.pubKey, hubConnections[0]);
+    await hubConnectionStore.set(hub1.pubKey, hubConnectionRegistryWithProof1);
     expect(await hubConnectionStore.getLength()).to.eql(1);
     const registry = await hubConnectionStore.get(hub1.pubKey);
     if (!registry) {
       throw new Error("should not be undefined");
     }
-    await hubConnectionStore.set(hub2.pubKey, hubConnections[1]);
+    await hubConnectionStore.set(hub2.pubKey, hubConnectionRegistryWithProof2);
     expect(await hubConnectionStore.getLength()).to.eql(2);
     const registryAnother = await hubConnectionStore.get(hub2.pubKey);
     if (!registryAnother) {
@@ -321,17 +333,22 @@ describe("HubServer", function() {
     })();
   });
 
-  it('Hub.signHubConnectionRegistry', async () => {
-    const hubKeypair1 = genKeypair();
-    const sig0 = hub.signHubConnectionRegistry(hubKeypair1.pubKey);
-    const sig1 = HubConnectionRegistry.partialSign(hubKeypair1, hubKeypair.pubKey);
-    const hubConnectionRegistry = new HubConnectionRegistry({
-      hubPubkey0: hubKeypair.pubKey,
-      hubPubkey1: hubKeypair1.pubKey,
-      hubSig0: sig0,
-      hubSig1: sig1,
-    });
-    expect(hubConnectionRegistry.verify()).to.be.true;
+  it("genProofSaltedConnection succeeds", async () => {
+    const anotherHubKeypair = genKeypair();
+    const hubConnection = hubConnectionRegistryFactory(hubKeypair, anotherHubKeypair);
+    const hubConnectionRegistryTree = new HubConnectionRegistryTree();
+    hubConnectionRegistryTree.insert(hubConnection);
+    const hubConnectionRegistryWithProof1: THubConnectionWithProof = {
+      hubConnection: hubConnection.toObj(),
+      merkleProof: hubConnectionRegistryTree.tree.genMerklePath(0),
+    };
+    await hub.setHubConnectionRegistry(
+      anotherHubKeypair.pubKey,
+      hubConnectionRegistryWithProof1
+    );
+    const proof = await hub.genProofSaltedConnection(anotherHubKeypair.pubKey);
+    expect(await verifyProofSaltedConnection(proof)).to.be.true;
   });
+
 
 });
