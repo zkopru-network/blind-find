@@ -2,7 +2,7 @@
 
 ## Main Changes over v1
 
-Cross-hub searches is supported.
+Cross-hub search is supported.
 - Hubs can connect with each other. When a user searches for another user through a hub, the hub can keep searching through other hubs who has connected with itself.
 - Proof of Salted Connection
 - Proof of Indirect Connection
