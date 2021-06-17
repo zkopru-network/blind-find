@@ -167,7 +167,7 @@ After initiating a search request, a user keeps running SMP with a remote hub to
 
 ### Pseudo Code
 Search request receiver
-```python=
+```python
 class Hub:
     ...
 
@@ -196,7 +196,7 @@ class Hub:
 
 Search request initiator
 
-```python=
+```python
 class User:
     ...
 
