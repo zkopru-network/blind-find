@@ -175,6 +175,20 @@ template HubRegistryVerifier(levels) {
     valid <== sigVerifier.valid;
 }
 
+template SaltPubkey() {
+    signal input pubkey[2];
+    signal output out;
+
+    component hasher = Hasher5();
+    hasher.in[0] <== pubkey[0];
+    hasher.in[1] <== pubkey[1];
+    hasher.in[2] <== 0;
+    hasher.in[3] <== 0;
+    hasher.in[4] <== 0;
+
+    out <== hasher.hash;
+}
+
 // Created by H after H runs SMP with A where H is the initiator.
 template ProofOfSMP(levels) {
     // TODO: Add check for points
@@ -201,7 +215,8 @@ template ProofOfSMP(levels) {
     signal input pubkeyC[2];
     signal input adminAddress;
     signal input merkleRoot;
-    // 5 = 4 + 1
+    signal input saltedPubkeyHub;
+    // 6 = 5 + 1
 
     // msg 1
     signal input g2h[2];
@@ -210,7 +225,7 @@ template ProofOfSMP(levels) {
     signal input g3h[2];
     signal input g3hProofC;
     signal input g3hProofD;
-    // 13 = 5 + 8
+    // 14 = 6 + 8
 
     // msg 2
     signal input g2a[2];
@@ -219,23 +234,23 @@ template ProofOfSMP(levels) {
     signal input g3a[2];
     signal input g3aProofC;
     signal input g3aProofD;
-    signal input pa[2];  // 21, 22
+    signal input pa[2];  // 22, 23
     signal input qa[2];
     signal input paqaProofC;
     signal input paqaProofD0;
     signal input paqaProofD1;
-    // 28 = 13 + 15
+    // 29 = 14 + 15
 
     // msg 3
-    signal input ph[2];  // 28, 29
+    signal input ph[2];  // 29, 30
     signal input qh[2];
     signal input phqhProofC;
     signal input phqhProofD0;
     signal input phqhProofD1;
-    signal input rh[2];  // 35, 36
+    signal input rh[2];  // 36, 37
     signal input rhProofC;
     signal input rhProofD;
-    // 39 = 28 + 11
+    // 40 = 29 + 11
 
     signal output valid;
 
@@ -461,6 +476,11 @@ template ProofOfSMP(levels) {
     res.in[0] <== msg1Valid.out;
     res.in[1] <== msg2Valid.out;
     res.in[2] <== msg3Valid.out;
+
+    component saltedPubkeyVerifier = SaltPubkey();
+    saltedPubkeyVerifier.pubkey[0] <== pubkeyHub[0];
+    saltedPubkeyVerifier.pubkey[1] <== pubkeyHub[1];
+    saltedPubkeyVerifier.out === saltedPubkeyHub;
 
     valid <== res.out;
 }

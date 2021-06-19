@@ -12,6 +12,7 @@ import {
 import {
   JoinReq,
   JoinResp,
+  RequestSearchMessage,
   SearchMessage0,
   SearchMessage1,
   SearchMessage2,
@@ -26,7 +27,7 @@ import {
   IIPRateLimiter,
   TokenBucketRateLimiter,
   TRateLimitParams,
-  IWebSocketReadWriter
+  IWebSocketReadWriter, relay
 } from "./websocket";
 import { TIMEOUT, MAXIMUM_TRIALS, TIMEOUT_LARGE } from "./configs";
 import { THubRegistryObj } from "./";
@@ -45,7 +46,6 @@ import {
 import { BabyJubPoint } from "./smp/v4/babyJub";
 
 type TUserRegistry = { userSig: Signature; hubSig: Signature };
-type TIterItem = [PubKey, TUserRegistry];
 type TSMPResult = {
   a3: BigInt;
   pa: BabyJubPoint;
@@ -167,9 +167,15 @@ class RegistryStore {
   }
 }
 
+type TTCPAddress = {
+  host: string;
+  port: number;
+}
+
 export type THubConnectionWithProof = {
   hubConnection: THubConnectionObj;
   merkleProof: MerkleProof;
+  address: TTCPAddress;
 }
 
 const CONNECTION_REGISTRY_STORE_PREFIX = "blind-find-hub-connection-registry";
@@ -264,63 +270,39 @@ export class HubServer extends BaseServer {
       rwtor.terminate();
       return;
     }
-    // SearchMessage0
-    // TODO: Handle Message0. If it's a proof of user, disconnect
+    // TODO: Handle `RequestSearchMessage`. If it's a proof of user, disconnect
     //  right away if the proof is invalid.
-    SearchMessage0.deserialize(bytes);
+    RequestSearchMessage.deserialize(bytes);
 
-    for await (const peer of this.userStore) {
-      const [pubkey, userRegistry] = peer;
-      logger.debug(`${this.name}: running smp using ${pubkey}`);
-      const secret = hashPointToScalar(pubkey);
-      const stateMachine = new SMPStateMachine(secret);
-      const h2 = (stateMachine.state as SMPState1).s2;
-      const h3 = (stateMachine.state as SMPState1).s3;
-      const smpMsg1 = stateMachine.transit(null);
-      if (smpMsg1 === null) {
-        throw new Error("smpMsg1tlv should not be null");
-      }
-      const msg1 = new SearchMessage1(false, smpMsg1);
-      logger.debug(`${this.name}: sending msg1`);
-      rwtor.write(msg1.serialize());
-      const msg2Bytes = await rwtor.read(this.timeoutSmall);
-      const msg2 = SearchMessage2.deserialize(msg2Bytes);
-      logger.debug(`${this.name}: received msg2`);
-      const state2 = stateMachine.state as SMPState2;
-      const smpMsg3 = stateMachine.transit(msg2);
-      if (smpMsg3 === null) {
-        throw new Error("this should never happen");
-      }
-      if (state2.r4 === undefined) {
-        throw new Error("r4 should have been generated to compute Ph and Qh");
-      }
-      const r4h = state2.r4;
-      if (this.hubRegistryWithProof === undefined) {
-        throw new Error(
-          "hubRegistryWithProof should have been loaded when server started"
-        );
-      }
-      const proofOfSMP = await genProofOfSMP({
-        h2,
-        h3,
-        r4h,
-        msg1: SMPMessage1Wire.fromTLV(smpMsg1),
-        msg2: SMPMessage2Wire.fromTLV(msg2),
-        msg3: SMPMessage3Wire.fromTLV(smpMsg3),
-        proof: this.hubRegistryWithProof.merkleProof,
-        hubRegistry: new HubRegistry(this.hubRegistryWithProof.hubRegistry),
-        pubkeyC: pubkey,
-        pubkeyHub: this.keypair.pubKey,
-        sigJoinMsgC: userRegistry.userSig,
-        sigJoinMsgHub: userRegistry.hubSig
-      });
-      const msg3 = new SearchMessage3(smpMsg3, proofOfSMP);
-      logger.debug(`${this.name}: sending msg3`);
-      rwtor.write(msg3.serialize());
+    console.log('!@# onSearchRequest: 1');
+    for await (const [userPubkey, userRegistry] of this.userStore) {
+      console.log('!@# onSearchRequest: 1.1');
+      const beginMessage0 = new SearchMessage0(0);
+      logger.debug(`${this.name}: sending beginning msg0`);
+      rwtor.write(beginMessage0.serialize());
+      await this.initiateSMP(rwtor, userPubkey, userRegistry);
     }
-    const endMessage1 = new SearchMessage1(true);
-    logger.debug(`${this.name}: sending ending msg1`);
-    rwtor.write(endMessage1.serialize());
+    console.log('!@# onSearchRequest: 2');
+
+    // No More Users
+    const endMessage0 = new SearchMessage0(1);
+    logger.debug(`${this.name}: sending ending msg0`);
+    rwtor.write(endMessage0.serialize());
+    console.log('!@# onSearchRequest: 3');
+
+    for await (const [hubPubkey, hubConnectionWithProofObj] of this.connectionRegistryStore) {
+      // TODO: send `proofSaltedConnection` and let initiator verifies it. The initiator keeps searching only if
+      //  the proof is valid.
+      console.log('!@# onSearchRequest: 3.1');
+      const proofSaltedConnection = await this.genProofSaltedConnection(hubPubkey, hubConnectionWithProofObj);
+      console.log('!@# onSearchRequest: 3.2');
+      const hubConn = await connect(hubConnectionWithProofObj.address.host, hubConnectionWithProofObj.address.port);
+      console.log('!@# onSearchRequest: 3.3');
+      // Relay messages between initiator and this hub.
+      await relay(rwtor, hubConn);
+      console.log('!@# onSearchRequest: 3.4');
+    }
+    rwtor.close();
   }
 
   async onIncomingConnection(
@@ -374,11 +356,10 @@ export class HubServer extends BaseServer {
     await this.connectionRegistryStore.set(remotePubkey, e);
   }
 
-  async genProofSaltedConnection(targetPubkey: PubKey) {
-    const hubConnectionRegistryWithProof = await this.connectionRegistryStore.get(targetPubkey);
-    if (hubConnectionRegistryWithProof === undefined) {
-      throw new HubConnectionRegistryNotFound();
-    }
+  async genProofSaltedConnection(
+    targetPubkey: PubKey,
+    hubConnectionRegistryWithProof: THubConnectionWithProof,
+  ) {
     const hubConectionRegistry = new HubConnectionRegistry(hubConnectionRegistryWithProof.hubConnection);
     const sortedHubConnectionRegistry = hubConectionRegistry.toSorted();
     // hubPubkey
@@ -404,19 +385,62 @@ export class HubServer extends BaseServer {
     const hubRegistry = new HubRegistry(hubRegistryWithProof.hubRegistry);
     const proof = genProofSaltedConnection({
       creator: BigInt(creatorIndex),
-      hubPubkey0: sortedHubConnectionRegistry.hubPubkey0,
-      hubPubkey1: sortedHubConnectionRegistry.hubPubkey1,
       creatorHubRegistryMerkleProof: hubRegistryWithProof.merkleProof,
       creatorHubRegistry: hubRegistry,
       hubConnectionRegistry: hubConectionRegistry,
       hubConnectionMerkleProof: hubConnectionRegistryWithProof.merkleProof,
       adminAddress: this.adminAddress,
-      saltedHubPubkey0: saltPubkey(sortedHubConnectionRegistry.hubPubkey0),
-      saltedHubPubkey1: saltPubkey(sortedHubConnectionRegistry.hubPubkey1),
     });
     return proof;
   }
 
+  private async initiateSMP(rwtor: IWebSocketReadWriter, userPubkey: PubKey, userRegistry: TUserRegistry) {
+    logger.debug(`${this.name}: running smp with using ${userPubkey}`);
+    const secret = hashPointToScalar(userPubkey);
+    const stateMachine = new SMPStateMachine(secret);
+    const h2 = (stateMachine.state as SMPState1).s2;
+    const h3 = (stateMachine.state as SMPState1).s3;
+    const smpMsg1 = stateMachine.transit(null);
+    if (smpMsg1 === null) {
+      throw new Error("smpMsg1tlv should not be null");
+    }
+    logger.debug(`${this.name}: sending msg1`);
+    rwtor.write(smpMsg1.serialize());
+    const msg2Bytes = await rwtor.read(this.timeoutSmall);
+    const msg2 = SearchMessage2.deserialize(msg2Bytes);
+    logger.debug(`${this.name}: received msg2`);
+    const state2 = stateMachine.state as SMPState2;
+    const smpMsg3 = stateMachine.transit(msg2);
+    if (smpMsg3 === null) {
+      throw new Error("this should never happen");
+    }
+    if (state2.r4 === undefined) {
+      throw new Error("r4 should have been generated to compute Ph and Qh");
+    }
+    const r4h = state2.r4;
+    if (this.hubRegistryWithProof === undefined) {
+      throw new Error(
+        "hubRegistryWithProof should have been loaded when server started"
+      );
+    }
+    const proofOfSMP = await genProofOfSMP({
+      h2,
+      h3,
+      r4h,
+      msg1: SMPMessage1Wire.fromTLV(smpMsg1),
+      msg2: SMPMessage2Wire.fromTLV(msg2),
+      msg3: SMPMessage3Wire.fromTLV(smpMsg3),
+      proof: this.hubRegistryWithProof.merkleProof,
+      hubRegistry: new HubRegistry(this.hubRegistryWithProof.hubRegistry),
+      pubkeyC: userPubkey,
+      pubkeyHub: this.keypair.pubKey,
+      sigJoinMsgC: userRegistry.userSig,
+      sigJoinMsgHub: userRegistry.hubSig
+    });
+    const msg3 = new SearchMessage3(smpMsg3, proofOfSMP);
+    logger.debug(`${this.name}: sending msg3`);
+    rwtor.write(msg3.serialize());
+  }
 }
 
 export const sendJoinHubReq = async (
@@ -440,75 +464,128 @@ export const sendJoinHubReq = async (
   return resp.hubSig;
 };
 
+const receiveSMP = async (
+  rwtor: IWebSocketReadWriter,
+  target: PubKey,
+  timeoutSmall: number,
+  timeoutLarge: number,
+) => {
+  const secret = hashPointToScalar(target);
+  const stateMachine = new SMPStateMachine(secret);
+  const a3 = (stateMachine.state as SMPState1).s3;
+  const msg1Bytes = await rwtor.read(timeoutSmall);
+  const msg1 = SearchMessage1.deserialize(msg1Bytes);
+  logger.debug("sendSearchReq: received msg1");
+  const msg2 = stateMachine.transit(msg1);
+  if (msg2 === null) {
+    throw new Error("this should never happen");
+  }
+  logger.debug("sendSearchReq: sending msg2");
+  rwtor.write(msg2.serialize());
+  const msg3Bytes = await rwtor.read(timeoutLarge);
+  logger.debug("sendSearchReq: received msg3");
+  const msg3 = SearchMessage3.deserialize(msg3Bytes);
+  stateMachine.transit(msg3.smpMsg3);
+  if (!stateMachine.isFinished()) {
+    throw new RequestFailed(
+      "smp should have been finished. there must be something wrong"
+    );
+  }
+  if (stateMachine.getResult()) {
+    logger.debug(
+      `sendSearchReq: SMP has matched, target=${target} is found`
+    );
+    const pa = SMPMessage2Wire.fromTLV(msg2).pb;
+    const smpMsg3 = SMPMessage3Wire.fromTLV(msg3.smpMsg3);
+    const ph = smpMsg3.pa;
+    const rh = smpMsg3.ra;
+    return {
+      a3,
+      pa,
+      ph,
+      rh,
+      proofOfSMP: msg3.proof
+    };
+  } else {
+    return undefined;
+  }
+}
+
+// TODO:
+//  - 1. Should return a list of proof of indirect connection
+//  - 2. Add maxDepth
 export const sendSearchReq = async (
   ip: string,
   port: number,
   target: PubKey,
+  depth: number = 6,
   timeoutSmall: number = TIMEOUT,
   timeoutLarge: number = TIMEOUT_LARGE,
   maximumTrial: number = MAXIMUM_TRIALS
-): Promise<TSMPResult | null> => {
+): Promise<TSMPResult | undefined> => {
+  console.log('sendSearchReq: 1');
   const rwtor = await connect(ip, port);
+  console.log('sendSearchReq: 2');
+  return await _sendSearchReq(
+    rwtor, target, depth, timeoutSmall, timeoutLarge, maximumTrial
+  );
+}
 
-  const msg0 = new SearchMessage0();
-  const req = new TLV(new Short(msgType.SearchReq), msg0.serialize());
+const _sendSearchReq = async (
+  rwtor: IWebSocketReadWriter,
+  target: PubKey,
+  depth: number,
+  timeoutSmall: number = TIMEOUT,
+  timeoutLarge: number = TIMEOUT_LARGE,
+  maximumTrial: number = MAXIMUM_TRIALS
+): Promise<TSMPResult | undefined> => {
+  console.log('_sendSearchReq: 0');
+  if (depth <= 0) {
+    console.log('_sendSearchReq: depth <= 0');
+    return;
+  }
+  console.log('_sendSearchReq: 1');
+  const requestSearchMsg = new RequestSearchMessage();
+  const req = new TLV(new Short(msgType.SearchReq), requestSearchMsg.serialize());
   rwtor.write(req.serialize());
 
-  let smpRes: TSMPResult | null = null;
+  console.log('_sendSearchReq: 2');
+  let smpRes: TSMPResult | undefined = undefined;
   let numTrials = 0;
 
-  const secret = hashPointToScalar(target);
-
-  while (numTrials < maximumTrial) {
+  // Run SMP with all users of the hub.
+  console.log('_sendSearchReq: 3');
+  while (rwtor.connected && numTrials < maximumTrial) {
     logger.debug(
-      `sendSearchReq: starting trial ${numTrials}, waiting for msg1 from the server`
+      `sendSearchReq: starting trial ${numTrials}, waiting for msg0 from the server`
     );
-    const stateMachine = new SMPStateMachine(secret);
-    const a3 = (stateMachine.state as SMPState1).s3;
-    const msg1Bytes = await rwtor.read(timeoutSmall);
-    const msg1 = SearchMessage1.deserialize(msg1Bytes);
-    logger.debug("sendSearchReq: received msg1");
-    // Check if there is no more candidates.
-    if (msg1.isEnd) {
+    console.log('_sendSearchReq: 3.1');
+    const msg0Bytes = await rwtor.read(timeoutSmall);
+    console.log('_sendSearchReq: 3.2');
+    const msg0 = SearchMessage0.deserialize(msg0Bytes);
+    if (msg0.value !== BigInt(0)) {
+      console.log('_sendSearchReq: 3.3');
       break;
     }
-    if (msg1.smpMsg1 === undefined) {
-      throw new Error(
-        "this should never happen, constructor already handles it for us"
-      );
-    }
-    const msg2 = stateMachine.transit(msg1.smpMsg1);
-    if (msg2 === null) {
-      throw new Error("this should never happen");
-    }
-    logger.debug("sendSearchReq: sending msg2");
-    rwtor.write(msg2.serialize());
-    const msg3Bytes = await rwtor.read(timeoutLarge);
-    logger.debug("sendSearchReq: received msg3");
-    const msg3 = SearchMessage3.deserialize(msg3Bytes);
-    stateMachine.transit(msg3.smpMsg3);
-    if (!stateMachine.isFinished()) {
-      throw new RequestFailed(
-        "smp should have been finished. there must be something wrong"
-      );
-    }
-    if (stateMachine.getResult()) {
-      logger.debug(
-        `sendSearchReq: SMP has matched, target=${target} is found`
-      );
-      const pa = SMPMessage2Wire.fromTLV(msg2).pb;
-      const smpMsg3 = SMPMessage3Wire.fromTLV(msg3.smpMsg3);
-      const ph = smpMsg3.pa;
-      const rh = smpMsg3.ra;
-      smpRes = {
-        a3,
-        pa,
-        ph,
-        rh,
-        proofOfSMP: msg3.proof
-      };
+    const res = await receiveSMP(rwtor, target, timeoutSmall, timeoutLarge);
+    console.log('_sendSearchReq: 3.4');
+    if (res !== undefined) {
+      smpRes = res;
     }
     numTrials++;
   }
+
+  console.log('_sendSearchReq: 4');
+  // FIXME: It's not stable now.
+  // Keep searching through the connected hubs of the hub with messages proxied.
+  while (rwtor.connected) {
+    console.log('_sendSearchReq: 4.1');
+    const res = await _sendSearchReq(rwtor, target, depth - 1, timeoutSmall, timeoutLarge, maximumTrial);
+    console.log('_sendSearchReq: 4.2');
+    if (res !== undefined) {
+      smpRes = res;
+    }
+  }
+
   return smpRes;
 };

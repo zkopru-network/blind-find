@@ -29,5 +29,4 @@ contract BlindFindContract {
     latestHubConnectionTreeRoot = root;
     emit UpdateHubConnectionTree(latestHubConnectionTreeRoot);
   }
-
 }

@@ -19,7 +19,6 @@ const timeoutOneSMP = TIMEOUT + TIMEOUT + TIMEOUT + TIMEOUT_LARGE + TIMEOUT;
 const expectedNumSMPs = 2;
 const timeoutTotal = timeoutBeginAndEnd + expectedNumSMPs * timeoutOneSMP;
 
-// TODO: Use hardhat
 describe("User", function() {
   this.timeout(timeoutTotal);
 
@@ -66,7 +65,7 @@ describe("User", function() {
     );
     await hub.start();
     await blindFindContract.updateHubRegistryTree(merkleProof.root);
-    expect((await blindFindContract.getAllMerkleRoots()).size).to.eql(1);
+    expect((await blindFindContract.getAllHubRegistryTreeRoots()).size).to.eql(1);
 
     // User
     userJoinedDB = new MemoryDB();
@@ -113,18 +112,20 @@ describe("User", function() {
   it("search", async () => {
     // Search succeeds
     const proof = await userAnother.search(ip, port, userJoined.keypair.pubKey);
-    expect(proof).not.to.be.null;
-    if (proof === null) {
+    expect(proof).not.to.be.undefined;
+    if (proof === undefined) {
       // Makes compiler happy
       throw new Error();
     }
     // Ensure the output proof is valid
-    const validHubRegistryTreeRoots = await blindFindContract.getAllMerkleRoots();
-    expect(await verifyProofIndirectConnection(proof, validHubRegistryTreeRoots)).to.be
+    const validHubRegistryTreeRoots = await blindFindContract.getAllHubRegistryTreeRoots();
+    const validHubConnectionTreeRoots = await blindFindContract.getAllHubConnectionTreeRoots();
+    expect(await verifyProofIndirectConnection(proof, validHubRegistryTreeRoots, validHubConnectionTreeRoots)).to.be
       .true;
     // Search fails
     const keypairNotFound = genKeypair();
     expect(await userAnother.search(ip, port, keypairNotFound.pubKey)).to.be
-      .null;
+      .undefined;
   });
+
 });

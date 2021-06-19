@@ -85,11 +85,12 @@ const buildCommandSetHubRegistryWithProof = (config: IConfig) => {
       if (!hubRegistry.verify()) {
         throw new ValueError("hubRegistry has an invalid signature");
       }
-      // Verify merkleProof
+      // Verify hub registry tree merkleProof
       const merkleProof = hubRegistryWithProofObj.merkleProof;
       validateMerkleProof(hubRegistry, merkleProof);
       await validateMerkleRoot(blindFindContract, merkleProof.root);
 
+      // FIXME: Should have more checks here
       // Store this valid hub registry and its proof.
       const db = config.getDB();
       await HubServer.setHubRegistryToDB(db, {
@@ -228,11 +229,12 @@ const validateMerkleProof = (
   }
 };
 
+// TODO: should have another function checking hub connection tree roots.
 const validateMerkleRoot = async (
   contract: BlindFindContract,
   merkleRoot: BigInt
 ) => {
-  const allRoots = await contract.getAllMerkleRoots();
+  const allRoots = await contract.getAllHubRegistryTreeRoots();
   if (!allRoots.has(merkleRoot)) {
     throw new ValueError("merkle root is not on chain");
   }

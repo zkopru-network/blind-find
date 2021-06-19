@@ -59,8 +59,8 @@ export class User {
   async search(
     ip: string,
     port: number,
-    target: PubKey
-  ): Promise<TProofIndirectConnection | null> {
+    target: PubKey,
+  ): Promise<TProofIndirectConnection | undefined> {
     const res = await sendSearchReq(
       ip,
       port,
@@ -68,8 +68,8 @@ export class User {
       this.timeoutSmall,
       this.timeoutLarge
     );
-    if (res === null) {
-      return null;
+    if (res === undefined) {
+      return undefined;
     }
     // One peer matched. Verify the proof.
     if (!(await verifyProofOfSMP(res.proofOfSMP))) {
@@ -88,12 +88,14 @@ export class User {
       pubkeyA: this.keypair.pubKey,
       sigRh
     });
+    // FIXME: `proofSaltedConnections` should be received from the remote.
     const proofIndirectConnection = {
       pubkeyA: this.keypair.pubKey,
       pubkeyC: target,
       adminAddress: this.adminAddress,
       proofOfSMP: res.proofOfSMP,
-      proofSuccessfulSMP
+      proofSuccessfulSMP,
+      proofSaltedConnections: [],
     };
     if (!await this.verifyProofOfIndirectConnection(proofIndirectConnection)) {
       throw new InvalidProof("proof of indirect connection is invalid");
@@ -102,8 +104,9 @@ export class User {
   }
 
   async verifyProofOfIndirectConnection(proof: TProofIndirectConnection): Promise<boolean> {
-    const validHubRegistryTreeRoots = await this.contract.getAllMerkleRoots();
-    return await verifyProofIndirectConnection(proof, validHubRegistryTreeRoots);
+    const validHubRegistryTreeRoots = await this.contract.getAllHubRegistryTreeRoots();
+    const validHubConnectionTreeRoots = await this.contract.getAllHubConnectionTreeRoots();
+    return await verifyProofIndirectConnection(proof, validHubRegistryTreeRoots, validHubConnectionTreeRoots);
   }
 
   async getJoinedHubs() {

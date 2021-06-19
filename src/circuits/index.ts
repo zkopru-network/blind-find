@@ -111,6 +111,7 @@ const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
     sigCR8: inputs.sigJoinMsgC.R8,
     sigCS: inputs.sigJoinMsgC.S,
     pubkeyHub: inputs.pubkeyHub,
+    saltedPubkeyHub: saltPubkey(inputs.pubkeyHub),
     sigJoinMsgHubR8: inputs.sigJoinMsgHub.R8,
     sigJoinMsgHubS: inputs.sigJoinMsgHub.S,
     h2: inputs.h2,
@@ -318,7 +319,7 @@ const verifyProof = async (circomFilePath: string, proof: TProof) => {
 };
 
 export const parseProofOfSMPPublicSignals = (publicSignals: BigInt[]) => {
-  if (publicSignals.length !== 39) {
+  if (publicSignals.length !== 40) {
     throw new ValueError(
       `length of publicSignals is not correct: publicSignals=${publicSignals}`
     );
@@ -327,16 +328,18 @@ export const parseProofOfSMPPublicSignals = (publicSignals: BigInt[]) => {
   const pubkeyC = publicSignals.slice(1, 3);
   const adminAddress = publicSignals[3];
   const merkleRoot = publicSignals[4];
-  const pa = new BabyJubPoint(publicSignals.slice(21, 23));
-  const ph = new BabyJubPoint(publicSignals.slice(28, 30));
-  const rh = new BabyJubPoint(publicSignals.slice(35, 37));
+  const saltedPubkeyHub = publicSignals[5];
+  const pa = new BabyJubPoint(publicSignals.slice(22, 24));
+  const ph = new BabyJubPoint(publicSignals.slice(29, 31));
+  const rh = new BabyJubPoint(publicSignals.slice(36, 38));
   return {
     pubkeyC,
     adminAddress,
     merkleRoot,
     pa,
     ph,
-    rh
+    rh,
+    saltedPubkeyHub,
   };
 };
 
@@ -443,15 +446,14 @@ const verifyProofIndirectConnection = async (
     return false;
   }
 
+  // successfuly SMP <> [salted conections] <> proof SMP
   /**
    * Verify Proof of Salted Connections
    */
   //  1. All proof of salted connections are valid.
-  //  2. All proof of salted connections are chained together correctly.
-  //  3. `anotherSaltedPubkey` of the last proof of salted connection is the creator of
-  //    the proof of SMP.
+  //  2. All proof of salted connections are chained together correctly, i.e. the last
+  //     another is the current creator.
   const proofSaltedConnections = proof.proofSaltedConnections;
-  //  - the last another should be the one creates proofOfSMP
   let lastAnotherSaltedPubkey: BigInt | undefined = undefined;
   for (const p of proofSaltedConnections) {
     //  1. Verify Proof Salted Connection
@@ -481,12 +483,20 @@ const verifyProofIndirectConnection = async (
     }
     lastAnotherSaltedPubkey = publicInputs.anotherSaltedPubkey;
   }
-  // TODO: Ensure proof of SMP is created by the last another
+  //  3. `anotherSaltedPubkey` of the another the last proof of salted connection is the
+  //     creator of proof of SMP.
+  if (proofSaltedConnections.length !== 0) {
+    if (lastAnotherSaltedPubkey === undefined) {
+      throw new Error(`lastAnotherSaltedPubkey must not be undefined here`);
+    }
+    if (lastAnotherSaltedPubkey !== resProofOfSMP.saltedPubkeyHub) {
+      return false;
+    }
+  }
 
   return true;
 };
 
-// TODO: Add salt
 export const saltPubkey = (pubkey: PubKey): BigInt => {
   return hash5([
     pubkey[0],

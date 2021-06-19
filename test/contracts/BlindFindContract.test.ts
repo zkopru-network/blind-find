@@ -29,7 +29,7 @@ describe("Blind Find Contract", function() {
   });
 
   it("should be 0x00 as the default latestMerkleRoot", async () => {
-    expect(await contract.getLatestMerkleRoot()).to.eql(BigInt(0));
+    expect(await contract.getLatestHubRegistryTreeRoot()).to.eql(BigInt(0));
   });
 
   it("should fail when non admin tries to update merkle root", async () => {
@@ -51,18 +51,34 @@ describe("Blind Find Contract", function() {
     const firstMerkleRoot = BigInt(1);
     const secondMerkleRoot = BigInt(2);
     // No `updateHubRegistryTree` event before calling `updateHubRegistryTree`.
-    expect((await contract.getAllMerkleRoots()).size).to.eql(0);
+    expect((await contract.getAllHubRegistryTreeRoots()).size).to.eql(0);
+    // Update HubRegistry Tree Root
     // Update 1st time.
     await contract.updateHubRegistryTree(firstMerkleRoot);
-    expect(await contract.getLatestMerkleRoot()).to.eql(firstMerkleRoot);
-    expect((await contract.getAllMerkleRoots()).size).to.eql(1);
+    expect(await contract.getLatestHubRegistryTreeRoot()).to.eql(firstMerkleRoot);
+    expect((await contract.getAllHubRegistryTreeRoots()).size).to.eql(1);
     // Update second time.
     await contract.updateHubRegistryTree(secondMerkleRoot);
-    expect(await contract.getLatestMerkleRoot()).to.eql(secondMerkleRoot);
+    expect(await contract.getLatestHubRegistryTreeRoot()).to.eql(secondMerkleRoot);
+
+    // Update HubConnection Tree Root
+    // Update 1st time.
+    await contract.updateHubConnectionTree(firstMerkleRoot);
+    expect(await contract.getLatestHubConnectionTreeRoot()).to.eql(firstMerkleRoot);
+    expect((await contract.getAllHubConnectionTreeRoots()).size).to.eql(1);
+    // Update second time.
+    await contract.updateHubConnectionTree(secondMerkleRoot);
+    expect(await contract.getLatestHubConnectionTreeRoot()).to.eql(secondMerkleRoot);
+
     // Ensure all events are emitted and parsed correctly.
-    const merkleRoots = await contract.getAllMerkleRoots();
-    expect(merkleRoots.size).to.eql(2);
-    expect(merkleRoots.has(firstMerkleRoot)).to.be.true;
-    expect(merkleRoots.has(secondMerkleRoot)).to.be.true;
+    const hubRegistryTreeRoots = await contract.getAllHubRegistryTreeRoots();
+    expect(hubRegistryTreeRoots.size).to.eql(2);
+    expect(hubRegistryTreeRoots.has(firstMerkleRoot)).to.be.true;
+    expect(hubRegistryTreeRoots.has(secondMerkleRoot)).to.be.true;
+
+    const hubConnectionTreeRoots = await contract.getAllHubConnectionTreeRoots();
+    expect(hubConnectionTreeRoots.size).to.eql(2);
+    expect(hubConnectionTreeRoots.has(firstMerkleRoot)).to.be.true;
+    expect(hubConnectionTreeRoots.has(secondMerkleRoot)).to.be.true;
   });
 });

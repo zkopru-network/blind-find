@@ -68,7 +68,7 @@ const buildCommandSearch = (config: IConfig) => {
         } = await loadUserSettings(config);
         const user = new User(userKeypair, adminAddress, blindFindContract, db);
         const result = await user.search(hostname, port, targetPubkey);
-        if (result === null) {
+        if (result === undefined) {
           console.log(`Not Found: target = '${targetPubkeyB64}'`);
           process.exit(1);
         } else {

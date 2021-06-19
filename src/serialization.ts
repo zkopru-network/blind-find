@@ -21,7 +21,7 @@ import { Point, Scalar } from "./smp/v4/serialization";
 export enum msgType {
   JoinReq = 6,
   SearchReq,
-  JSONObj
+  JSONObj,
 }
 
 function serializeElements(values: BaseSerializable[]): Uint8Array {
@@ -248,13 +248,13 @@ class EmptyMessage extends BaseSerializable {
   }
 }
 
-export class SearchMessage0 extends EmptyMessage {
-  static deserialize(b: Uint8Array): SearchMessage0 {
-    return super.deserialize(b) as SearchMessage0;
+export class RequestSearchMessage extends EmptyMessage {
+  static deserialize(b: Uint8Array): RequestSearchMessage {
+    return super.deserialize(b) as RequestSearchMessage;
   }
 
-  static consume(b: Uint8Array): [SearchMessage0, Uint8Array] {
-    return super.consume(b) as [SearchMessage0, Uint8Array];
+  static consume(b: Uint8Array): [RequestSearchMessage, Uint8Array] {
+    return super.consume(b) as [RequestSearchMessage, Uint8Array];
   }
 
   serialize(): Uint8Array {
@@ -262,56 +262,13 @@ export class SearchMessage0 extends EmptyMessage {
   }
 }
 
-export class SearchMessage1 extends BaseSerializable {
-  static wireTypes = [
-    Byte, // isEnd
-    TLV // smpMsg1
-  ];
+// isEnd
+export class SearchMessage0 extends Byte {}
 
-  constructor(readonly isEnd: boolean, readonly smpMsg1?: TLV) {
-    super();
-    if (isEnd && smpMsg1 !== undefined) {
-      throw new ValueError(
-        "no smpMsg1 should be given if it's the last message"
-      );
-    }
-    if (!isEnd && smpMsg1 === undefined) {
-      throw new ValueError(
-        "smpMsg1 should be given if it's not the last message"
-      );
-    }
-  }
+// smpMsg1
+export class SearchMessage1 extends TLV {}
 
-  static deserialize(b: Uint8Array): SearchMessage1 {
-    return super.deserialize(b) as SearchMessage1;
-  }
-
-  static consume(b: Uint8Array): [SearchMessage1, Uint8Array] {
-    let bytesRemaining: Uint8Array;
-    let isEnd: BaseFixedInt;
-    let smpMsg1TLV: TLV;
-    [isEnd, bytesRemaining] = Byte.consume(b);
-    // False
-    if (isEnd.value === BigInt(0)) {
-      [smpMsg1TLV, bytesRemaining] = TLV.consume(bytesRemaining);
-      return [new SearchMessage1(false, smpMsg1TLV), bytesRemaining];
-    } else {
-      return [new SearchMessage1(true), bytesRemaining];
-    }
-  }
-
-  serialize(): Uint8Array {
-    if (this.isEnd) {
-      return serializeElements([new Byte(1)]);
-    } else {
-      if (this.smpMsg1 === undefined) {
-        throw new Error("smpMsg1 should not be undefined");
-      }
-      return serializeElements([new Byte(0), this.smpMsg1]);
-    }
-  }
-}
-
+// smpMsg2
 export class SearchMessage2 extends TLV {}
 
 class JSONObj extends BaseSerializable {

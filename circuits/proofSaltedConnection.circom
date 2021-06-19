@@ -175,5 +175,15 @@ template ProofSaltedConnection(levels) {
     res.a <== hubRegistryVerifier.valid;
     res.b <== hubConnectionVerifier.valid;
 
+    component saltedHubPubkeyVerifier0 = SaltPubkey();
+    saltedHubPubkeyVerifier0.pubkey[0] <== hubPubkey0[0];
+    saltedHubPubkeyVerifier0.pubkey[1] <== hubPubkey0[1];
+    saltedHubPubkeyVerifier0.out === saltedHubPubkey0;
+
+    component saltedHubPubkeyVerifier1 = SaltPubkey();
+    saltedHubPubkeyVerifier1.pubkey[0] <== hubPubkey1[0];
+    saltedHubPubkeyVerifier1.pubkey[1] <== hubPubkey1[1];
+    saltedHubPubkeyVerifier1.out === saltedHubPubkey1;
+
     valid <== res.out;
 }
