@@ -2,8 +2,11 @@
   <a href="https://github.com/mhchia/blind-find/actions?workflow=nodejs"><img alt="GitHub Actions status" src="https://github.com/mhchia/blind-find/workflows/nodejs/badge.svg"></a>
 </p>
 
-# Blind Find v1
-*Blind Find* is a peer-to-peer network allowing private peer search proposed by Barry Whitehat and Kobi Gurkan. This repo implements the first version of Blind Find, **Blind Find v1**. Please read the [spec](specs/blind_find_v1.md) to learn how it works.
+# Blind Find
+*Blind Find* is a peer-to-peer network allowing private peer search proposed by Barry Whitehat and Kobi Gurkan. **Blind Find v1** is ready and available in the main branch. Please read the [spec](specs/blind_find_v1.md) to learn how it works.
+
+## V1.5
+V1.5 is under heavy development. Code can be found in the branch [feature/v1.5](https://github.com/mhchia/blind-find/tree/feature/v1.5). Check out [v1.5 spec](https://github.com/mhchia/blind-find/blob/feature/v1.5/specs/v1.5/spec.md) to learn what can be expected in v1.5!
 
 ## Install
 You can install Blind Find either with [npm](#Install-with-npm) or building it from the [repo](#Build-from-the-repo).
