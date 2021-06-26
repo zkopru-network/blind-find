@@ -202,7 +202,7 @@ export type THubRateLimit = {
  *  response to the users.
  */
 export class HubServer extends BaseServer {
-  name = "HubServer";
+  name: string;
   userStore: UserStore;
   registryStore: RegistryStore;
   connectionRegistryStore: HubConnectionRegistryStore;
@@ -218,6 +218,7 @@ export class HubServer extends BaseServer {
     readonly adminAddress: BigInt,
     rateLimit: THubRateLimit,
     db: IAtomicDB,
+    name?: string,
     readonly timeoutSmall = TIMEOUT,
     readonly timeoutLarge = TIMEOUT_LARGE
   ) {
@@ -228,7 +229,15 @@ export class HubServer extends BaseServer {
     this.joinRateLimiter = new TokenBucketRateLimiter(rateLimit.join);
     this.searchRateLimiter = new TokenBucketRateLimiter(rateLimit.search);
     this.globalRateLimiter = new TokenBucketRateLimiter(rateLimit.global);
+
+    if (name !== undefined) {
+      this.name = name;
+    } else {
+      // If name is not specified, use the first 8 digit of its hex repr.
+      this.name = hashPointToScalar(this.keypair.pubKey).toString(16).slice(0, 8);
+    }
   }
+
 
   static async setHubRegistryToDB(db: IAtomicDB, e: THubRegistryWithProof) {
     const registryStore = new RegistryStore(e.hubRegistry.adminAddress, db);
