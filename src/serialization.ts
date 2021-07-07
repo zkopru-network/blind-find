@@ -262,6 +262,9 @@ export class RequestSearchMessage extends EmptyMessage {
   }
 }
 
+export const SEARCH_MSG_0_IS_NOT_END = BigInt(0);
+export const SEARCH_MSG_0_IS_END = BigInt(1);
+
 // isEnd
 export class SearchMessage0 extends Byte {}
 
@@ -297,8 +300,8 @@ class JSONObj extends BaseSerializable {
 export class SearchMessage3 extends BaseSerializable {
   static wireTypes = [
     TLV, // smpMsg3
-    JSONObj, // proof.proof
-    JSONObj // proof.publicSignals
+    JSONObj, // Proof of SMP: proof.proof
+    JSONObj // Proof of SMP: proof.publicSignals
   ];
   constructor(readonly smpMsg3: TLV, readonly proof: TProof) {
     super();
@@ -329,4 +332,49 @@ export class SearchMessage3 extends BaseSerializable {
       new JSONObj(stringifyBigInts(this.proof.publicSignals))
     ]);
   }
+}
+
+export class ProofSaltedConnectionReq extends BaseSerializable {
+  // Proof of Salted Connection
+
+  static wireTypes = [
+    JSONObj, // proof.proof
+    JSONObj // proof.publicSignals
+  ];
+
+  constructor(readonly proof: TProof) {
+    super();
+  }
+
+  static deserialize(b: Uint8Array): ProofSaltedConnectionReq {
+    return super.deserialize(b) as ProofSaltedConnectionReq;
+  }
+
+  static consume(b: Uint8Array): [ProofSaltedConnectionReq, Uint8Array] {
+    const [elements, bytesRemaining] = deserializeElements(b, this.wireTypes);
+    const proof = unstringifyBigInts((elements[0] as JSONObj).jsonObj);
+    const publicSignals = unstringifyBigInts((elements[1] as JSONObj).jsonObj);
+    return [
+      new ProofSaltedConnectionReq({
+        proof: proof,
+        publicSignals: publicSignals
+      }),
+      bytesRemaining
+    ];
+  }
+
+  serialize(): Uint8Array {
+    return serializeElements([
+      new JSONObj(stringifyBigInts(this.proof.proof)),
+      new JSONObj(stringifyBigInts(this.proof.publicSignals))
+    ]);
+  }
+}
+
+
+export const PROOF_SALTED_CONNECTION_RESP_REJECT = BigInt(0);
+export const PROOF_SALTED_CONNECTION_RESP_ACCEPT = BigInt(1);
+
+export class ProofSaltedConnectionResp extends Byte {
+
 }

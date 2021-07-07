@@ -5,7 +5,8 @@ export const transports = {
 };
 
 export const logger = winston.createLogger({
-    format: winston.format.json(),
+    level: 'debug',
+    format: winston.format.cli(),
     transports: [
         transports.console,
     ],
