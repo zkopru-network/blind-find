@@ -23,7 +23,6 @@ import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { HubConnectionRegistryTree } from "../src";
 import { verifyProofSaltedConnection } from "../src/circuits";
-import { hashPointToScalar } from "../src/utils";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -150,18 +149,30 @@ describe("HubServer", function() {
   //  test (which should be closed in `after`).
   let hub0: HubServer;
   let hub1: HubServer;
+  let hub2: HubServer;
   let addr0: { host: string, port: number };
   let addr1: { host: string, port: number };
+  let addr2: { host: string, port: number };
   const hubKeypair0 = genKeypair();
   const hubKeypair1 = genKeypair();
+  const hubKeypair2 = genKeypair();
   const adminAddress = adminAddressFactory();
+  const user0 = genKeypair();
   const user1 = genKeypair();
   const user2 = genKeypair();
   const user3 = genKeypair();
-  const tree = hubRegistryTreeFactory([hubKeypair0, hubKeypair1], LEVELS, adminAddress);
-  expect(tree.length).to.eql(2);
-  const hubRegistry0 = tree.leaves[0];
-  const merkleProof0 = tree.tree.genMerklePath(0);
+  const hubRegistryTree = hubRegistryTreeFactory([hubKeypair0, hubKeypair1, hubKeypair2], LEVELS, adminAddress);
+  expect(hubRegistryTree.length).to.eql(3);
+  const hubRegistry0 = hubRegistryTree.leaves[0];
+  const merkleProof0 = hubRegistryTree.tree.genMerklePath(0);
+  const hubRegistry1 = hubRegistryTree.leaves[1];
+  const merkleProof1 = hubRegistryTree.tree.genMerklePath(1);
+  const hubRegistry2 = hubRegistryTree.leaves[2];
+  const merkleProof2 = hubRegistryTree.tree.genMerklePath(2);
+  let hubRegistryRoots = new Set([hubRegistryTree.tree.root]);
+
+  const hubConnectionRegistryTree = new HubConnectionRegistryTree();
+  let hubConnectionTreeRoots = new Set([hubConnectionRegistryTree.tree.root]);
 
   before(async () => {
     const rateLimit = {
@@ -191,8 +202,8 @@ describe("HubServer", function() {
     // Setup hub1
     const db1 = new MemoryDB();
     await HubServer.setHubRegistryToDB(db1, {
-      hubRegistry: hubRegistry0.toObj(),
-      merkleProof: merkleProof0
+      hubRegistry: hubRegistry1.toObj(),
+      merkleProof: merkleProof1
     });
     hub1 = new HubServer(
       hubKeypair1,
@@ -203,6 +214,21 @@ describe("HubServer", function() {
     );
     await hub1.start();
 
+    // Setup hub2
+    const db2 = new MemoryDB();
+    await HubServer.setHubRegistryToDB(db2, {
+      hubRegistry: hubRegistry2.toObj(),
+      merkleProof: merkleProof2
+    });
+    hub2 = new HubServer(
+      hubKeypair2,
+      adminAddress,
+      hubRateLimit,
+      db2,
+      'Hub 2',
+    );
+    await hub2.start();
+
     const localhost = 'localhost';
     addr0 = {
       host: localhost,
@@ -212,11 +238,16 @@ describe("HubServer", function() {
       host: localhost,
       port: (hub1.address as WebSocket.AddressInfo).port
     };
+    addr2 = {
+      host: localhost,
+      port: (hub2.address as WebSocket.AddressInfo).port
+    };
   });
 
   after(() => {
     hub0.close();
     hub1.close();
+    hub2.close();
   });
 
   it("request fails when message has unsupported RPC type", async () => {
@@ -229,7 +260,7 @@ describe("HubServer", function() {
   });
 
   it("`Join` request should succeed with correct request data", async () => {
-    const signedMsg = signedJoinMsgFactory(user1, hubKeypair0);
+    const signedMsg = signedJoinMsgFactory(user0, hubKeypair0);
     await sendJoinHubReq(
       addr0.host,
       addr0.port,
@@ -238,11 +269,10 @@ describe("HubServer", function() {
       signedMsg.hubPubkey
     );
     expect(await hub0.userStore.getLength()).to.eql(1);
-    expect(hub0.userStore.get(signedMsg.userPubkey)).not.to.be.undefined;
+    expect(await hub0.userStore.get(signedMsg.userPubkey)).not.to.be.undefined;
 
     // Another request
-
-    const signedMsgAnother = signedJoinMsgFactory(user2, hubKeypair0);
+    const signedMsgAnother = signedJoinMsgFactory(user1, hubKeypair0);
     await sendJoinHubReq(
       addr0.host,
       addr0.port,
@@ -251,26 +281,16 @@ describe("HubServer", function() {
       signedMsgAnother.hubPubkey
     );
     expect(await hub0.userStore.getLength()).to.eql(2);
-    expect(hub0.userStore.get(signedMsgAnother.userPubkey)).not.to.be.undefined;
+    expect(await hub0.userStore.get(signedMsgAnother.userPubkey)).not.to.be.undefined;
   });
 
-  // it("search succeeds", async () => {
-  //   const searchRes = await sendSearchReq(addr0.host, addr0.port, user1.pubKey);
-  //   expect(searchRes).not.to.be.undefined;
-  // });
-
-  // it("search fails when target is not found", async () => {
-  //   const anotherUser = genKeypair();
-  //   const searchRes = await sendSearchReq(addr0.host, addr0.port, anotherUser.pubKey);
-  //   expect(searchRes).to.be.undefined;
-  // });
-
   it("genProofSaltedConnection succeeds", async () => {
-    const hubKeypair1 = genKeypair();
+    // Hub0 <-> Hub1 -x- Hub2
     const hubConnection = hubConnectionRegistryFactory(hubKeypair0, hubKeypair1);
-    const hubConnectionRegistryTree = new HubConnectionRegistryTree();
     hubConnectionRegistryTree.insert(hubConnection);
-    const hubConnectionRegistryWithProof1: THubConnectionWithProof = {
+    hubConnectionTreeRoots = new Set([hubConnectionRegistryTree.tree.root]);
+
+    const hubConnectionRegistryWithProof1 = {
       hubConnection: hubConnection.toObj(),
       merkleProof: hubConnectionRegistryTree.tree.genMerklePath(0),
       address: addr1,
@@ -283,30 +303,116 @@ describe("HubServer", function() {
     expect(await verifyProofSaltedConnection(proof)).to.be.true;
   });
 
-  // Hub1 connection is set in hub0 in the previous test 'genProofSaltedConnection succeeds'.
-  it("search succeeds via hub connections", async () => {
-    // User3 join hub1
-    const signedMsg = signedJoinMsgFactory(user3, hubKeypair1);
+  it("fails because we search for a target who is not found", async () => {
+    // Fails when target is not found
+    const anotherUser = genKeypair();
+    const res0 = await sendSearchReq(addr0.host, addr0.port, anotherUser.pubKey, [], hubRegistryRoots, hubConnectionTreeRoots);
+    expect(res0).to.be.undefined;
+
+    // Succeeds: User0 has joined Hub0 before.
+    //        **Request**
+    //           \
+    //    User0 - Hub0 <-> Hub1 -x- Hub2
+    //           /
+    //       User1
+    const res1 = await sendSearchReq(addr0.host, addr0.port, user0.pubKey, [], hubRegistryRoots, hubConnectionTreeRoots);
+    expect(res1).not.to.be.undefined;
+  });
+
+  it("succeeds because we can search User2 since Hub0 has connection with Hub1", async () => {
+    // User2 join Hub1
+    const signedMsg2 = signedJoinMsgFactory(user2, hubKeypair1);
     await sendJoinHubReq(
       addr1.host,
       addr1.port,
-      signedMsg.userPubkey,
-      signedMsg.userSig,
-      signedMsg.hubPubkey
+      signedMsg2.userPubkey,
+      signedMsg2.userSig,
+      signedMsg2.hubPubkey
     );
     expect(await hub1.userStore.getLength()).to.eql(1);
-    expect(hub1.userStore.get(signedMsg.userPubkey)).not.to.be.undefined;
-
+    expect(await hub1.userStore.get(signedMsg2.userPubkey)).not.to.be.undefined;
+    // Succeeds: We can search User2 since Hub0 has connection with Hub1
     //        **Request**
-    //            \
-    //    User1 - Hub0 <-> Hub1 - User3
-    //           /
-    //        User2
-    const searchRes = await sendSearchReq(addr0.host, addr0.port, user3.pubKey);
-    expect(searchRes).not.to.be.undefined;
+    //           \
+    //    User0 - Hub0 <-> Hub1 -x- Hub2
+    //           /          |
+    //       User1       User2
+    const res2 = await sendSearchReq(
+      addr0.host,
+      addr0.port,
+      user2.pubKey,
+      [],
+      hubRegistryRoots,
+      hubConnectionTreeRoots,
+    );
+    expect(res2).not.to.be.undefined;
   });
 
-  // it("request fails when timeout", async () => {
+  it("fails because we cannot search User3 since Hub1 is not connected with Hub2", async () => {
+    // User3 join Hub2
+    const signedMsg3 = signedJoinMsgFactory(user3, hubKeypair2);
+    await sendJoinHubReq(
+      addr2.host,
+      addr2.port,
+      signedMsg3.userPubkey,
+      signedMsg3.userSig,
+      signedMsg3.hubPubkey
+    );
+    expect(await hub2.userStore.getLength()).to.eql(1);
+    expect(await hub2.userStore.get(signedMsg3.userPubkey)).not.to.be.undefined;
+    // Fails: We cannot search User3 since Hub1 is not connected with Hub2
+    //        **Request**
+    //           \
+    //    User0 - Hub0 <-> Hub1 -x- Hub2
+    //           /          |        |
+    //       User1       User2     User3
+    const res3 = await sendSearchReq(
+      addr0.host,
+      addr0.port,
+      user3.pubKey,
+      [],
+      hubRegistryRoots,
+      hubConnectionTreeRoots,
+    );
+    expect(res3).to.be.undefined;
+  });
+
+  it("succeeds because we can search User3 from Hub0 now since Hub1 is already connected with Hub2", async () => {
+    // Connect Hub1 and Hub2 and set Hub2's hub connection to Hub1
+    const hubConnection = hubConnectionRegistryFactory(hubKeypair1, hubKeypair2);
+    hubConnectionRegistryTree.insert(hubConnection);
+    hubConnectionTreeRoots = new Set([hubConnectionRegistryTree.tree.root]);
+    const hubConnectionRegistryWithProof2 = {
+      hubConnection: hubConnection.toObj(),
+      merkleProof: hubConnectionRegistryTree.tree.genMerklePath(1),
+      address: addr2,
+    };
+    await hub1.setHubConnectionRegistry(
+      hubKeypair2.pubKey,
+      hubConnectionRegistryWithProof2
+    );
+    // Succeeds: We can search User3 from Hub0 now since Hub1 is already connected with Hub2
+    //        **Request**
+    //           \
+    //    User0 - Hub0 <-> Hub1 <-> Hub2
+    //           /          |        |
+    //       User1       User2     User3
+    const res4 = await sendSearchReq(
+      addr1.host,
+      addr1.port,
+      user3.pubKey,
+      [],
+      hubRegistryRoots,
+      hubConnectionTreeRoots,
+    );
+    expect(res4).not.to.be.undefined;
+  });
+
+
+  // TODO: Add tests for `MAX_INTERMEDIATE_HUBS`
+  // TODO: Add tests for wrong proof of salted connections
+
+  // it("join fails when timeout", async () => {
   //   // NOTE: Server still possibly adds the registry in `userStore` because
   //   //  the request is indeed valid. We can let the server revert if timeout happens.
   //   //  However, it requires additional designs.
@@ -361,7 +467,7 @@ describe("HubServer", function() {
   //       search: normalRateLimit,
   //       global: normalRateLimit,
   //     });
-  //     const signedMsg = signedJoinMsgFactory(user1, hubKeypair);
+  //     const signedMsg = signedJoinMsgFactory(user0, hubKeypair);
   //     await expect(
   //       sendJoinHubReq(
   //         ip,
@@ -372,7 +478,7 @@ describe("HubServer", function() {
   //       )
   //     ).to.be.rejected;
   //     // Search succeeds: temporarily comment it out since it's too slow.
-  //     // await sendSearchReq(ip, port, user1.pubKey);
+  //     // await sendSearchReq(ip, port, user0.pubKey);
   //     hub0.close();
   //   })();
 
@@ -383,7 +489,7 @@ describe("HubServer", function() {
   //       search: zeroRateLimit,
   //       global: normalRateLimit,
   //     });
-  //     await expect(sendSearchReq(ip, port, user1.pubKey)).to.be.rejected;
+  //     await expect(sendSearchReq(ip, port, user0.pubKey, [], hubRegistryRoots, hubConnectionTreeRoots)).to.be.rejected;
   //     hub0.close();
   //   })();
 
@@ -394,7 +500,7 @@ describe("HubServer", function() {
   //       search: normalRateLimit,
   //       global: zeroRateLimit,
   //     });
-  //     const signedMsg = signedJoinMsgFactory(user1, hubKeypair);
+  //     const signedMsg = signedJoinMsgFactory(user0, hubKeypair);
   //     await expect(
   //       sendJoinHubReq(
   //         ip,
@@ -404,7 +510,7 @@ describe("HubServer", function() {
   //         signedMsg.hubPubkey
   //       )
   //     ).to.be.rejected;
-  //     await expect(sendSearchReq(ip, port, user1.pubKey)).to.be.rejected;
+  //     await expect(sendSearchReq(ip, port, user0.pubKey, [], hubRegistryRoots, hubConnectionTreeRoots)).to.be.rejected;
   //     hub0.close();
   //   })();
   // });

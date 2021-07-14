@@ -29,7 +29,7 @@ import {
   TRateLimitParams,
   IWebSocketReadWriter, relay
 } from "./websocket";
-import { TIMEOUT, MAXIMUM_TRIALS, TIMEOUT_LARGE } from "./configs";
+import { TIMEOUT, MAX_TRIALS, TIMEOUT_LARGE, MAX_INTERMEDIATE_HUBS } from "./configs";
 import { THubRegistryObj } from "./";
 import { SMPStateMachine } from "./smp";
 import { getPubkeyB64Short, hashPointToScalar, isPubkeySame } from "./utils";
@@ -557,32 +557,42 @@ const receiveSMP = async (
 
 // TODO:
 //  - 1. Should return a list of proof of indirect connection
-//  - 2. Add maxDepth
 export const sendSearchReq = async (
   ip: string,
   port: number,
   target: PubKey,
-  depth: number = 6,
+  intermediateSaltedHubPubkeys: BigInt[],
+  validHubRegistryTreeRoots: Set<BigInt>,
+  validHubConnectionRegistryTreeRoots: Set<BigInt>,
+  maxIntermediateHubs: number = MAX_INTERMEDIATE_HUBS,
   timeoutSmall: number = TIMEOUT,
   timeoutLarge: number = TIMEOUT_LARGE,
-  maximumTrial: number = MAXIMUM_TRIALS
+  maximumTrial: number = MAX_TRIALS,
 ): Promise<TSMPResult | undefined> => {
+  logger.debug(`searching for target ${getPubkeyB64Short(target)}`);
   const rwtor = await connect(ip, port);
   return await _sendSearchReq(
-    rwtor, target, depth, timeoutSmall, timeoutLarge, maximumTrial
+    rwtor, target, intermediateSaltedHubPubkeys, validHubRegistryTreeRoots, validHubConnectionRegistryTreeRoots, maxIntermediateHubs, timeoutSmall, timeoutLarge, maximumTrial
   );
 }
 
 const _sendSearchReq = async (
   rwtor: IWebSocketReadWriter,
   target: PubKey,
-  depth: number,
+  intermediateSaltedHubPubkeys: BigInt[],
+  validHubRegistryTreeRoots: Set<BigInt>,
+  validHubConnectionRegistryTreeRoots: Set<BigInt>,
+  maxIntermediateHubs: number,
   timeoutSmall: number = TIMEOUT,
   timeoutLarge: number = TIMEOUT_LARGE,
-  maximumTrial: number = MAXIMUM_TRIALS
+  maximumTrial: number = MAX_TRIALS
 ): Promise<TSMPResult | undefined> => {
-  if (depth <= 0) {
-    logger.debug('_sendSearchReq: depth <= 0');
+  if (intermediateSaltedHubPubkeys.length > maxIntermediateHubs) {
+    logger.debug(
+      `too many intermediate hubs: ` +
+      `intermediateSaltedHubPubkeys.length=${intermediateSaltedHubPubkeys.length}, ` +
+      `maxIntermediateHubs=${maxIntermediateHubs}`
+    );
     return;
   }
   const requestSearchMsg = new RequestSearchMessage();
@@ -615,19 +625,35 @@ const _sendSearchReq = async (
     const msgBytesProofSaltedConnection = await rwtor.read(timeoutSmall);
     const proofSaltedConnectionReq = ProofSaltedConnectionReq.deserialize(msgBytesProofSaltedConnection);
     // If proof is invalid, skip this hub.
-    let msgResp: ProofSaltedConnectionResp;
-    if (!verifyProofSaltedConnection(proofSaltedConnectionReq.proof)) {
-      msgResp = new ProofSaltedConnectionResp(PROOF_SALTED_CONNECTION_RESP_REJECT);
-    }
-    //
     const proofSaltedConnectionPublics = parseProofSaltedConnectionPublicSignals(proofSaltedConnectionReq.proof.publicSignals);
-    msgResp = new ProofSaltedConnectionResp(PROOF_SALTED_CONNECTION_RESP_ACCEPT);
+    if (
+      !verifyProofSaltedConnection(proofSaltedConnectionReq.proof) ||
+      !validHubRegistryTreeRoots.has(proofSaltedConnectionPublics.hubRegistryTreeMerkleRoot) ||
+      !validHubConnectionRegistryTreeRoots.has(proofSaltedConnectionPublics.hubConnectionTreeMerkleRoot) ||
+      // The last another should be the creator of the current proof.
+      intermediateSaltedHubPubkeys.length !== 0 && intermediateSaltedHubPubkeys[intermediateSaltedHubPubkeys.length - 1] !== proofSaltedConnectionPublics.creatorSaltedPubkey
+    ) {
+      const msgResp = new ProofSaltedConnectionResp(PROOF_SALTED_CONNECTION_RESP_REJECT);
+      rwtor.write(msgResp.serialize());
+      continue;
+    } else {
 
-    rwtor.write(msgResp.serialize());
-
-    const res = await _sendSearchReq(rwtor, target, depth - 1, timeoutSmall, timeoutLarge, maximumTrial);
-    if (res !== undefined) {
-      smpRes = res;
+      const msgResp = new ProofSaltedConnectionResp(PROOF_SALTED_CONNECTION_RESP_ACCEPT);
+      rwtor.write(msgResp.serialize());
+      const res = await _sendSearchReq(
+        rwtor,
+        target,
+        [...intermediateSaltedHubPubkeys, proofSaltedConnectionPublics.anotherSaltedPubkey],
+        validHubRegistryTreeRoots,
+        validHubConnectionRegistryTreeRoots,
+        maxIntermediateHubs,
+        timeoutSmall,
+        timeoutLarge,
+        maximumTrial,
+      );
+      if (res !== undefined) {
+        smpRes = res;
+      }
     }
   }
 
