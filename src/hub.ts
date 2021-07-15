@@ -587,14 +587,6 @@ const _sendSearchReq = async (
   timeoutLarge: number = TIMEOUT_LARGE,
   maximumTrial: number = MAX_TRIALS
 ): Promise<TSMPResult | undefined> => {
-  if (intermediateSaltedHubPubkeys.length > maxIntermediateHubs) {
-    logger.debug(
-      `too many intermediate hubs: ` +
-      `intermediateSaltedHubPubkeys.length=${intermediateSaltedHubPubkeys.length}, ` +
-      `maxIntermediateHubs=${maxIntermediateHubs}`
-    );
-    return;
-  }
   const requestSearchMsg = new RequestSearchMessage();
   const req = new TLV(new Short(msgType.SearchReq), requestSearchMsg.serialize());
   rwtor.write(req.serialize());
@@ -630,6 +622,9 @@ const _sendSearchReq = async (
       !verifyProofSaltedConnection(proofSaltedConnectionReq.proof) ||
       !validHubRegistryTreeRoots.has(proofSaltedConnectionPublics.hubRegistryTreeMerkleRoot) ||
       !validHubConnectionRegistryTreeRoots.has(proofSaltedConnectionPublics.hubConnectionTreeMerkleRoot) ||
+      // FIXME: It is inefficient to indicate REJECT with a message here. Maybe it's better to add a message
+      //  DONT_RELAY outside and before this while loop.
+      intermediateSaltedHubPubkeys.length >= maxIntermediateHubs ||
       // The last another should be the creator of the current proof.
       intermediateSaltedHubPubkeys.length !== 0 && intermediateSaltedHubPubkeys[intermediateSaltedHubPubkeys.length - 1] !== proofSaltedConnectionPublics.creatorSaltedPubkey
     ) {

@@ -377,7 +377,7 @@ describe("HubServer", function() {
     expect(res3).to.be.undefined;
   });
 
-  it("succeeds because we can search User3 from Hub0 now since Hub1 is already connected with Hub2", async () => {
+  it("succeeds when we search for User3 from Hub0 now since Hub1 is already connected with Hub2", async () => {
     // Connect Hub1 and Hub2 and set Hub2's hub connection to Hub1
     const hubConnection = hubConnectionRegistryFactory(hubKeypair1, hubKeypair2);
     hubConnectionRegistryTree.insert(hubConnection);
@@ -406,6 +406,26 @@ describe("HubServer", function() {
       hubConnectionTreeRoots,
     );
     expect(res4).not.to.be.undefined;
+  });
+
+  it("fails when we search for User3 due to the `maxIntermediateHubs`", async () => {
+    const maxIntermediateHubs = 0;
+    // Fails: maxIntermediateHubs is set to 0 and thus there is no intermediate hubs
+    //        **Request**
+    //           \
+    //    User0 - Hub0 <-> Hub1 <-> Hub2
+    //           /          |        |
+    //       User1       User2     User3
+    const res5 = await sendSearchReq(
+      addr1.host,
+      addr1.port,
+      user3.pubKey,
+      [],
+      hubRegistryRoots,
+      hubConnectionTreeRoots,
+      maxIntermediateHubs,
+    );
+    expect(res5).to.be.undefined;
   });
 
 
