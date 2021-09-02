@@ -6,7 +6,7 @@ import {
   verifyProofOfSMP,
   TProofIndirectConnection,
 } from "./circuits";
-import { TIMEOUT, TIMEOUT_LARGE } from "./configs";
+import { MAX_INTERMEDIATE_HUBS, TIMEOUT, TIMEOUT_LARGE } from "./configs";
 import { DBMap } from "./db";
 import { sendJoinHubReq, sendSearchReq } from "./hub";
 import { IAtomicDB } from "./interfaces";
@@ -61,10 +61,16 @@ export class User {
     port: number,
     target: PubKey,
   ): Promise<TProofIndirectConnection | undefined> {
+    const validHubRegistryTreeRoots = await this.contract.getAllHubRegistryTreeRoots();
+    const validHubConnectionTreeRoots = await this.contract.getAllHubConnectionTreeRoots();
     const res = await sendSearchReq(
       ip,
       port,
       target,
+      [],
+      validHubRegistryTreeRoots,
+      validHubConnectionTreeRoots,
+      MAX_INTERMEDIATE_HUBS,
       this.timeoutSmall,
       this.timeoutLarge
     );
@@ -88,7 +94,6 @@ export class User {
       pubkeyA: this.keypair.pubKey,
       sigRh
     });
-    // FIXME: `proofSaltedConnections` should be received from the remote.
     const proofIndirectConnection = {
       pubkeyA: this.keypair.pubKey,
       pubkeyC: target,
@@ -97,16 +102,10 @@ export class User {
       proofSuccessfulSMP,
       proofSaltedConnections: [],
     };
-    if (!await this.verifyProofOfIndirectConnection(proofIndirectConnection)) {
+    if (!await verifyProofIndirectConnection(proofIndirectConnection, validHubRegistryTreeRoots, validHubConnectionTreeRoots)) {
       throw new InvalidProof("proof of indirect connection is invalid");
     }
     return proofIndirectConnection;
-  }
-
-  async verifyProofOfIndirectConnection(proof: TProofIndirectConnection): Promise<boolean> {
-    const validHubRegistryTreeRoots = await this.contract.getAllHubRegistryTreeRoots();
-    const validHubConnectionTreeRoots = await this.contract.getAllHubConnectionTreeRoots();
-    return await verifyProofIndirectConnection(proof, validHubRegistryTreeRoots, validHubConnectionTreeRoots);
   }
 
   async getJoinedHubs() {
