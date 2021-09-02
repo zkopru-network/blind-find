@@ -8,10 +8,14 @@ import {
 import {
   getCounterSignHashedData,
   getJoinHubMsgHashedData,
+  HubConnectionRegistry,
+  HubConnectionRegistryTree,
   HubRegistry,
   HubRegistryTree,
-  signMsg
+  signMsg,
+  sortDataWithPubkey,
 } from "../src";
+import { ProofSaltedConnectionInput } from "../src/circuits";
 import { SMPStateMachine } from "../src/smp";
 import { SMPState1, SMPState2 } from "../src/smp/state";
 import {
@@ -20,10 +24,13 @@ import {
   SMPMessage3Wire
 } from "../src/smp/v4/serialization";
 import { TEthereumAddress } from "../src/types";
-import { hashPointToScalar } from "../src/utils";
+import { hashPointToScalar, isPubkeySame } from "../src/utils";
 
 import { ethers } from "hardhat";
 import { BlindFindContract } from "../src/web3";
+import { MerkleProof } from "../src/interfaces";
+import { saltPubkey } from "../src/circuits";
+import e from "express";
 
 type SignedJoinMsg = {
   userPubkey: PubKey;
@@ -99,6 +106,26 @@ export const hubRegistryTreeFactory = (
   return tree;
 };
 
+export const hubConnectionRegistryFactory = (
+  hubKeypair0?: Keypair,
+  hubKeypair1?: Keypair,
+): HubConnectionRegistry => {
+  if (hubKeypair0 === undefined) {
+    hubKeypair0 = genKeypair();
+  }
+  if (hubKeypair1 === undefined) {
+    hubKeypair1 = genKeypair();
+  }
+  const sig0 = HubConnectionRegistry.partialSign(hubKeypair0, hubKeypair1.pubKey);
+  const sig1 = HubConnectionRegistry.partialSign(hubKeypair1, hubKeypair0.pubKey);
+  return new HubConnectionRegistry({
+    hubPubkey0: hubKeypair0.pubKey,
+    hubSig0: sig0,
+    hubPubkey1: hubKeypair1.pubKey,
+    hubSig1: sig1,
+  });
+};
+
 export const successfulSMPMessagesFactory = (secret: BigInt = BigInt(1)) => {
   const alice = new SMPStateMachine(secret);
   const hub = new SMPStateMachine(secret);
@@ -129,25 +156,16 @@ export const successfulSMPMessagesFactory = (secret: BigInt = BigInt(1)) => {
   return { msg1, msg2, msg3, h2, h3, a2, a3, r4h };
 };
 
-export const proofOfSMPInputsFactory = (levels: number = 32) => {
-  const hubIndex = 3;
-  const hubs = [
-    genKeypair(),
-    genKeypair(),
-    genKeypair(),
-    genKeypair(),
-    genKeypair()
-  ];
-  const adminAddress = adminAddressFactory();
+export const proofOfSMPInputsFactory = (
+  keypairHub: Keypair,
+  hubRegistry: HubRegistry,
+  hubRegistryMerkleProof: MerkleProof,
+  adminAddress: TEthereumAddress,
+) => {
   const keypairC = genKeypair();
-  const keypairHub = hubs[hubIndex];
   const signedJoinMsg = signedJoinMsgFactory(keypairC, keypairHub);
   const sigJoinMsgC = signedJoinMsg.userSig;
   const sigJoinMsgHub = signedJoinMsg.hubSig;
-  const tree = hubRegistryTreeFactory(hubs, levels, adminAddress);
-  const hubRegistry = tree.leaves[hubIndex];
-  const root = tree.tree.root;
-  const proof = tree.tree.genMerklePath(hubIndex);
   const secret = hashPointToScalar(keypairC.pubKey);
   const {
     msg1,
@@ -160,15 +178,11 @@ export const proofOfSMPInputsFactory = (levels: number = 32) => {
     r4h
   } = successfulSMPMessagesFactory(secret);
 
-  if (!hubRegistry.verify()) {
-    throw new Error(`registry is invalid: hubIndex=${hubIndex}`);
-  }
   return {
-    root,
-    proof: proof as any,
+    proof: hubRegistryMerkleProof,
     hubRegistry,
     pubkeyC: keypairC.pubKey,
-    pubkeyHub: keypairHub.pubKey,
+    pubkeyHub: hubRegistry.toObj().pubkey,
     adminAddress: adminAddress,
     sigJoinMsgC,
     sigJoinMsgHub,
@@ -205,8 +219,78 @@ export const proofSuccessfulSMPInputsFactory = () => {
   return { pa, ph, rh, msg1, msg2, msg3, h2, h3, r4h, a2, a3, pubkeyA, sigRh };
 };
 
-export const proofIndirectConnectionInputsFactory = (levels: number = 32) => {
-  let inputs = proofOfSMPInputsFactory(levels);
+export const proofSaltedConnectionInputsFactory = (
+  hubIndex0: number,
+  hubIndex1: number,
+  hubConnectionIndex: number,
+  hubRegistryTree: HubRegistryTree,
+  hubConnectionTree: HubConnectionRegistryTree,
+  adminAddress: TEthereumAddress,
+): ProofSaltedConnectionInput => {
+
+  const hubConnectionRegistry = hubConnectionTree.leaves[hubConnectionIndex];
+  const sortedHubConnectionRegistry = hubConnectionRegistry.toSorted();
+  let pubkey0 = hubRegistryTree.leaves[hubIndex0].toObj().pubkey;
+  let pubkey1 = hubRegistryTree.leaves[hubIndex1].toObj().pubkey;
+  const creatorHubRegistry = hubRegistryTree.leaves[hubIndex0];
+  const creatorHubRegistryMerkleProof = hubRegistryTree.tree.genMerklePath(hubIndex0);
+  const hubConnectionMerkleProof = hubConnectionTree.tree.genMerklePath(hubConnectionIndex);
+
+  let creatorIndex: number;
+  if (isPubkeySame(pubkey0, sortedHubConnectionRegistry.hubPubkey0)) {
+    if (!isPubkeySame(pubkey1, sortedHubConnectionRegistry.hubPubkey1)) {
+      throw new Error('pubkey1 is not in hub connection registry');
+    }
+    creatorIndex = 0;
+    // Nothing to do since the order is already correct.
+  } else if (isPubkeySame(pubkey0, sortedHubConnectionRegistry.hubPubkey1)) {
+    if (!isPubkeySame(pubkey1, sortedHubConnectionRegistry.hubPubkey0)) {
+      throw new Error('pubkey1 is not in hub connection registry');
+    }
+    creatorIndex = 1;
+  } else {
+    throw new Error('hub connection registry mismatch');
+  }
+
+  return {
+    creator: BigInt(creatorIndex),
+    creatorHubRegistry: creatorHubRegistry,
+    creatorHubRegistryMerkleProof: creatorHubRegistryMerkleProof,
+    hubConnectionRegistry: hubConnectionRegistry,
+    hubConnectionMerkleProof: hubConnectionMerkleProof,
+    adminAddress: adminAddress,
+  }
+};
+
+export const proofIndirectConnectionInputsFactory = (
+  numHubs = 1,
+  levels: number = 32,
+) => {
+  const adminAddress = adminAddressFactory();
+  const hubs: Keypair[] = [];
+  for (let i = 0; i < numHubs; i++) {
+    hubs.push(genKeypair());
+  }
+  const hubRegistryTree = hubRegistryTreeFactory(hubs, levels, adminAddress);
+  // Prepare for hub connections
+  const hubConnectionTree = new HubConnectionRegistryTree();
+  for (let i = 0; i < hubs.length - 1; i++) {
+    const hubConn = hubConnectionRegistryFactory(hubs[i], hubs[i + 1]);
+    hubConnectionTree.insert(hubConn);
+  }
+  const proofSaltedConnectionInputs: ProofSaltedConnectionInput[] = [];
+  for (let i = 0; i < hubs.length - 1; i++) {
+    proofSaltedConnectionInputs.push(
+      proofSaltedConnectionInputsFactory(i, i + 1, i, hubRegistryTree, hubConnectionTree, adminAddress)
+    )
+  }
+
+  const lastHubIndex = numHubs - 1;
+  const lastHubKeypair = hubs[lastHubIndex];
+  const lastHubRegistry = hubRegistryTree.leaves[lastHubIndex];
+  const lastHubRegistryProof = hubRegistryTree.tree.genMerklePath(lastHubIndex);
+  const inputs = proofOfSMPInputsFactory(lastHubKeypair, lastHubRegistry, lastHubRegistryProof, adminAddress);
+
   const pa = inputs.msg2.pb;
   const ph = inputs.msg3.pa;
   const rh = inputs.msg3.ra;
@@ -225,7 +309,6 @@ export const proofIndirectConnectionInputsFactory = (levels: number = 32) => {
     r4h: inputs.r4h,
     a2: inputs.a2,
     a3: inputs.a3,
-    root: inputs.root,
     proof: inputs.proof,
     hubRegistry: inputs.hubRegistry,
     pubkeyC: inputs.pubkeyC,
@@ -234,7 +317,9 @@ export const proofIndirectConnectionInputsFactory = (levels: number = 32) => {
     sigJoinMsgHub: inputs.sigJoinMsgHub,
     adminAddress: inputs.adminAddress,
     pubkeyA: pubkeyA,
-    sigRh: sigRh
+    sigRh: sigRh,
+    proofSaltedConnectionInputs: proofSaltedConnectionInputs,
+    hubConnectionTreeRoot: hubConnectionTree.tree.root,
   };
 };
 
@@ -247,3 +332,13 @@ export const blindFindContractFactory = async (): Promise<BlindFindContract> => 
   const contract = new BlindFindContract(c, 0);
   return contract;
 };
+
+export const genSortedKeypairs = (): [Keypair, Keypair] => {
+  const _hub0 = genKeypair();
+  const _hub1 = genKeypair();
+  const sorted = sortDataWithPubkey(
+    {pubkey: _hub0.pubKey, data: _hub0},
+    {pubkey: _hub1.pubKey, data: _hub1}
+  );
+  return [sorted[0].data, sorted[1].data];
+}

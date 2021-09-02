@@ -10,6 +10,7 @@ import {
   GetMerkleProofResp,
   JoinReq,
   JoinResp,
+  SearchMessage0,
   SearchMessage1,
   SearchMessage3
 } from "../src/serialization";
@@ -25,7 +26,8 @@ const expect = chai.expect;
 describe("Serialization and Deserialization of wire messages", () => {
   it("GetMerkleProofReq", () => {
     const hubRegistry = hubRegistryFactory();
-    const req = new GetMerkleProofReq(hubRegistry.pubkey, hubRegistry.sig);
+    const hubRegistryObj = hubRegistry.toObj();
+    const req = new GetMerkleProofReq(hubRegistryObj.pubkey, hubRegistryObj.sig);
     const bytes = req.serialize();
     const reqFromBytes = GetMerkleProofReq.deserialize(bytes);
     expect(req.hubPubkey).to.eql(reqFromBytes.hubPubkey);
@@ -73,31 +75,6 @@ describe("Serialization and Deserialization of wire messages", () => {
     const bytes = joinResp.serialize();
     const reqFromBytes = JoinResp.deserialize(bytes);
     expect(joinResp.hubSig).to.eql(reqFromBytes.hubSig);
-  });
-
-  it("SearchMessage1", () => {
-    const msg1Last = new SearchMessage1(true);
-    const bytes = msg1Last.serialize();
-    const msg1LastFromBytes = SearchMessage1.deserialize(bytes);
-    expect(msg1LastFromBytes.isEnd).to.be.true;
-    expect(msg1LastFromBytes.smpMsg1).to.be.undefined;
-
-    const smpMsg1 = smpMessage1Factory() as SMPMessage1Wire;
-    const msg1NotLast = new SearchMessage1(false, smpMsg1.toTLV());
-    const msg1NotLastFromBytes = SearchMessage1.deserialize(
-      msg1NotLast.serialize()
-    );
-    expect(msg1NotLastFromBytes.isEnd).to.be.false;
-    if (msg1NotLastFromBytes.smpMsg1 === undefined) {
-      throw new Error();
-    }
-    const smpMsg1FromBytes = SMPMessage1Wire.fromTLV(
-      msg1NotLastFromBytes.smpMsg1
-    );
-    expect(smpMsg1FromBytes.g2a).to.eql(smpMsg1.g2a);
-    expect(smpMsg1FromBytes.g2aProof).to.eql(smpMsg1.g2aProof);
-    expect(smpMsg1FromBytes.g3a).to.eql(smpMsg1.g3a);
-    expect(smpMsg1FromBytes.g3aProof).to.eql(smpMsg1.g3aProof);
   });
 
   it("SearchMessage3", () => {

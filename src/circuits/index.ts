@@ -3,6 +3,7 @@ import * as path from "path";
 import * as shell from "shelljs";
 
 import {
+  hash5,
   PubKey,
   Signature,
   stringifyBigInts,
@@ -14,12 +15,13 @@ import {
   SMPMessage2Wire,
   SMPMessage3Wire
 } from "../smp/v4/serialization";
-import { HubRegistry } from "..";
+import { HubConnectionRegistry, HubRegistry } from "..";
 import { BabyJubPoint } from "../smp/v4/babyJub";
 import { MerkleProof } from "../interfaces";
 import { TEthereumAddress } from "../types";
 const circom = require("circom");
 import tmp from 'tmp-promise';
+import { isPubkeySame } from "../utils";
 
 /**
  * Ref
@@ -37,6 +39,7 @@ const snarkjsCLI = path.join(
 );
 const proofOfSMPPath = path.join(circomDir, "instance/proofOfSMP.circom");
 const proofSuccessfulSMPPath = path.join(circomDir, "instance/proofSuccessfulSMP.circom");
+const proofSaltedConnectionPath = path.join(circomDir, "instance/proofSaltedConnection.circom");
 
 export const compileAndLoadCircuit = async (circuitPath: string) => {
   const circuit = await circom.tester(path.join(circuitPath));
@@ -68,12 +71,22 @@ type ProofSuccessfulSMPInput = {
   sigRh: Signature;
 };
 
+export type ProofSaltedConnectionInput = {
+  creator: BigInt;
+  creatorHubRegistryMerkleProof: MerkleProof;
+  creatorHubRegistry: HubRegistry;
+  hubConnectionRegistry: HubConnectionRegistry;
+  hubConnectionMerkleProof: MerkleProof;
+  adminAddress: TEthereumAddress;
+}
+
 type TProof = { proof: any; publicSignals: any };
 type TProofIndirectConnection = {
   pubkeyA: PubKey;
   pubkeyC: PubKey;
   adminAddress: TEthereumAddress;
   proofOfSMP: TProof;
+  proofSaltedConnections: TProof[];
   proofSuccessfulSMP: TProof;
 };
 
@@ -86,17 +99,19 @@ const proofOfSMPInputsToCircuitArgs = (inputs: ProofOfSMPInput) => {
   if (!inputs.hubRegistry.verify()) {
     throw new ValueError("registry is invalid");
   }
+  const hubRegistryObj = inputs.hubRegistry.toObj();
   const args = stringifyBigInts({
     merklePathElements: inputs.proof.pathElements,
     merklePathIndices: inputs.proof.indices,
     merkleRoot: inputs.proof.root,
-    sigHubRegistryR8: inputs.hubRegistry.sig.R8,
-    sigHubRegistryS: inputs.hubRegistry.sig.S,
-    adminAddress: inputs.hubRegistry.adminAddress,
+    sigHubRegistryR8: hubRegistryObj.sig.R8,
+    sigHubRegistryS: hubRegistryObj.sig.S,
+    adminAddress: hubRegistryObj.adminAddress,
     pubkeyC: inputs.pubkeyC,
     sigCR8: inputs.sigJoinMsgC.R8,
     sigCS: inputs.sigJoinMsgC.S,
     pubkeyHub: inputs.pubkeyHub,
+    saltedPubkeyHub: saltPubkey(inputs.pubkeyHub),
     sigJoinMsgHubR8: inputs.sigJoinMsgHub.R8,
     sigJoinMsgHubS: inputs.sigJoinMsgHub.S,
     h2: inputs.h2,
@@ -160,6 +175,44 @@ const genProofSuccessfulSMP = async (
 
 const verifyProofSuccessfulSMP = async (proof: TProof) => {
   return await verifyProof(proofSuccessfulSMPPath, proof);
+};
+
+const genProofSaltedConnection = async (
+  inputs: ProofSaltedConnectionInput,
+) => {
+  return await genProof(
+    proofSaltedConnectionPath,
+    proofSaltedConnectionInputToCircuitArgs(inputs),
+  );
+};
+
+const proofSaltedConnectionInputToCircuitArgs = (inputs: ProofSaltedConnectionInput) => {
+  const hubRegistry0Obj = inputs.creatorHubRegistry.toObj();
+  const hubConnectionRegistryObj = inputs.hubConnectionRegistry.toSorted();
+  return stringifyBigInts({
+    creator: inputs.creator,
+    hubPubkey0: hubConnectionRegistryObj.hubPubkey0,
+    hubPubkey1: hubConnectionRegistryObj.hubPubkey1,
+    creatorHubRegistryMerklePathElements: inputs.creatorHubRegistryMerkleProof.pathElements,
+    creatorHubRegistryMerklePathIndices: inputs.creatorHubRegistryMerkleProof.indices,
+    creatorHubRegistrySigR8: hubRegistry0Obj.sig.R8,
+    creatorHubRegistrySigS: hubRegistry0Obj.sig.S,
+    sigHubConnection0R8: hubConnectionRegistryObj.hubSig0.R8,
+    sigHubConnection0S: hubConnectionRegistryObj.hubSig0.S,
+    sigHubConnection1R8: hubConnectionRegistryObj.hubSig1.R8,
+    sigHubConnection1S: hubConnectionRegistryObj.hubSig1.S,
+    hubConnectionMerklePathElements: inputs.hubConnectionMerkleProof.pathElements,
+    hubConnectionMerklePathIndices: inputs.hubConnectionMerkleProof.indices,
+    adminAddress: inputs.adminAddress,
+    hubRegistryTreeMerkleRoot: inputs.creatorHubRegistryMerkleProof.root,
+    hubConnectionTreeMerkleRoot: inputs.hubConnectionMerkleProof.root,
+    saltedHubPubkey0: saltPubkey(hubConnectionRegistryObj.hubPubkey0),
+    saltedHubPubkey1: saltPubkey(hubConnectionRegistryObj.hubPubkey1),
+  });
+};
+
+const verifyProofSaltedConnection = async (proof: TProof) => {
+  return await verifyProof(proofSaltedConnectionPath, proof);
 };
 
 const getCircuitName = (circomFileBasename: string): string => {
@@ -266,7 +319,7 @@ const verifyProof = async (circomFilePath: string, proof: TProof) => {
 };
 
 export const parseProofOfSMPPublicSignals = (publicSignals: BigInt[]) => {
-  if (publicSignals.length !== 39) {
+  if (publicSignals.length !== 40) {
     throw new ValueError(
       `length of publicSignals is not correct: publicSignals=${publicSignals}`
     );
@@ -275,16 +328,18 @@ export const parseProofOfSMPPublicSignals = (publicSignals: BigInt[]) => {
   const pubkeyC = publicSignals.slice(1, 3);
   const adminAddress = publicSignals[3];
   const merkleRoot = publicSignals[4];
-  const pa = new BabyJubPoint(publicSignals.slice(21, 23));
-  const ph = new BabyJubPoint(publicSignals.slice(28, 30));
-  const rh = new BabyJubPoint(publicSignals.slice(35, 37));
+  const saltedPubkeyHub = publicSignals[5];
+  const pa = new BabyJubPoint(publicSignals.slice(22, 24));
+  const ph = new BabyJubPoint(publicSignals.slice(29, 31));
+  const rh = new BabyJubPoint(publicSignals.slice(36, 38));
   return {
     pubkeyC,
     adminAddress,
     merkleRoot,
     pa,
     ph,
-    rh
+    rh,
+    saltedPubkeyHub,
   };
 };
 
@@ -307,14 +362,46 @@ const parseProofSuccessfulSMPPublicSignals = (publicSignals: BigInt[]) => {
   };
 };
 
-const isPubkeySame = (a: PubKey, b: PubKey) => {
-  return a.length === b.length && a[0] === b[0] && a[1] === b[1];
+export const parseProofSaltedConnectionPublicSignals = (publicSignals: BigInt[]) => {
+  if (publicSignals.length !== 7) {
+    throw new ValueError(
+      `length of publicSignals is not correct: publicSignals=${publicSignals}`
+    );
+  }
+  // Ignore the first `1n`.
+  const creator = publicSignals[1];
+  const adminAddress = publicSignals[2];
+  const hubRegistryTreeMerkleRoot = publicSignals[3];
+  const hubConnectionTreeMerkleRoot = publicSignals[4];
+  const saltedHubPubkey0 = publicSignals[5];
+  const saltedHubPubkey1 = publicSignals[6];
+
+  let creatorSaltedPubkey: BigInt;
+  let anotherSaltedPubkey: BigInt;
+  if (creator === BigInt(0)) {
+    creatorSaltedPubkey = saltedHubPubkey0;
+    anotherSaltedPubkey = saltedHubPubkey1;
+  } else if (creator === BigInt(1)) {
+    creatorSaltedPubkey = saltedHubPubkey1;
+    anotherSaltedPubkey = saltedHubPubkey0;
+  } else {
+    throw new ValueError(`\`creator\` should be either 0 or 1: creator=${creator}`);
+  }
+
+  return {
+    creatorSaltedPubkey,
+    anotherSaltedPubkey,
+    adminAddress,
+    hubRegistryTreeMerkleRoot,
+    hubConnectionTreeMerkleRoot,
+  };
 };
 
 const verifyProofIndirectConnection = async (
   proof: TProofIndirectConnection,
-  validMerkleRoots: Set<BigInt>
-) => {
+  validHubRegistryTreeRoots: Set<BigInt>,
+  validHubConnectionRegistryTreeRoots: Set<BigInt>,
+): Promise<boolean> => {
   if (!(await verifyProofOfSMP(proof.proofOfSMP))) {
     return false;
   }
@@ -327,6 +414,7 @@ const verifyProofIndirectConnection = async (
   const resProofSuccessfulSMP = parseProofSuccessfulSMPPublicSignals(
     proof.proofSuccessfulSMP.publicSignals
   );
+
   /**
    * Check pubkeys in `proofOfSMP` and `proofSuccessfulSMP`.
    */
@@ -342,7 +430,7 @@ const verifyProofIndirectConnection = async (
   /**
    * Check merkle root
    */
-  if (!validMerkleRoots.has(resProofOfSMP.merkleRoot)) {
+  if (!validHubRegistryTreeRoots.has(resProofOfSMP.merkleRoot)) {
     return false;
   }
   /**
@@ -357,16 +445,78 @@ const verifyProofIndirectConnection = async (
   if (!resProofOfSMP.rh.equal(resProofSuccessfulSMP.rh)) {
     return false;
   }
+
+  // successfuly SMP <> [salted conections] <> proof SMP
+  /**
+   * Verify Proof of Salted Connections
+   */
+  //  1. All proof of salted connections are valid.
+  //  2. All proof of salted connections are chained together correctly, i.e. the last
+  //     another is the current creator.
+  const proofSaltedConnections = proof.proofSaltedConnections;
+  let lastAnotherSaltedPubkey: BigInt | undefined = undefined;
+  for (const p of proofSaltedConnections) {
+    //  1. Verify Proof Salted Connection
+    //  2. Parse the proof and extract salted pubkeys, and find the creator.
+    if (!(await verifyProofSaltedConnection(p))) {
+      return false;
+    }
+    const publicInputs = parseProofSaltedConnectionPublicSignals(p.publicSignals);
+    if (publicInputs.adminAddress !== proof.adminAddress) {
+      return false;
+    }
+    if (!validHubRegistryTreeRoots.has(publicInputs.hubRegistryTreeMerkleRoot)) {
+      return false;
+    }
+    if (!validHubConnectionRegistryTreeRoots.has(publicInputs.hubConnectionTreeMerkleRoot)) {
+      return false;
+    }
+    // <creator, another>
+    // <A, B>, <B, C>
+    //    creator = A, another = B
+    //    this.creator === last.another
+    if (
+      lastAnotherSaltedPubkey !== undefined &&
+      lastAnotherSaltedPubkey !== publicInputs.creatorSaltedPubkey
+    ) {
+      return false;
+    }
+    lastAnotherSaltedPubkey = publicInputs.anotherSaltedPubkey;
+  }
+  //  3. `anotherSaltedPubkey` of the another the last proof of salted connection is the
+  //     creator of proof of SMP.
+  if (proofSaltedConnections.length !== 0) {
+    if (lastAnotherSaltedPubkey === undefined) {
+      throw new Error(`lastAnotherSaltedPubkey must not be undefined here`);
+    }
+    if (lastAnotherSaltedPubkey !== resProofOfSMP.saltedPubkeyHub) {
+      return false;
+    }
+  }
+
   return true;
 };
+
+export const saltPubkey = (pubkey: PubKey): BigInt => {
+  return hash5([
+    pubkey[0],
+    pubkey[1],
+    BigInt(0),
+    BigInt(0),
+    BigInt(0),
+  ]);
+}
 
 export {
   genProofOfSMP,
   verifyProofOfSMP,
   proofOfSMPInputsToCircuitArgs,
   genProofSuccessfulSMP,
+  genProofSaltedConnection,
+  proofSaltedConnectionInputToCircuitArgs,
   proofSuccessfulSMPInputsToCircuitArgs,
   verifyProofSuccessfulSMP,
+  verifyProofSaltedConnection,
   verifyProofIndirectConnection,
   TProof,
   TProofIndirectConnection

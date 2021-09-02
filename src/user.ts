@@ -6,14 +6,14 @@ import {
   verifyProofOfSMP,
   TProofIndirectConnection,
 } from "./circuits";
-import { TIMEOUT, TIMEOUT_LARGE } from "./configs";
+import { MAX_INTERMEDIATE_HUBS, TIMEOUT, TIMEOUT_LARGE } from "./configs";
 import { DBMap } from "./db";
 import { sendJoinHubReq, sendSearchReq } from "./hub";
 import { IAtomicDB } from "./interfaces";
 import { InvalidProof } from "./smp/exceptions";
 import { Scalar } from "./smp/v4/serialization";
 import { TEthereumAddress } from "./types";
-import { bigIntToHexString, hashPointToScalar } from "./utils";
+import { hashPointToScalar } from "./utils";
 import { BlindFindContract } from "./web3";
 
 export type TJoinedHubEntry = {
@@ -59,17 +59,23 @@ export class User {
   async search(
     ip: string,
     port: number,
-    target: PubKey
-  ): Promise<TProofIndirectConnection | null> {
+    target: PubKey,
+  ): Promise<TProofIndirectConnection | undefined> {
+    const validHubRegistryTreeRoots = await this.contract.getAllHubRegistryTreeRoots();
+    const validHubConnectionTreeRoots = await this.contract.getAllHubConnectionTreeRoots();
     const res = await sendSearchReq(
       ip,
       port,
       target,
+      [],
+      validHubRegistryTreeRoots,
+      validHubConnectionTreeRoots,
+      MAX_INTERMEDIATE_HUBS,
       this.timeoutSmall,
       this.timeoutLarge
     );
-    if (res === null) {
-      return null;
+    if (res === undefined) {
+      return undefined;
     }
     // One peer matched. Verify the proof.
     if (!(await verifyProofOfSMP(res.proofOfSMP))) {
@@ -93,17 +99,13 @@ export class User {
       pubkeyC: target,
       adminAddress: this.adminAddress,
       proofOfSMP: res.proofOfSMP,
-      proofSuccessfulSMP
+      proofSuccessfulSMP,
+      proofSaltedConnections: [],
     };
-    if (!await this.verifyProofOfIndirectConnection(proofIndirectConnection)) {
+    if (!await verifyProofIndirectConnection(proofIndirectConnection, validHubRegistryTreeRoots, validHubConnectionTreeRoots)) {
       throw new InvalidProof("proof of indirect connection is invalid");
     }
     return proofIndirectConnection;
-  }
-
-  async verifyProofOfIndirectConnection(proof: TProofIndirectConnection): Promise<boolean> {
-    const validMerkleRoots = await this.contract.getAllMerkleRoots();
-    return await verifyProofIndirectConnection(proof, validMerkleRoots);
   }
 
   async getJoinedHubs() {
@@ -115,7 +117,7 @@ export class User {
   }
 
   private getDBEntryKey(hubPubkey: PubKey): string {
-    const key = bigIntToHexString(hashPointToScalar(hubPubkey));
+    const key = hashPointToScalar(hubPubkey).toString(16);
     if (key.length > this.maxKeyLength) {
       throw new Error(
         `key length is larger than maxKeyLength: key.length=${key.length}, maxKeyLength=${this.maxKeyLength}`

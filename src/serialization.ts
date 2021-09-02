@@ -21,7 +21,7 @@ import { Point, Scalar } from "./smp/v4/serialization";
 export enum msgType {
   JoinReq = 6,
   SearchReq,
-  JSONObj
+  JSONObj,
 }
 
 function serializeElements(values: BaseSerializable[]): Uint8Array {
@@ -248,13 +248,13 @@ class EmptyMessage extends BaseSerializable {
   }
 }
 
-export class SearchMessage0 extends EmptyMessage {
-  static deserialize(b: Uint8Array): SearchMessage0 {
-    return super.deserialize(b) as SearchMessage0;
+export class RequestSearchMessage extends EmptyMessage {
+  static deserialize(b: Uint8Array): RequestSearchMessage {
+    return super.deserialize(b) as RequestSearchMessage;
   }
 
-  static consume(b: Uint8Array): [SearchMessage0, Uint8Array] {
-    return super.consume(b) as [SearchMessage0, Uint8Array];
+  static consume(b: Uint8Array): [RequestSearchMessage, Uint8Array] {
+    return super.consume(b) as [RequestSearchMessage, Uint8Array];
   }
 
   serialize(): Uint8Array {
@@ -262,56 +262,16 @@ export class SearchMessage0 extends EmptyMessage {
   }
 }
 
-export class SearchMessage1 extends BaseSerializable {
-  static wireTypes = [
-    Byte, // isEnd
-    TLV // smpMsg1
-  ];
+export const SEARCH_MSG_0_IS_NOT_END = BigInt(0);
+export const SEARCH_MSG_0_IS_END = BigInt(1);
 
-  constructor(readonly isEnd: boolean, readonly smpMsg1?: TLV) {
-    super();
-    if (isEnd && smpMsg1 !== undefined) {
-      throw new ValueError(
-        "no smpMsg1 should be given if it's the last message"
-      );
-    }
-    if (!isEnd && smpMsg1 === undefined) {
-      throw new ValueError(
-        "smpMsg1 should be given if it's not the last message"
-      );
-    }
-  }
+// isEnd
+export class SearchMessage0 extends Byte {}
 
-  static deserialize(b: Uint8Array): SearchMessage1 {
-    return super.deserialize(b) as SearchMessage1;
-  }
+// smpMsg1
+export class SearchMessage1 extends TLV {}
 
-  static consume(b: Uint8Array): [SearchMessage1, Uint8Array] {
-    let bytesRemaining: Uint8Array;
-    let isEnd: BaseFixedInt;
-    let smpMsg1TLV: TLV;
-    [isEnd, bytesRemaining] = Byte.consume(b);
-    // False
-    if (isEnd.value === BigInt(0)) {
-      [smpMsg1TLV, bytesRemaining] = TLV.consume(bytesRemaining);
-      return [new SearchMessage1(false, smpMsg1TLV), bytesRemaining];
-    } else {
-      return [new SearchMessage1(true), bytesRemaining];
-    }
-  }
-
-  serialize(): Uint8Array {
-    if (this.isEnd) {
-      return serializeElements([new Byte(1)]);
-    } else {
-      if (this.smpMsg1 === undefined) {
-        throw new Error("smpMsg1 should not be undefined");
-      }
-      return serializeElements([new Byte(0), this.smpMsg1]);
-    }
-  }
-}
-
+// smpMsg2
 export class SearchMessage2 extends TLV {}
 
 class JSONObj extends BaseSerializable {
@@ -340,8 +300,8 @@ class JSONObj extends BaseSerializable {
 export class SearchMessage3 extends BaseSerializable {
   static wireTypes = [
     TLV, // smpMsg3
-    JSONObj, // proof.proof
-    JSONObj // proof.publicSignals
+    JSONObj, // Proof of SMP: proof.proof
+    JSONObj // Proof of SMP: proof.publicSignals
   ];
   constructor(readonly smpMsg3: TLV, readonly proof: TProof) {
     super();
@@ -372,4 +332,49 @@ export class SearchMessage3 extends BaseSerializable {
       new JSONObj(stringifyBigInts(this.proof.publicSignals))
     ]);
   }
+}
+
+export class ProofSaltedConnectionReq extends BaseSerializable {
+  // Proof of Salted Connection
+
+  static wireTypes = [
+    JSONObj, // proof.proof
+    JSONObj // proof.publicSignals
+  ];
+
+  constructor(readonly proof: TProof) {
+    super();
+  }
+
+  static deserialize(b: Uint8Array): ProofSaltedConnectionReq {
+    return super.deserialize(b) as ProofSaltedConnectionReq;
+  }
+
+  static consume(b: Uint8Array): [ProofSaltedConnectionReq, Uint8Array] {
+    const [elements, bytesRemaining] = deserializeElements(b, this.wireTypes);
+    const proof = unstringifyBigInts((elements[0] as JSONObj).jsonObj);
+    const publicSignals = unstringifyBigInts((elements[1] as JSONObj).jsonObj);
+    return [
+      new ProofSaltedConnectionReq({
+        proof: proof,
+        publicSignals: publicSignals
+      }),
+      bytesRemaining
+    ];
+  }
+
+  serialize(): Uint8Array {
+    return serializeElements([
+      new JSONObj(stringifyBigInts(this.proof.proof)),
+      new JSONObj(stringifyBigInts(this.proof.publicSignals))
+    ]);
+  }
+}
+
+
+export const PROOF_SALTED_CONNECTION_RESP_REJECT = BigInt(0);
+export const PROOF_SALTED_CONNECTION_RESP_ACCEPT = BigInt(1);
+
+export class ProofSaltedConnectionResp extends Byte {
+
 }

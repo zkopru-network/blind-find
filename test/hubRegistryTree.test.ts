@@ -3,7 +3,7 @@ import {
   hubRegistryFactory,
   hubRegistryTreeFactory
 } from "./factories";
-import { HubRegistryTree } from "../src";
+import { HubRegistry, HubRegistryTree } from "../src";
 import { secretFactory } from "../src/smp/v4/factories";
 import { genKeypair } from "maci-crypto";
 
@@ -21,7 +21,7 @@ describe("HubRegistry", () => {
   });
 
   it("`verify` fails if the signature is wrong", () => {
-    registry.sig.S = secretFactory();
+    registry.toObj().sig.S = secretFactory();
     expect(registry.verify()).to.be.false;
   });
 });
@@ -35,8 +35,9 @@ describe("HubRegistryTree", () => {
     const hubs = [genKeypair(), genKeypair(), genKeypair()];
     const tree = hubRegistryTreeFactory(hubs, 5, adminAddress);
     for (let i = 0; i < tree.length; i++) {
-      expect(tree.leaves[i].verify()).to.be.true;
-      expect(tree.leaves[i].adminAddress).to.eql(adminAddress);
+      const leaf = tree.leaves[i] as HubRegistry;
+      expect(leaf.verify()).to.be.true;
+      expect(leaf.toObj().adminAddress).to.eql(adminAddress);
     }
     // Fails when `hubs.length > 2 ** levels`
     expect(() => {

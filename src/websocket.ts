@@ -161,6 +161,7 @@ export interface IWebSocketReadWriter {
   write(data: Uint8Array): void;
   close(): void;
   terminate(): void;
+  connected: boolean;
 }
 
 // NOTE: Reference: https://github.com/jcao219/websocket-async/blob/master/src/websocket-client.js.
@@ -256,5 +257,33 @@ export class WebSocketAsyncReadWriter implements IWebSocketReadWriter {
       return;
     }
     this.socket.terminate();
+  }
+}
+
+/**
+ * Relay messages between `initiatorSocket` and `receiverSocket`.
+ */
+export const relay = async (initiatorSocket: IWebSocketReadWriter, receiverSocket: IWebSocketReadWriter): Promise<void> => {
+  const readAndWrite = async (socket0: IWebSocketReadWriter, socket1: IWebSocketReadWriter): Promise<void> => {
+    // Only relay messages when both sides are open.
+    while (socket0.connected && socket1.connected) {
+      try {
+        const data = await socket0.read();
+        socket1.write(data);
+      } catch (e) {
+        // only catch `CloseEvent`
+        if (!socket0.connected || !socket1.connected) {
+          return;
+        }
+      }
+    }
+  };
+  await Promise.race([
+    readAndWrite(initiatorSocket, receiverSocket),
+    readAndWrite(receiverSocket, initiatorSocket),
+  ]);
+  // If initiator is closed, make sure the receiver is closed.
+  if (!initiatorSocket.connected) {
+    receiverSocket.close();
   }
 }

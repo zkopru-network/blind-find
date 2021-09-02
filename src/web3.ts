@@ -1,7 +1,5 @@
-import BN from "bn.js";
 import { BigNumber, Contract, ethers, Event } from "ethers";
 import { SNARK_FIELD_SIZE } from "maci-crypto";
-import { bigIntToHexString } from "./utils";
 
 const bigNumberToBigInt = (n: BigNumber) => {
   return BigInt(n.toString());
@@ -19,7 +17,7 @@ export const ethAddressToBigInt = (address: string): BigInt => {
 }
 
 export const bigIntToEthAddress = (n: BigInt): string => {
-  return ethers.utils.getAddress('0x' + bigIntToHexString(n));
+  return ethers.utils.getAddress('0x' + n.toString(16));
 }
 
 export class BlindFindContract {
@@ -33,36 +31,55 @@ export class BlindFindContract {
     return this.contract.interface;
   }
 
-  async updateMerkleRoot(merkleRoot: BigInt): Promise<void> {
-    await this.contract.updateMerkleRoot(merkleRoot);
+  async updateHubRegistryTree(merkleRoot: BigInt): Promise<void> {
+    await this.contract.updateHubRegistryTree(merkleRoot);
   }
 
-  async getLatestMerkleRoot(): Promise<BigInt> {
-    return bigNumberToBigInt(await this.contract.latestMerkleRoot());
+  async updateHubConnectionTree(merkleRoot: BigInt): Promise<void> {
+    await this.contract.updateHubConnectionTree(merkleRoot);
   }
+
+  async getLatestHubRegistryTreeRoot(): Promise<BigInt> {
+    return bigNumberToBigInt(await this.contract.latestHubRegistryTreeRoot());
+  }
+
+  async getLatestHubConnectionTreeRoot(): Promise<BigInt> {
+    return bigNumberToBigInt(await this.contract.latestHubConnectionTreeRoot());
+  }
+
+  // latestHubConnectionTreeRoot
 
   async getAdmin(): Promise<BigInt> {
     const ethAddress = await this.contract.admin();
     return ethAddressToBigInt(ethAddress);
   }
 
-  private parseEvent(event: Event) {
+  private parseMerkleRootEvent(event: Event) {
     if (event.args === undefined) {
       throw new Error("event doesn't have args field");
     }
-    const merkleRoot = event.args.merkleRoot;
+    const merkleRoot = event.args.root;
     return bigNumberToBigInt(merkleRoot);
   }
 
   // NOTE: The easiest way is to fetch 'em all.
   //  To make it more efficient, we can cache and listen to new events.
   //  But this is a tradeoff between event maintainence due to reorg and efficiency.
-  async getAllMerkleRoots(): Promise<Set<BigInt>> {
-    const eventFilter = this.contract.filters.UpdateMerkleRoot();
+  async getAllHubRegistryTreeRoots(): Promise<Set<BigInt>> {
+    const eventFilter = this.contract.filters.UpdateHubRegistryTree();
     const events = await this.contract.queryFilter(
       eventFilter,
       this.startBlock
     );
-    return new Set<BigInt>(events.map(this.parseEvent));
+    return new Set<BigInt>(events.map(this.parseMerkleRootEvent));
+  }
+
+  async getAllHubConnectionTreeRoots(): Promise<Set<BigInt>> {
+    const eventFilter = this.contract.filters.UpdateHubConnectionTree();
+    const events = await this.contract.queryFilter(
+      eventFilter,
+      this.startBlock
+    );
+    return new Set<BigInt>(events.map(this.parseMerkleRootEvent));
   }
 }

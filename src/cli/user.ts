@@ -68,7 +68,7 @@ const buildCommandSearch = (config: IConfig) => {
         } = await loadUserSettings(config);
         const user = new User(userKeypair, adminAddress, blindFindContract, db);
         const result = await user.search(hostname, port, targetPubkey);
-        if (result === null) {
+        if (result === undefined) {
           console.log(`Not Found: target = '${targetPubkeyB64}'`);
           process.exit(1);
         } else {
@@ -214,6 +214,8 @@ export const parseProofIndirectConnectionBase64Encoded = (base64Encoded: string)
     adminAddress: ethAddressToBigInt(proofIndirectConnection.adminAddress),
     proofOfSMP: proofIndirectConnection.proofOfSMP,
     proofSuccessfulSMP: proofIndirectConnection.proofSuccessfulSMP,
+    // FIXME: this is just a workaround.
+    proofSaltedConnections: proofIndirectConnection.proofSaltedConnections,
   }
 }
 

@@ -1,5 +1,5 @@
 import { HubRegistry } from ".";
-import { HubRegistryTreeDB } from "./dataProvider";
+import { HubConnectionRegistryTreeDB, HubRegistryTreeDB } from "./dataProvider";
 import { AlreadyExistsError } from "./exceptions";
 import { BlindFindContract } from "./web3";
 
@@ -10,17 +10,18 @@ import { BlindFindContract } from "./web3";
 export class Admin {
   constructor(
     readonly contract: BlindFindContract,
-    readonly treeDB: HubRegistryTreeDB
+    readonly hubRegistryTreeDB: HubRegistryTreeDB,
+    readonly hubConnectionRegistryTreeDB: HubConnectionRegistryTreeDB,
   ) {}
 
-  private async updateMerkleRoot(root: BigInt) {
+  private async updateHubRegistryTree(root: BigInt) {
     // NOTE: This function probably needs changing if admin is a multisig
-    await this.contract.updateMerkleRoot(root);
+    await this.contract.updateHubRegistryTree(root);
   }
 
   async insertHubRegistry(e: HubRegistry) {
     try {
-      await this.treeDB.insert(e);
+      await this.hubRegistryTreeDB.insert(e);
     } catch (e) {
       // Don't insert the hubRegistry if it already exists.
       if (e instanceof AlreadyExistsError) {
@@ -29,7 +30,7 @@ export class Admin {
         throw e;
       }
     }
-    const root = this.treeDB.tree.tree.root;
-    await this.updateMerkleRoot(root);
+    const root = this.hubRegistryTreeDB.tree.tree.root;
+    await this.updateHubRegistryTree(root);
   }
 }

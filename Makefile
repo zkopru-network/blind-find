@@ -5,7 +5,7 @@ CARGO_BIN_PATH = ~/.cargo/bin
 CIRCOM_DIR = circuits/instance
 BUILD_DIR = build
 
-CIRCOMS = $(CIRCOM_DIR)/proofOfSMP.circom $(CIRCOM_DIR)/proofSuccessfulSMP.circom
+CIRCOMS = $(CIRCOM_DIR)/proofOfSMP.circom $(CIRCOM_DIR)/proofSuccessfulSMP.circom $(CIRCOM_DIR)/proofSaltedConnection.circom
 R1CSS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%.r1cs)
 WASMS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%.wasm)
 PARAMS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%.params)

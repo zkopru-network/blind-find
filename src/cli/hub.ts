@@ -7,7 +7,6 @@ import {
   keypairToCLIFormat,
   printObj, pubkeyFromCLIFormat, pubkeyToCLIFormat
 } from "./utils";
-import { hubRegistryToObj, objToHubRegistry } from "../dataProvider";
 import { hashLeftRight, IncrementalQuinTree } from "maci-crypto";
 import { HubRegistry } from "..";
 import { ValueError } from "../exceptions";
@@ -39,7 +38,7 @@ const buildCommandCreateHubRegistry = (config: IConfig) => {
       const { adminAddress, hubKeypair } = await loadHubSettings(config);
 
       const hubRegistry = HubRegistry.fromKeypair(hubKeypair, adminAddress);
-      const obj = hubRegistryToObj(hubRegistry);
+      const obj = hubRegistry.toObj();
       printObj({
         sig: obj.sig,
         pubkey: obj.pubkey,
@@ -74,26 +73,28 @@ const buildCommandSetHubRegistryWithProof = (config: IConfig) => {
           `hubRegistryWithProofObj does not have valid properties: hubRegistryWithProofObj=${hubRegistryWithProofObj}`
         );
       }
-      const hubRegistry = objToHubRegistry(hubRegistryWithProofObj.hubRegistry);
+      const hubRegistryObj = hubRegistryWithProofObj.hubRegistry;
+      const hubRegistry = new HubRegistry(hubRegistryObj);
       // Verify hubRegistry
-      if (hubRegistry.adminAddress !== adminAddress) {
+      if (hubRegistryObj.adminAddress !== adminAddress) {
         throw new ValueError(
-          `adminAddresses mismatch: hubRegistry.adminAddress=${hubRegistry.adminAddress}, ` +
+          `adminAddresses mismatch: hubRegistry.adminAddress=${hubRegistryObj.adminAddress}, ` +
             `adminAddress=${adminAddress}`
         );
       }
       if (!hubRegistry.verify()) {
         throw new ValueError("hubRegistry has an invalid signature");
       }
-      // Verify merkleProof
+      // Verify hub registry tree merkleProof
       const merkleProof = hubRegistryWithProofObj.merkleProof;
       validateMerkleProof(hubRegistry, merkleProof);
       await validateMerkleRoot(blindFindContract, merkleProof.root);
 
+      // FIXME: Should have more checks here
       // Store this valid hub registry and its proof.
       const db = config.getDB();
       await HubServer.setHubRegistryToDB(db, {
-        hubRegistry: hubRegistryToObj(hubRegistry),
+        hubRegistry: hubRegistryObj,
         merkleProof: merkleProof
       });
     });
@@ -228,11 +229,12 @@ const validateMerkleProof = (
   }
 };
 
+// TODO: should have another function checking hub connection tree roots.
 const validateMerkleRoot = async (
   contract: BlindFindContract,
   merkleRoot: BigInt
 ) => {
-  const allRoots = await contract.getAllMerkleRoots();
+  const allRoots = await contract.getAllHubRegistryTreeRoots();
   if (!allRoots.has(merkleRoot)) {
     throw new ValueError("merkle root is not on chain");
   }

@@ -9,9 +9,12 @@ import { TEndian } from "./types";
  * @param modulus Modulus
  */
 export const bigIntMod = (a: BigInt, modulus: BigInt): BigInt => {
-  return BigInt(
-    new BN(a.toString()).umod(new BN(modulus.toString())).toString()
-  );
+  const res =  BigInt(a) % BigInt(modulus);
+  if (res < 0) {
+    return res + BigInt(modulus);
+  } else {
+    return res;
+  }
 };
 
 /**

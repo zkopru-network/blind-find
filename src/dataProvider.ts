@@ -1,10 +1,9 @@
 import * as http from "http";
-import { PubKey, Signature } from "maci-crypto";
 import { AddressInfo } from "ws";
 
 import { logger } from "./logger";
 
-import { HubRegistry, HubRegistryTree } from "./";
+import { HubRegistry, THubConnectionObj, THubRegistryObj, IncrementalSMT, ILeafEntry, HubConnectionRegistry, HubRegistryTree, HubConnectionRegistryTree } from "./";
 import { LEVELS, TIMEOUT } from "./configs";
 import { DBMap, IDBMap } from "./db";
 import { RequestFailed, ValueError } from "./exceptions";
@@ -19,52 +18,24 @@ import {
   TRateLimitParams,
   IWebSocketReadWriter
 } from "./websocket";
-import { bigIntToHexString } from "./utils";
 import { Scalar } from "./smp/v4/serialization";
 
-const LEAVES_PREFIX = "blind-find-data-provider-leaves";
-
-export type THubRegistryObj = {
-  sig: Signature;
-  pubkey: PubKey;
-  adminAddress: TEthereumAddress;
-};
-
-export const hubRegistryToObj = (e: HubRegistry) => {
-  return {
-    sig: e.sig,
-    pubkey: e.pubkey,
-    adminAddress: e.adminAddress
-  };
-};
-
-export const objToHubRegistry = (obj: THubRegistryObj) => {
-  return new HubRegistry(obj.sig, obj.pubkey, obj.adminAddress);
-};
+const PREFIX_HUB_REGISTRY = "blind-find-data-provider-hub-registry-leaves";
+const PREFIX_HUB_CONNECTION = "blind-find-data-provider-hub-connection-leaves";
 
 // Result from `hash` is at most 32 bytes, to hex string it is length 64.
 const maxHubRegistryKeyLength = Scalar.size * 2;
 
-export class HubRegistryTreeDB {
-  dbMap: IDBMap<THubRegistryObj>;
+class TreeDB<T extends Object> {
+  dbMap: IDBMap<T>;
 
-  constructor(readonly tree: HubRegistryTree, db: IAtomicDB) {
-    this.dbMap = new DBMap<THubRegistryObj>(LEAVES_PREFIX, db, maxHubRegistryKeyLength);
+  constructor(readonly tree: IncrementalSMT<T>, dbPrefix: string, db: IAtomicDB) {
+    this.dbMap = new DBMap<T>(dbPrefix, db, maxHubRegistryKeyLength);
   }
 
-  static async fromDB(db: IAtomicDB, levels = LEVELS) {
-    const tree = new HubRegistryTree(levels);
-    const dbMap = new DBMap<THubRegistryObj>(LEAVES_PREFIX, db, maxHubRegistryKeyLength);
-    // Load leaves from DB.
-    for await (const l of dbMap) {
-      tree.insert(objToHubRegistry(l.value));
-    }
-    return new HubRegistryTreeDB(tree, db);
-  }
-
-  private getDBKey(e: HubRegistry): string {
+  private getDBKey(e: ILeafEntry<T>): string {
     const h = e.hash();
-    const keyHex = bigIntToHexString(h);
+    const keyHex = h.toString(16);
     if (keyHex.length > maxHubRegistryKeyLength) {
       throw new Error(
         `keyHex is longer than maxKeyLength: keyHex=${keyHex}, maxKeyLength=${maxHubRegistryKeyLength}`
@@ -73,22 +44,49 @@ export class HubRegistryTreeDB {
     return keyHex;
   }
 
-  async insert(e: HubRegistry) {
+  async insert(e: ILeafEntry<T>) {
     // If hubRegistry already exists in the tree, skip it.
     if (this.getIndex(e) !== undefined) {
       throw new ValueError(`registry ${this.getDBKey(e)} already exists`);
     }
-    if (!e.verify()) {
-      throw new ValueError(
-        `signature of registry ${this.getDBKey(e)} is invalid`
-      );
-    }
-    await this.dbMap.set(this.getDBKey(e), hubRegistryToObj(e));
+    await this.dbMap.set(this.getDBKey(e), e.toObj());
     this.tree.insert(e);
   }
 
-  getIndex(e: HubRegistry) {
+  getIndex(e: ILeafEntry<T>) {
     return this.tree.getIndex(e);
+  }
+}
+
+export class HubRegistryTreeDB extends TreeDB<THubRegistryObj> {
+  constructor(readonly tree: HubRegistryTree, db: IAtomicDB) {
+    super(tree, PREFIX_HUB_REGISTRY, db);
+  }
+  static async fromDB(db: IAtomicDB, levels = LEVELS) {
+    const tree = new HubRegistryTree(levels);
+    const dbMap = new DBMap<THubRegistryObj>(PREFIX_HUB_REGISTRY, db, maxHubRegistryKeyLength);
+    // Load leaves from DB.
+    for await (const l of dbMap) {
+      const registry = new HubRegistry(l.value);
+      tree.insert(registry);
+    }
+    return new HubRegistryTreeDB(tree, db);
+  }
+}
+
+export class HubConnectionRegistryTreeDB extends TreeDB<THubConnectionObj> {
+  constructor(readonly tree: HubConnectionRegistryTree, db: IAtomicDB) {
+    super(tree, PREFIX_HUB_CONNECTION, db);
+  }
+  static async fromDB(db: IAtomicDB, levels = LEVELS) {
+    const tree = new HubConnectionRegistryTree(levels);
+    const dbMap = new DBMap<THubConnectionObj>(PREFIX_HUB_CONNECTION, db, maxHubRegistryKeyLength);
+    // Load leaves from DB.
+    for await (const l of dbMap) {
+      const registry = new HubConnectionRegistry(l.value);
+      tree.insert(registry);
+    }
+    return new HubConnectionRegistryTreeDB(tree, db);
   }
 }
 
@@ -100,7 +98,7 @@ export class DataProviderServer extends BaseServer {
   rateLimiter: IIPRateLimiter;
   constructor(
     readonly adminAddress: TEthereumAddress,
-    readonly treeDB: HubRegistryTreeDB,
+    readonly hubRegistryTreeDB: HubRegistryTreeDB,
     readonly rateLimitConfig: TRateLimitParams
   ) {
     super();
@@ -119,17 +117,17 @@ export class DataProviderServer extends BaseServer {
     }
     const data = await rwtor.read();
     const req = GetMerkleProofReq.deserialize(data as Buffer);
-    const hubRegistry = new HubRegistry(
-      req.hubSig,
-      req.hubPubkey,
-      this.adminAddress
-    );
+    const hubRegistry = new HubRegistry({
+      sig: req.hubSig,
+      pubkey: req.hubPubkey,
+      adminAddress: this.adminAddress
+    });
     if (!hubRegistry.verify()) {
       // Invalid hub registry.
       rwtor.terminate();
       return;
     }
-    const index = this.treeDB.getIndex(hubRegistry);
+    const index = this.hubRegistryTreeDB.getIndex(hubRegistry);
     logger.debug(
       `${this.name}: received req: ${req.hubPubkey}, index=${index}`
     );
@@ -138,7 +136,7 @@ export class DataProviderServer extends BaseServer {
       rwtor.terminate();
       return;
     }
-    const merkleProof = this.treeDB.tree.tree.genMerklePath(index);
+    const merkleProof = this.hubRegistryTreeDB.tree.tree.genMerklePath(index);
     const resp = new GetMerkleProofResp(merkleProof);
     rwtor.write(resp.serialize());
     rwtor.close();
@@ -155,7 +153,8 @@ export const sendGetMerkleProofReq = async (
     throw new ValueError("invalid hub registry");
   }
   const rwtor = await connect(ip, port);
-  const req = new GetMerkleProofReq(hubRegistry.pubkey, hubRegistry.sig);
+  const hubRegistryObj = hubRegistry.toObj();
+  const req = new GetMerkleProofReq(hubRegistryObj.pubkey, hubRegistryObj.sig);
   rwtor.write(req.serialize());
   const bytes = await rwtor.read(timeout);
   const resp = GetMerkleProofResp.deserialize(bytes);

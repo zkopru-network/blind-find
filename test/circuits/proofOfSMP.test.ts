@@ -2,11 +2,12 @@ import { executeCircuit, getSignalByName } from "maci-circuits";
 
 import { compileCircuit } from "./utils";
 import { bigIntFactoryExclude, deepcopyRawObj } from "../utils";
-import { proofOfSMPInputsFactory } from ".././factories";
+import { hubRegistryTreeFactory, proofOfSMPInputsFactory } from ".././factories";
 import { proofOfSMPInputsToCircuitArgs } from "../../src/circuits";
 
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
+import { genKeypair } from "maci-crypto";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -14,7 +15,15 @@ const expect = chai.expect;
 describe("proof of smp", function() {
   this.timeout(300000);
   let circuit;
-  const s = proofOfSMPInputsFactory();
+  const hub = genKeypair();
+  const tree = hubRegistryTreeFactory([hub], 32);
+  const hubRegistry = tree.leaves[0];
+  const s = proofOfSMPInputsFactory(
+    hub,
+    hubRegistry,
+    tree.tree.genMerklePath(0),
+    hubRegistry.toObj().adminAddress
+  );
   const args = proofOfSMPInputsToCircuitArgs(s);
 
   before(async () => {

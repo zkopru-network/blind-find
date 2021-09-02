@@ -12,7 +12,6 @@ import { BlindFindContract } from "../src/web3";
 import { HubRegistryTree } from "../src";
 import { blindFindContractFactory } from "./factories";
 import { IAtomicDB } from "../src/interfaces";
-import { hubRegistryToObj } from "../src/dataProvider";
 
 const timeoutBeginAndEnd = TIMEOUT + TIMEOUT;
 // Timeout for running SMP against one peer (including time generating/verifying proofs).
@@ -20,7 +19,6 @@ const timeoutOneSMP = TIMEOUT + TIMEOUT + TIMEOUT + TIMEOUT_LARGE + TIMEOUT;
 const expectedNumSMPs = 2;
 const timeoutTotal = timeoutBeginAndEnd + expectedNumSMPs * timeoutOneSMP;
 
-// TODO: Use hardhat
 describe("User", function() {
   this.timeout(timeoutTotal);
 
@@ -56,7 +54,7 @@ describe("User", function() {
     const merkleProof = tree.tree.genMerklePath(0);
     const db = new MemoryDB();
     await HubServer.setHubRegistryToDB(db, {
-      hubRegistry: hubRegistryToObj(hubRegistry),
+      hubRegistry: hubRegistry.toObj(),
       merkleProof: merkleProof
     });
     hub = new HubServer(
@@ -66,8 +64,8 @@ describe("User", function() {
       db
     );
     await hub.start();
-    await blindFindContract.updateMerkleRoot(merkleProof.root);
-    expect((await blindFindContract.getAllMerkleRoots()).size).to.eql(1);
+    await blindFindContract.updateHubRegistryTree(merkleProof.root);
+    expect((await blindFindContract.getAllHubRegistryTreeRoots()).size).to.eql(1);
 
     // User
     userJoinedDB = new MemoryDB();
@@ -114,18 +112,20 @@ describe("User", function() {
   it("search", async () => {
     // Search succeeds
     const proof = await userAnother.search(ip, port, userJoined.keypair.pubKey);
-    expect(proof).not.to.be.null;
-    if (proof === null) {
+    expect(proof).not.to.be.undefined;
+    if (proof === undefined) {
       // Makes compiler happy
       throw new Error();
     }
     // Ensure the output proof is valid
-    const validMerkleRoots = await blindFindContract.getAllMerkleRoots();
-    expect(await verifyProofIndirectConnection(proof, validMerkleRoots)).to.be
+    const validHubRegistryTreeRoots = await blindFindContract.getAllHubRegistryTreeRoots();
+    const validHubConnectionTreeRoots = await blindFindContract.getAllHubConnectionTreeRoots();
+    expect(await verifyProofIndirectConnection(proof, validHubRegistryTreeRoots, validHubConnectionTreeRoots)).to.be
       .true;
     // Search fails
     const keypairNotFound = genKeypair();
     expect(await userAnother.search(ip, port, keypairNotFound.pubKey)).to.be
-      .null;
+      .undefined;
   });
+
 });

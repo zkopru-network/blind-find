@@ -4,12 +4,14 @@ import {
   BaseServer,
   connect,
   IWebSocketReadWriter,
+  relay,
   TokenBucketRateLimiter
 } from "../src/websocket";
 import { TimeoutError } from "../src/exceptions";
 
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
+import { AsyncEvent } from "../src/utils";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -44,6 +46,27 @@ class FaultyServer extends BaseServer {
     rwtor.close();
   }
 }
+
+class ServerDoesntCloseSocket extends BaseServer {
+  name = "FaltyServer";
+  rwtor: IWebSocketReadWriter | undefined = undefined;
+  eventConnected: AsyncEvent;
+
+  constructor() {
+    super();
+    this.rwtor = undefined;
+    this.eventConnected = new AsyncEvent();
+  }
+
+  async onIncomingConnection(
+    rwtor: IWebSocketReadWriter,
+    request: http.IncomingMessage
+  ) {
+    this.rwtor = rwtor;
+    this.eventConnected.set();
+  }
+}
+
 
 describe("TestServer", () => {
   let server: TestServer;
@@ -84,6 +107,103 @@ describe("TestServer", () => {
     await expect(s.read()).to.be.rejected;
 
     faultyServer.close();
+  });
+
+  it("relay", async () => {
+    // A  < -- >   C   < -- >  B
+    //  aToC  cToA  cToB  bToC
+    const relayedSocketsFactory = async () => {
+      const serverA = new ServerDoesntCloseSocket();
+      const serverB = new ServerDoesntCloseSocket();
+      await serverA.start();
+      await serverB.start();
+      const cToA = await connect(ip, serverA.address.port);
+      const cToB = await connect(ip, serverB.address.port);
+
+      await serverA.eventConnected.wait();
+      const aToC = serverA.rwtor;
+      if (aToC === undefined) {
+        throw new Error();
+      }
+      expect(aToC).not.to.be.undefined;
+
+      await serverB.eventConnected.wait();
+      const bToC = serverB.rwtor;
+      if (bToC === undefined) {
+        throw new Error();
+      }
+      expect(bToC).not.to.be.undefined;
+
+      const eventRelayRun = new AsyncEvent();
+      const eventRelayStopped = new AsyncEvent();
+      const relayWithEvents = async () => {
+        await (async () => {
+          eventRelayRun.set();
+          await relay(cToA, cToB);
+          eventRelayStopped.set();
+        })();
+      }
+      relayWithEvents();
+      await eventRelayRun.wait();
+      return {
+        aToC,
+        cToA,
+        cToB,
+        bToC,
+        eventRelayRun,
+        eventRelayStopped,
+      }
+    };
+
+    const sockets0 = await relayedSocketsFactory();
+    /*
+      Here, messages are relayed and the relay coroutine should stop when either side is closed.
+    */
+    const data1 = new Uint8Array([1, 2, 3]);
+    sockets0.aToC.write(data1);
+    const data1BToCRead = await sockets0.bToC.read();
+    expect(data1).to.eql(data1BToCRead);
+
+    const data2 = new Uint8Array([4, 5, 6]);
+    sockets0.bToC.write(data2);
+    const data2AToCRead = await sockets0.aToC.read();
+    expect(data2).to.eql(data2AToCRead);
+
+    // Test: when `bToC.close` is called, only sockets related to B are closed.
+    sockets0.bToC.close();
+    const sleep = async (time: number) => {
+      return new Promise((res, rej) => {
+        setTimeout(() => {
+          res();
+        }, time);
+      });
+    }
+    // NOTE: It's just for convenient to sleep 100ms and wait until events occur.
+    //  It's generally a bad practice actually which should be replaced by waiting
+    //  for some events.
+    await sleep(100);
+    // bToC and cToB is closed.
+    expect(sockets0.bToC.connected).to.be.false;
+    expect(sockets0.cToB.connected).to.be.false;
+    // cToA and aToC are not closed.
+    expect(sockets0.aToC.connected).to.be.true;
+    expect(sockets0.cToA.connected).to.be.true;
+    // relay coroutine should have finished.
+    await sockets0.eventRelayStopped.wait();
+
+    const sockets1 = await relayedSocketsFactory();
+    // Test: when `aToC.close` is closed, all sockets should be closed.
+    sockets1.aToC.close();
+    // NOTE: It's just for convenient to sleep 100ms and wait until events occur.
+    //  It's generally a bad practice actually which should be replaced by waiting
+    //  for some events.
+    await sleep(100);
+    expect(sockets1.aToC.connected).to.be.false;
+    expect(sockets1.cToA.connected).to.be.false;
+    expect(sockets1.cToB.connected).to.be.false;
+    expect(sockets1.bToC.connected).to.be.false;
+    // relay coroutine should have finished.
+    await sockets1.eventRelayStopped.wait();
   });
 });
 
