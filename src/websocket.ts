@@ -1,10 +1,6 @@
-import * as http from "http";
-import express from "express";
-import WebSocket from "ws";
-import { AsyncEvent } from "./utils";
-import { ServerNotRunning, TimeoutError, ConnectionClosed } from "./exceptions";
+import WebSocket from "isomorphic-ws";
+import { TimeoutError, ConnectionClosed } from "./exceptions";
 import { SOCKET_TIMEOUT, WS_PROTOCOL } from "./configs";
-import { logger } from "./logger";
 
 export interface IIPRateLimiter {
   allow(ip: string): boolean;
@@ -51,102 +47,18 @@ export class TokenBucketRateLimiter implements IIPRateLimiter {
   }
 }
 
-export abstract class BaseServer {
-  abstract name: string;
-  isRunning: boolean;
-  private httpServer?: http.Server;
-  private wsServer?: WebSocket.Server;
-
-  constructor() {
-    this.isRunning = false;
-  }
-
-  abstract async onIncomingConnection(
-    socket: IWebSocketReadWriter,
-    request: http.IncomingMessage
-  ): Promise<void>;
-
-  public get address(): WebSocket.AddressInfo {
-    if (this.wsServer === undefined) {
-      throw new ServerNotRunning();
-    }
-    return this.wsServer.address() as WebSocket.AddressInfo;
-  }
-
-  async start(port?: number, hostname?: string) {
-    if (this.isRunning) {
-      return;
-    }
-    this.isRunning = true;
-
-    const event = new AsyncEvent();
-    const app = express();
-    // TODO: Change to https.
-    let webServer: http.Server;
-    const newConnectionCB = () => {
-      if (webServer.address() === null) {
-        throw new Error("address shouldn't be null");
-      }
-      const port = (webServer.address() as WebSocket.AddressInfo).port;
-      logger.info(`${this.name}: Listening on port ${port}`);
-      event.set();
-    };
-    if (port === undefined) {
-      webServer = app.listen(newConnectionCB);
-    } else if (hostname === undefined) {
-      webServer = app.listen(port, newConnectionCB);
-    } else {
-      webServer = app.listen(port, hostname, newConnectionCB);
-    }
-    const server = new WebSocket.Server({ server: webServer });
-    // Wait until the websocket server is already listening.
-    await event.wait();
-    this.httpServer = webServer;
-    this.wsServer = server;
-    const handler = async (
-      socket: WebSocket,
-      request: http.IncomingMessage
-    ): Promise<void> => {
-      const rwtor = new WebSocketAsyncReadWriter(socket);
-      await this.onIncomingConnection(rwtor, request);
-    };
-    this.wsServer.on("connection", handler.bind(this));
-  }
-
-  async waitClosed() {
-    return new Promise((res, rej) => {
-      if (this.wsServer === undefined) {
-        rej(new Error("ws server is not listened"));
-      } else {
-        this.wsServer.on("close", () => {
-          res();
-        });
-      }
-    });
-  }
-
-  close() {
-    if (!this.isRunning) {
-      return;
-    }
-    this.isRunning = false;
-    if (this.httpServer === undefined || this.wsServer === undefined) {
-      throw new Error("both httpServer and server should have been set");
-    }
-    for (const conn of this.wsServer.clients) {
-      conn.close();
-    }
-    this.wsServer.close();
-    this.httpServer.close();
-  }
-}
-
 export const connect = async (
   ip: string,
   port: number
 ): Promise<IWebSocketReadWriter> => {
   const ws = new WebSocket(`${WS_PROTOCOL}://${ip}:${port}`);
-  await new Promise(resolve => ws.once("open", resolve));
+  await new Promise((resolve) => {
+    function onOpen() {
+      resolve(0);
+      ws.removeEventListener("open", onOpen);
+    }
+    ws.onopen = onOpen;
+  });
   return new WebSocketAsyncReadWriter(ws);
 };
 
@@ -166,8 +78,8 @@ export interface IWebSocketReadWriter {
 // NOTE: Reference: https://github.com/jcao219/websocket-async/blob/master/src/websocket-client.js.
 export class WebSocketAsyncReadWriter implements IWebSocketReadWriter {
   private closeEvent?: WebSocket.CloseEvent;
-  received: Array<Uint8Array>;
-  private callbackQueue: Array<ICallback<Uint8Array>>;
+  received: Array<Blob | Buffer>;
+  private callbackQueue: Array<ICallback<Blob | Buffer>>;
 
   constructor(readonly socket: WebSocket) {
     this.received = [];
@@ -183,20 +95,24 @@ export class WebSocketAsyncReadWriter implements IWebSocketReadWriter {
   private setupListeners() {
     const socket = this.socket;
 
-    socket.onmessage = event => {
+    socket.onmessage = async (event) => {
+      const data = Buffer.isBuffer(event.data)
+        ? (event.data as Buffer)
+        : (event.data as any as Blob);
+
       if (this.callbackQueue.length !== 0) {
         const callback = this.callbackQueue.shift();
         if (callback === undefined) {
           throw new Error("should never happen");
         }
-        callback.resolvePromise(new Uint8Array(event.data as Buffer));
+        callback.resolvePromise(data);
         callback.cancelTimeout();
       } else {
-        this.received.push(new Uint8Array(event.data as Buffer));
+        this.received.push(data);
       }
     };
 
-    socket.onclose = event => {
+    socket.onclose = (event) => {
       this.closeEvent = event;
 
       // Whenever a close event fires, the socket is effectively dead.
@@ -219,7 +135,9 @@ export class WebSocketAsyncReadWriter implements IWebSocketReadWriter {
       if (data === undefined) {
         throw new Error("should never happen");
       }
-      return data;
+      return new Uint8Array(
+        Buffer.isBuffer(data) ? data : await data.arrayBuffer()
+      );
     }
 
     if (!this.connected) {
@@ -228,10 +146,18 @@ export class WebSocketAsyncReadWriter implements IWebSocketReadWriter {
 
     return new Promise((resolve, reject) => {
       const t = setTimeout(() => {
-        reject(new TimeoutError(`timeout before receiving data: timeout=${timeout}`));
+        reject(
+          new TimeoutError(`timeout before receiving data: timeout=${timeout}`)
+        );
       }, timeout);
       this.callbackQueue.push({
-        resolvePromise: resolve,
+        resolvePromise: async (data) => {
+          resolve(
+            new Uint8Array(
+              Buffer.isBuffer(data) ? data : await data.arrayBuffer()
+            )
+          );
+        },
         rejectPromise: reject,
         cancelTimeout: () => {
           clearTimeout(t);

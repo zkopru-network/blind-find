@@ -35,12 +35,12 @@ describe("Test `genProof` and `verifyProof`", function() {
     // Invalid public
     const invalidPublicSignals = [...proofOfSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
-    await expect(
-      verifyProofOfSMP({
+    expect(
+      await verifyProofOfSMP({
         proof: proofOfSMP.proof,
         publicSignals: invalidPublicSignals
       })
-    ).to.be.rejected;
+    ).to.be.false;
   });
 
   it("proofSuccessfulSMP succeeds", async () => {
@@ -49,12 +49,12 @@ describe("Test `genProof` and `verifyProof`", function() {
     // Invalid public
     const invalidPublicSignals = [...proofSuccessfulSMP.publicSignals];
     invalidPublicSignals[0] = bigIntFactoryExclude(invalidPublicSignals);
-    await expect(
-      verifyProofSuccessfulSMP({
+    expect(
+      await verifyProofSuccessfulSMP({
         proof: proofSuccessfulSMP.proof,
         publicSignals: invalidPublicSignals
       })
-    ).to.be.rejected;
+    ).to.be.false;
   });
 
   it("proof indirect connection (proofOfSMP and proofSuccessfulSMP)", async () => {

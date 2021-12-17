@@ -1,11 +1,11 @@
 import * as http from "http";
 
 import {
-  BaseServer,
   connect,
   IWebSocketReadWriter,
   TokenBucketRateLimiter
 } from "../src/websocket";
+import { BaseServer } from "../src/server";
 import { TimeoutError } from "../src/exceptions";
 
 import chai from "chai";

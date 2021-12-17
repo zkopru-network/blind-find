@@ -4,16 +4,21 @@ import {
   genProofSuccessfulSMP,
   verifyProofIndirectConnection,
   verifyProofOfSMP,
-  TProofIndirectConnection,
+  TProofIndirectConnection
 } from "./circuits";
+import { BlindFindConfig, IOptions, IRawOptions } from "./cli/configs";
 import { TIMEOUT, TIMEOUT_LARGE } from "./configs";
-import { DBMap } from "./db";
-import { sendJoinHubReq, sendSearchReq } from "./hub";
+import { DBMap, MemoryDB } from "./db";
+import { sendJoinHubReq, sendSearchReq } from "./req";
 import { IAtomicDB } from "./interfaces";
 import { InvalidProof } from "./smp/exceptions";
 import { Scalar } from "./smp/v4/serialization";
 import { TEthereumAddress } from "./types";
-import { bigIntToHexString, hashPointToScalar } from "./utils";
+import {
+  bigIntToHexString,
+  hashPointToScalar,
+  unstringifyBigInts
+} from "./utils";
 import { BlindFindContract } from "./web3";
 
 export type TJoinedHubEntry = {
@@ -41,6 +46,21 @@ export class User {
     readonly timeoutLarge = TIMEOUT_LARGE
   ) {
     this.joinedHubsDB = new DBMap(JOINED_HUBS_PREFIX, db, this.maxKeyLength);
+  }
+
+  static async fromOption(rawOption: IRawOptions): Promise<User> {
+    const option = {
+      ...rawOption,
+      blindFindPrivkey: unstringifyBigInts(rawOption.blindFindPrivkey)
+    };
+    const config = new BlindFindConfig(option, "/");
+    const keypair = config.getKeypair();
+    const contract = config.getBlindFindContract();
+    const adminAddress = await contract.getAdmin();
+
+    const db = new MemoryDB();
+
+    return new User(keypair, adminAddress, contract, db);
   }
 
   async join(ip: string, port: number, hubPubkey: PubKey) {
@@ -95,13 +115,17 @@ export class User {
       proofOfSMP: res.proofOfSMP,
       proofSuccessfulSMP
     };
-    if (!await this.verifyProofOfIndirectConnection(proofIndirectConnection)) {
+    if (
+      !(await this.verifyProofOfIndirectConnection(proofIndirectConnection))
+    ) {
       throw new InvalidProof("proof of indirect connection is invalid");
     }
     return proofIndirectConnection;
   }
 
-  async verifyProofOfIndirectConnection(proof: TProofIndirectConnection): Promise<boolean> {
+  async verifyProofOfIndirectConnection(
+    proof: TProofIndirectConnection
+  ): Promise<boolean> {
     const validMerkleRoots = await this.contract.getAllMerkleRoots();
     return await verifyProofIndirectConnection(proof, validMerkleRoots);
   }
