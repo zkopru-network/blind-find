@@ -1,5 +1,5 @@
 {
-  "name": "blind-find",
+  "name": "@zkopru/blind-find",
   "description": "A typescript implementation of Blind Find, a peer-to-peer network allowing private peer search proposed by Barry Whitehat and Kobi Gurkan",
   "version": "0.1.0",
   "license": "MIT",
