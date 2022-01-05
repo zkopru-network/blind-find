@@ -54,4 +54,40 @@ export const hashPointToScalar = (point: ECPoint): BigInt => {
 
 export const bigIntToHexString = (n: BigInt): string => {
   return new BN(n.toString()).toString("hex");
+};
+
+export function stringifyBigInts(o) {
+  if (typeof o == "bigint" || o.eq !== undefined) {
+    return o.toString(10);
+  } else if (Array.isArray(o)) {
+    return o.map(stringifyBigInts);
+  } else if (typeof o == "object") {
+    const res = {};
+    const keys = Object.keys(o);
+    keys.forEach((k) => {
+      res[k] = stringifyBigInts(o[k]);
+    });
+    return res;
+  } else {
+    return o;
+  }
+}
+
+export function unstringifyBigInts(o) {
+  if (typeof o == "string" && /^[0-9]+$/.test(o)) {
+    return BigInt(o);
+  } else if (typeof o == "string" && /^0x[0-9a-fA-F]+$/.test(o)) {
+    return BigInt(o);
+  } else if (Array.isArray(o)) {
+    return o.map(unstringifyBigInts);
+  } else if (typeof o == "object") {
+    const res = {};
+    const keys = Object.keys(o);
+    keys.forEach((k) => {
+      res[k] = unstringifyBigInts(o[k]);
+    });
+    return res;
+  } else {
+    return o;
+  }
 }

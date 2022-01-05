@@ -12,13 +12,13 @@ import { IAtomicDB } from "./interfaces";
 import { GetMerkleProofReq, GetMerkleProofResp } from "./serialization";
 import { TEthereumAddress } from "./types";
 import {
-  BaseServer,
   connect,
   IIPRateLimiter,
   TokenBucketRateLimiter,
   TRateLimitParams,
   IWebSocketReadWriter
 } from "./websocket";
+import { BaseServer } from "./server";
 import { bigIntToHexString } from "./utils";
 import { Scalar } from "./smp/v4/serialization";
 

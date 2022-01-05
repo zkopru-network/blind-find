@@ -1,34 +1,41 @@
 
 .PHONY = clean
 
-CARGO_BIN_PATH = ~/.cargo/bin
+SNARKJS_BIN = ./node_modules/.bin/snarkjs
 CIRCOM_DIR = circuits/instance
 BUILD_DIR = build
+
+PTAUS = pot18_final.ptau 
 
 CIRCOMS = $(CIRCOM_DIR)/proofOfSMP.circom $(CIRCOM_DIR)/proofSuccessfulSMP.circom
 R1CSS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%.r1cs)
 WASMS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%.wasm)
-PARAMS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%.params)
-PROVING_KEYS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%_pk.json)
-VERIFICATION_KEYS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%_vk.json)
+SYMS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%.sym)
+ZKEYS = $(CIRCOMS:$(CIRCOM_DIR)/%.circom=$(BUILD_DIR)/%.zkey)
 
-all: $(R1CSS) $(WASMS) $(PARAMS) $(PROVING_KEYS) $(VERIFICATION_KEYS)
-
-compile: $(R1CSS) $(WASMS)
-
-extract_keys: $(PROVING_KEYS) $(VERIFICATION_KEYS)
+all: $(R1CSS) $(WASMS) $(SYMS) $(PTAUS) $(ZKEYS)
 
 clean:
-	rm -rf build/
+	rm -rf $(BUILD_DIR)
 
-# Extract keys from params.
-$(BUILD_DIR)/%_pk.json $(BUILD_DIR)/%_vk.json: $(BUILD_DIR)/%.params $(BUILD_DIR)/%.r1cs
-	$(CARGO_BIN_PATH)/zkutil export-keys -c $(patsubst %.params,%.r1cs,$<) -p $< -r $(patsubst %.params,%_pk.json,$<) -v $(patsubst %.params,%_vk.json,$<)
-
-# Compile circuits and perform trusted setup.
-# NOTE: It will be more precise to consider not only the entry circom files,
-#	but also the libraries on which they depend.
-$(BUILD_DIR)/%.r1cs $(BUILD_DIR)/%.wasm $(BUILD_DIR)/%.params: $(CIRCOM_DIR)/%.circom
+# Execute Powers of tau ceremony
+# TODO: generate random texts for contribution
+$(PTAUS):
 	@mkdir -p $(BUILD_DIR)
-	node ./node_modules/circom/cli.js $< -r $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.r1cs,$<) -w $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.wasm,$<)
-	$(CARGO_BIN_PATH)/zkutil setup -c $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.r1cs,$<) -p $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.params,$<)
+	$(SNARKJS_BIN) powersoftau new bn128 19 $(BUILD_DIR)/pot18_0000.ptau -v
+	$(SNARKJS_BIN) powersoftau contribute $(BUILD_DIR)/pot18_0000.ptau $(BUILD_DIR)/pot18_0001.ptau --name="First contribution" -v -e="FirstRandomText"
+	$(SNARKJS_BIN) powersoftau contribute $(BUILD_DIR)/pot18_0001.ptau $(BUILD_DIR)/pot18_0002.ptau --name="Second contribution" -v -e="SecondRandomText"
+	$(SNARKJS_BIN) powersoftau beacon $(BUILD_DIR)/pot18_0002.ptau $(BUILD_DIR)/pot18_beacon.ptau 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 10 -n="Final Beacon"
+	$(SNARKJS_BIN) powersoftau prepare phase2 $(BUILD_DIR)/pot18_beacon.ptau $(BUILD_DIR)/pot18_final.ptau -v
+
+# Compile circuits and generate r1cs, wasm, sym files
+$(BUILD_DIR)/%.r1cs $(BUILD_DIR)/%.wasm $(BUILD_DIR)/%.sym: $(CIRCOM_DIR)/%.circom
+	@mkdir -p $(BUILD_DIR)
+	node ./node_modules/circom/cli.js $< --r1cs $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.r1cs,$<) --wasm $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.wasm,$<) --sym $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.sym,$<)
+
+zkeys: $(ZKEYS)
+
+# generate zkeys for groth16
+$(BUILD_DIR)/%.zkey: $(BUILD_DIR)/%.r1cs 
+	$(SNARKJS_BIN) groth16 setup $(patsubst $(CIRCOM_DIR)/%.circom,$(BUILD_DIR)/%.r1cs,$<) $(BUILD_DIR)/pot18_final.ptau $@
+	$(SNARKJS_BIN) zkey export verificationkey $@ $@.json

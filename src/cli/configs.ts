@@ -62,6 +62,13 @@ interface INetworkOptions {
   provider: IWeb3Params | IInfuraParams;
 }
 
+export interface IRawOptions {
+  network: INetworkOptions;
+  blindFindPrivkey: string;
+  admin?: IAdminConfig;
+  hub?: IHubConfig;
+}
+
 export interface IOptions {
   network: INetworkOptions;
   blindFindPrivkey: PrivKey;

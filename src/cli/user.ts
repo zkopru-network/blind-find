@@ -1,11 +1,12 @@
 import { Command } from "commander";
-import { PubKey, SNARK_FIELD_SIZE, stringifyBigInts } from "maci-crypto";
+import { PubKey, SNARK_FIELD_SIZE } from "maci-crypto";
 import { parseProofOfSMPPublicSignals, TProof, TProofIndirectConnection } from "../circuits";
 import { ValueError } from "../exceptions";
 import { User, TJoinedHubEntry } from "../user";
 import { bigIntToEthAddress, ethAddressToBigInt } from "../web3";
 import { IConfig } from "./configs";
 import { base64ToObj, printObj, keypairToCLIFormat, objToBase64, pubkeyToCLIFormat, pubkeyFromCLIFormat } from "./utils";
+import { stringifyBigInts } from "../utils";
 
 export const buildCommandUser = (config: IConfig) => {
   const command = new Command("user");

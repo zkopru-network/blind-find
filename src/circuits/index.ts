@@ -1,13 +1,6 @@
-import * as fs from "fs";
 import * as path from "path";
-import * as shell from "shelljs";
 
-import {
-  PubKey,
-  Signature,
-  stringifyBigInts,
-  unstringifyBigInts
-} from "maci-crypto";
+import { PubKey, Signature, stringifyBigInts } from "maci-crypto";
 import { ValueError } from "../smp/exceptions";
 import {
   SMPMessage1Wire,
@@ -18,8 +11,8 @@ import { HubRegistry } from "..";
 import { BabyJubPoint } from "../smp/v4/babyJub";
 import { MerkleProof } from "../interfaces";
 import { TEthereumAddress } from "../types";
-const circom = require("circom");
-import tmp from 'tmp-promise';
+const snarkjs = require("snarkjs");
+const fastfile = require("fastfile");
 
 /**
  * Ref
@@ -27,22 +20,22 @@ import tmp from 'tmp-promise';
  */
 
 // TODO: Move to configs.ts?
-const zkutilPath = "~/.cargo/bin/zkutil";
 const circomFilePostfix = ".circom";
 const circomDir = `${__dirname}/../../circuits`;
 const buildDir = `${__dirname}/../../build`;
-const snarkjsCLI = path.join(
-  __dirname,
-  "../../node_modules/snarkjs/build/cli.cjs"
-);
 const proofOfSMPPath = path.join(circomDir, "instance/proofOfSMP.circom");
-const proofSuccessfulSMPPath = path.join(circomDir, "instance/proofSuccessfulSMP.circom");
+const proofSuccessfulSMPPath = path.join(
+  circomDir,
+  "instance/proofSuccessfulSMP.circom"
+);
 
-export const compileAndLoadCircuit = async (circuitPath: string) => {
-  const circuit = await circom.tester(path.join(circuitPath));
-  await circuit.loadSymbols();
-  return circuit;
-};
+// TODO: make it configurable
+const API_ENDPOINT = "http://localhost:5000";
+
+function getPath(filename: string) {
+  const path = (process as any).browser ? API_ENDPOINT : buildDir;
+  return `${path}/${filename}`;
+}
 
 type ProofOfSMPInput = {
   h2: BigInt;
@@ -149,12 +142,10 @@ const proofSuccessfulSMPInputsToCircuitArgs = (
   });
 };
 
-const genProofSuccessfulSMP = async (
-  inputs: ProofSuccessfulSMPInput,
-) => {
+const genProofSuccessfulSMP = async (inputs: ProofSuccessfulSMPInput) => {
   return await genProof(
     proofSuccessfulSMPPath,
-    proofSuccessfulSMPInputsToCircuitArgs(inputs),
+    proofSuccessfulSMPInputsToCircuitArgs(inputs)
   );
 };
 
@@ -164,14 +155,18 @@ const verifyProofSuccessfulSMP = async (proof: TProof) => {
 
 const getCircuitName = (circomFileBasename: string): string => {
   if (
-    circomFileBasename.slice(circomFileBasename.length - circomFilePostfix.length) !==
-    circomFilePostfix
+    circomFileBasename.slice(
+      circomFileBasename.length - circomFilePostfix.length
+    ) !== circomFilePostfix
   ) {
     throw new ValueError(
       `circom file must have postifx ${circomFilePostfix}: circomFile=${circomFileBasename}`
     );
   }
-  return circomFileBasename.slice(0, circomFileBasename.length - circomFilePostfix.length);
+  return circomFileBasename.slice(
+    0,
+    circomFileBasename.length - circomFilePostfix.length
+  );
 };
 
 /**
@@ -186,11 +181,13 @@ const genProof = async (circomFullPath: string, inputs: any) => {
   const circuitR1csPath = `${circuitName}.r1cs`;
   const wasmPath = `${circuitName}.wasm`;
   const paramsPath = `${circuitName}.params`;
+  const zkeyPath = `${circuitName}.zkey`;
   return await genProofAndPublicSignals(
     inputs,
     circuitR1csPath,
     wasmPath,
     paramsPath,
+    zkeyPath
   );
 };
 
@@ -199,85 +196,35 @@ const genProofAndPublicSignals = async (
   circuitR1csFilename: string,
   circuitWasmFilename: string,
   paramsFilename: string,
+  zkeyFilename: string
 ) => {
-  const paramsPath = path.join(buildDir, paramsFilename);
-  const circuitR1csPath = path.join(buildDir, circuitR1csFilename);
-  const circuitWasmPath = path.join(buildDir, circuitWasmFilename);
-  const tmpDir = await tmp.dir({ unsafeCleanup: true });
-  const inputJsonPath = path.join(tmpDir.path, "input.json");
-  const witnessPath = path.join(tmpDir.path, "witness.wtns");
-  const witnessJsonPath = path.join(tmpDir.path, "witness.json");
-  const proofPath = path.join(tmpDir.path, "proof.json");
-  const publicJsonPath = path.join(tmpDir.path, "publicSignals.json");
-
-  // TODO: should be changed to async later
-  fs.writeFileSync(inputJsonPath, JSON.stringify(stringifyBigInts(inputs)));
-
-  const snarkjsCmd = `node ${snarkjsCLI}`;
-  const witnessCmd = `${snarkjsCmd} wc ${circuitWasmPath} ${inputJsonPath} ${witnessPath}`;
-
-  shell.config.fatal = true;
-  shell.exec(witnessCmd, { silent: true });
-
-  const witnessJsonCmd = `${snarkjsCmd} wej ${witnessPath} ${witnessJsonPath}`;
-  shell.exec(witnessJsonCmd, { silent: true });
-
-  const proveCmd = `${zkutilPath} prove -c ${circuitR1csPath} -p ${paramsPath} -w ${witnessJsonPath} -r ${proofPath} -o ${publicJsonPath}`;
-
-  shell.exec(proveCmd, { silent: true });
-
-  // TODO: should be changed to async later
-  const witness = unstringifyBigInts(
-    JSON.parse(fs.readFileSync(witnessJsonPath).toString())
-  );
-  // TODO: should be changed to async later
-  const publicSignals = unstringifyBigInts(
-    JSON.parse(fs.readFileSync(publicJsonPath).toString())
-  );
-  // TODO: should be changed to async later
-  const proof = JSON.parse(fs.readFileSync(proofPath).toString());
-
-  await tmpDir.cleanup();
-  return { proof, publicSignals, witness };
+  const wasmPath = getPath(circuitWasmFilename);
+  const zkeyPath = getPath(zkeyFilename);
+  return await snarkjs.groth16.fullProve(inputs, wasmPath, zkeyPath);
 };
 
 const verifyProof = async (circomFilePath: string, proof: TProof) => {
   const circuitName = getCircuitName(path.basename(circomFilePath));
-  const tmpDir = await tmp.dir({ unsafeCleanup: true });
-  const paramsPath = path.join(buildDir, `${circuitName}.params`);
-  const proofPath = path.join(tmpDir.path, 'proof.json');
-  const publicSignalsPath = path.join(tmpDir.path, 'publicSignals.json');
-  // TODO: can be combined to single command?
-  fs.writeFileSync(
-    proofPath,
-    JSON.stringify(stringifyBigInts(proof.proof))
-  );
-  // TODO: can be combined to single command?
-  fs.writeFileSync(
-    publicSignalsPath,
-    JSON.stringify(stringifyBigInts(proof.publicSignals))
-  );
-  const verifyCmd = `${zkutilPath} verify -p ${paramsPath} -r ${proofPath} -i ${publicSignalsPath}`;
-  const output = shell.exec(verifyCmd, { silent: true }).stdout.trim();
-
-  await tmpDir.cleanup();
-
-  return output === "Proof is correct";
+  const zkeyFd = await fastfile.readExisting(getPath(`${circuitName}.zkey.json`));
+  const decoded = new TextDecoder().decode(await zkeyFd.read(zkeyFd.totalSize))
+  const zkey = JSON.parse(decoded)
+  return await snarkjs.groth16.verify(zkey, proof.publicSignals, proof.proof);
 };
 
-export const parseProofOfSMPPublicSignals = (publicSignals: BigInt[]) => {
-  if (publicSignals.length !== 39) {
+export const parseProofOfSMPPublicSignals = (publicSignals: string[]) => {
+  const mappedSignals = publicSignals.map(BigInt);
+  if (mappedSignals.length !== 39) {
     throw new ValueError(
-      `length of publicSignals is not correct: publicSignals=${publicSignals}`
+      `length of publicSignals is not correct: publicSignals=${mappedSignals}`
     );
   }
   // Ignore the first `1n`.
-  const pubkeyC = publicSignals.slice(1, 3);
-  const adminAddress = publicSignals[3];
-  const merkleRoot = publicSignals[4];
-  const pa = new BabyJubPoint(publicSignals.slice(21, 23));
-  const ph = new BabyJubPoint(publicSignals.slice(28, 30));
-  const rh = new BabyJubPoint(publicSignals.slice(35, 37));
+  const pubkeyC = mappedSignals.slice(1, 3);
+  const adminAddress = mappedSignals[3];
+  const merkleRoot = mappedSignals[4];
+  const pa = new BabyJubPoint(mappedSignals.slice(21, 23));
+  const ph = new BabyJubPoint(mappedSignals.slice(28, 30));
+  const rh = new BabyJubPoint(mappedSignals.slice(35, 37));
   return {
     pubkeyC,
     adminAddress,
@@ -288,17 +235,18 @@ export const parseProofOfSMPPublicSignals = (publicSignals: BigInt[]) => {
   };
 };
 
-const parseProofSuccessfulSMPPublicSignals = (publicSignals: BigInt[]) => {
-  if (publicSignals.length !== 9) {
+const parseProofSuccessfulSMPPublicSignals = (publicSignals: string[]) => {
+  const mappedSignals = publicSignals.map(BigInt);
+  if (mappedSignals.length !== 9) {
     throw new ValueError(
-      `length of publicSignals is not correct: publicSignals=${publicSignals}`
+      `length of publicSignals is not correct: publicSignals=${mappedSignals}`
     );
   }
   // Ignore the first `1n`.
-  const pubkeyA = publicSignals.slice(1, 3);
-  const pa = new BabyJubPoint(publicSignals.slice(3, 5));
-  const ph = new BabyJubPoint(publicSignals.slice(5, 7));
-  const rh = new BabyJubPoint(publicSignals.slice(7, 9));
+  const pubkeyA = mappedSignals.slice(1, 3);
+  const pa = new BabyJubPoint(mappedSignals.slice(3, 5));
+  const ph = new BabyJubPoint(mappedSignals.slice(5, 7));
+  const rh = new BabyJubPoint(mappedSignals.slice(7, 9));
   return {
     pubkeyA,
     pa,

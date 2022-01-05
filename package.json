@@ -47,14 +47,17 @@
     "commander": "^7.0.0",
     "ethers": "^5.0.27",
     "express": "^4.17.1",
+    "fastfile": "^0.0.16",
+    "isomorphic-ws": "^4.0.1",
     "js-sha256": "^0.9.0",
     "level": "^6.0.1",
     "maci-circuits": "^0.3.8",
     "maci-config": "^0.3.8",
     "maci-crypto": "^0.3.8",
+    "snarkjs": "^0.4.10",
     "tmp-promise": "^3.0.2",
     "winston": "^3.3.3",
-    "ws": "^7.4.1",
+    "ws": "^7.5.6",
     "yaml": "^1.10.0"
   },
   "devDependencies": {
