@@ -1,5 +1,5 @@
 import BN from "bn.js";
-import { hash5 } from "maci-crypto";
+import { hash5, Plaintext } from "maci-crypto";
 import { ECPoint } from "./smp/v4/types";
 
 /**
@@ -90,4 +90,16 @@ export function unstringifyBigInts(o) {
   } else {
     return o;
   }
+}
+
+export function stringToPlaintext(str: string): Plaintext {
+  const encoder = new TextEncoder();
+  return Array.from(encoder.encode(str)).map((v) => BigInt(v));
+}
+
+export function plaintextToString(plain: Plaintext): string {
+  const decoder = new TextDecoder();
+  return decoder.decode(
+    Uint8Array.from(plain.map((v) => Number(v.toString())))
+  );
 }

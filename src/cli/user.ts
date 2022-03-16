@@ -41,7 +41,7 @@ const buildCommandJoin = (config: IConfig) => {
           db
         } = await loadUserSettings(config);
         const user = new User(userKeypair, adminAddress, blindFindContract, db);
-        await user.join(hostname, port, hubPubkey);
+        await user.join(hostname, port, hubPubkey, {hostname: '127.0.0.1', port: 1111});
       }
     );
   return command;

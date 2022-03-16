@@ -1,4 +1,5 @@
 import {
+  Ciphertext,
   PubKey,
   Signature,
   stringifyBigInts,
@@ -17,6 +18,7 @@ import {
 } from "./smp/serialization";
 import { bigIntToNumber, concatUint8Array } from "./smp/utils";
 import { Point, Scalar } from "./smp/v4/serialization";
+import { THost } from "./types";
 
 export enum msgType {
   JoinReq = 6,
@@ -164,14 +166,42 @@ class MerkleProofWire extends BaseSerializable {
 
 export class GetMerkleProofResp extends MerkleProofWire {}
 
+class JSONObj extends BaseSerializable {
+  constructor(readonly jsonObj: any) {
+    super();
+  }
+
+  static deserialize(b: Uint8Array): JSONObj {
+    return super.deserialize(b) as JSONObj;
+  }
+
+  static consume(b: Uint8Array): [JSONObj, Uint8Array] {
+    const [tlv, bytesRemaining] = TLV.consume(b);
+    const objString = Buffer.from(tlv.value).toString("utf-8");
+    const obj = JSON.parse(objString);
+    return [new JSONObj(obj), bytesRemaining];
+  }
+
+  serialize(): Uint8Array {
+    const objString = JSON.stringify(this.jsonObj);
+    const bytes = Buffer.from(objString, "utf-8");
+    return new TLV(new Short(msgType.JSONObj), bytes).serialize();
+  }
+}
+
 export class JoinReq extends BaseSerializable {
   static wireTypes = [
     Point, // userPubkey,
     Point,
-    Scalar // userSig
+    Scalar, // userSig
+    JSONObj // userHost
   ];
 
-  constructor(readonly userPubkey: PubKey, readonly userSig: Signature) {
+  constructor(
+    readonly userPubkey: PubKey,
+    readonly userSig: Signature,
+    readonly userHost: THost
+  ) {
     super();
   }
 
@@ -182,10 +212,14 @@ export class JoinReq extends BaseSerializable {
   static consume(b: Uint8Array): [JoinReq, Uint8Array] {
     const [elements, bytesRemaining] = deserializeElements(b, this.wireTypes);
     return [
-      new JoinReq((elements[0] as Point).point, {
-        R8: (elements[1] as Point).point,
-        S: (elements[2] as BaseFixedInt).value
-      }),
+      new JoinReq(
+        (elements[0] as Point).point,
+        {
+          R8: (elements[1] as Point).point,
+          S: (elements[2] as BaseFixedInt).value
+        },
+        (elements[3] as JSONObj).jsonObj
+      ),
       bytesRemaining
     ];
   }
@@ -194,7 +228,8 @@ export class JoinReq extends BaseSerializable {
     return serializeElements([
       new Point(this.userPubkey),
       new Point(this.userSig.R8),
-      new Scalar(this.userSig.S)
+      new Scalar(this.userSig.S),
+      new JSONObj(this.userHost)
     ]);
   }
 }
@@ -314,36 +349,18 @@ export class SearchMessage1 extends BaseSerializable {
 
 export class SearchMessage2 extends TLV {}
 
-class JSONObj extends BaseSerializable {
-  constructor(readonly jsonObj: any) {
-    super();
-  }
-
-  static deserialize(b: Uint8Array): JSONObj {
-    return super.deserialize(b) as JSONObj;
-  }
-
-  static consume(b: Uint8Array): [JSONObj, Uint8Array] {
-    const [tlv, bytesRemaining] = TLV.consume(b);
-    const objString = Buffer.from(tlv.value).toString("utf-8");
-    const obj = JSON.parse(objString);
-    return [new JSONObj(obj), bytesRemaining];
-  }
-
-  serialize(): Uint8Array {
-    const objString = JSON.stringify(this.jsonObj);
-    const bytes = Buffer.from(objString, "utf-8");
-    return new TLV(new Short(msgType.JSONObj), bytes).serialize();
-  }
-}
-
 export class SearchMessage3 extends BaseSerializable {
   static wireTypes = [
     TLV, // smpMsg3
     JSONObj, // proof.proof
-    JSONObj // proof.publicSignals
+    JSONObj, // proof.publicSignals
+    JSONObj // encrypted address
   ];
-  constructor(readonly smpMsg3: TLV, readonly proof: TProof) {
+  constructor(
+    readonly smpMsg3: TLV,
+    readonly proof: TProof,
+    readonly ecnryptedAddress: Ciphertext
+  ) {
     super();
   }
 
@@ -356,11 +373,18 @@ export class SearchMessage3 extends BaseSerializable {
     const smpMsg3 = elements[0] as TLV;
     const proof = unstringifyBigInts((elements[1] as JSONObj).jsonObj);
     const publicSignals = unstringifyBigInts((elements[2] as JSONObj).jsonObj);
+    const encryptedAddress = unstringifyBigInts(
+      (elements[3] as JSONObj).jsonObj
+    );
     return [
-      new SearchMessage3(smpMsg3, {
-        proof: proof,
-        publicSignals: publicSignals
-      }),
+      new SearchMessage3(
+        smpMsg3,
+        {
+          proof: proof,
+          publicSignals: publicSignals
+        },
+        encryptedAddress
+      ),
       bytesRemaining
     ];
   }
@@ -369,7 +393,8 @@ export class SearchMessage3 extends BaseSerializable {
     return serializeElements([
       this.smpMsg3,
       new JSONObj(stringifyBigInts(this.proof.proof)),
-      new JSONObj(stringifyBigInts(this.proof.publicSignals))
+      new JSONObj(stringifyBigInts(this.proof.publicSignals)),
+      new JSONObj(stringifyBigInts(this.ecnryptedAddress))
     ]);
   }
 }
