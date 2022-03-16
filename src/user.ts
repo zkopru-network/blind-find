@@ -13,7 +13,7 @@ import { sendJoinHubReq, sendSearchReq } from "./req";
 import { IAtomicDB } from "./interfaces";
 import { InvalidProof } from "./smp/exceptions";
 import { Scalar } from "./smp/v4/serialization";
-import { TEthereumAddress } from "./types";
+import { TEthereumAddress, THost } from "./types";
 import {
   bigIntToHexString,
   hashPointToScalar,
@@ -63,7 +63,7 @@ export class User {
     return new User(keypair, adminAddress, contract, db);
   }
 
-  async join(ip: string, port: number, hubPubkey: PubKey) {
+  async join(ip: string, port: number, hubPubkey: PubKey, userHost: THost) {
     const joinMsg = getJoinHubMsgHashedData(this.keypair.pubKey, hubPubkey);
     const sig = signMsg(this.keypair.privKey, joinMsg);
     const hubSig = await sendJoinHubReq(
@@ -71,6 +71,7 @@ export class User {
       port,
       this.keypair.pubKey,
       sig,
+      userHost,
       hubPubkey
     );
     await this.saveJoinedHub(ip, port, sig, hubPubkey, hubSig);
@@ -80,7 +81,7 @@ export class User {
     ip: string,
     port: number,
     target: PubKey
-  ): Promise<TProofIndirectConnection | null> {
+  ): Promise<(TProofIndirectConnection & { userHost: THost }) | null> {
     const res = await sendSearchReq(
       ip,
       port,
@@ -113,7 +114,8 @@ export class User {
       pubkeyC: target,
       adminAddress: this.adminAddress,
       proofOfSMP: res.proofOfSMP,
-      proofSuccessfulSMP
+      proofSuccessfulSMP,
+      userHost: res.userHost
     };
     if (
       !(await this.verifyProofOfIndirectConnection(proofIndirectConnection))

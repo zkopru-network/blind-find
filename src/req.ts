@@ -1,4 +1,4 @@
-import { PubKey, Signature } from "maci-crypto";
+import { PubKey, Signature, encrypt, decrypt } from "maci-crypto";
 import { logger } from "./logger";
 import { getCounterSignHashedData, verifySignedMsg } from ".";
 import { RequestFailed } from "./exceptions";
@@ -14,11 +14,12 @@ import { TLV, Short } from "./smp/serialization";
 import { connect } from "./websocket";
 import { TIMEOUT, MAXIMUM_TRIALS, TIMEOUT_LARGE } from "./configs";
 import { SMPStateMachine } from "./smp";
-import { hashPointToScalar } from "./utils";
+import { hashPointToScalar, plaintextToString } from "./utils";
 import { TProof } from "./circuits";
-import { SMPState1 } from "./smp/state";
+import { SMPState1, SMPState3 } from "./smp/state";
 import { SMPMessage2Wire, SMPMessage3Wire } from "./smp/v4/serialization";
 import { BabyJubPoint } from "./smp/v4/babyJub";
+import { THost } from "./types";
 
 type TSMPResult = {
   a3: BigInt;
@@ -26,6 +27,8 @@ type TSMPResult = {
   ph: BabyJubPoint;
   rh: BabyJubPoint;
   proofOfSMP: TProof;
+  // address of counterparty
+  userHost: THost;
 };
 
 export const sendJoinHubReq = async (
@@ -33,11 +36,12 @@ export const sendJoinHubReq = async (
   port: number,
   userPubkey: PubKey,
   userSig: Signature,
+  userHost: THost,
   hubPubkey: PubKey,
   timeout: number = TIMEOUT
 ): Promise<Signature> => {
   const rwtor = await connect(ip, port);
-  const joinReq = new JoinReq(userPubkey, userSig);
+  const joinReq = new JoinReq(userPubkey, userSig, userHost);
   const req = new TLV(new Short(msgType.JoinReq), joinReq.serialize());
   rwtor.write(req.serialize());
   const respBytes = await rwtor.read(timeout);
@@ -87,6 +91,7 @@ export const sendSearchReq = async (
       );
     }
     const msg2 = stateMachine.transit(msg1.smpMsg1);
+    const g2 = (stateMachine.state as SMPState3).g2 as BabyJubPoint;
     if (msg2 === null) {
       throw new Error("this should never happen");
     }
@@ -107,12 +112,18 @@ export const sendSearchReq = async (
       const smpMsg3 = SMPMessage3Wire.fromTLV(msg3.smpMsg3);
       const ph = smpMsg3.pa;
       const rh = smpMsg3.ra;
+
+      // decrypt host
+      const s = hashPointToScalar(g2.point);
+      const hostString = plaintextToString(decrypt(msg3.ecnryptedAddress, s));
+      const host = JSON.parse(hostString);
       smpRes = {
         a3,
         pa,
         ph,
         rh,
-        proofOfSMP: msg3.proof
+        proofOfSMP: msg3.proof,
+        userHost: host
       };
     }
     numTrials++;

@@ -3,13 +3,8 @@ import {
   hubRegistryTreeFactory,
   signedJoinMsgFactory
 } from "./factories";
-import {
-  HubServer,
-  sendJoinHubReq,
-  sendSearchReq,
-  UserStore,
-  THubRateLimit
-} from "../src/hub";
+import { HubServer, UserStore, THubRateLimit } from "../src/hub";
+import { sendJoinHubReq, sendSearchReq } from "../src/req";
 import { genKeypair, Signature } from "maci-crypto";
 import { LEVELS, TIMEOUT, TIMEOUT_LARGE } from "../src/configs";
 import WebSocket from "ws";
@@ -29,6 +24,10 @@ const timeoutBeginAndEnd = TIMEOUT + TIMEOUT;
 const timeoutOneSMP = TIMEOUT + TIMEOUT + TIMEOUT + TIMEOUT_LARGE + TIMEOUT;
 const expectedNumSMPs = 4;
 const timeoutTotal = timeoutBeginAndEnd + expectedNumSMPs * timeoutOneSMP;
+const host = {
+  hostname: "127.0.0.1",
+  port: 3333
+};
 
 type TRegistry = { userSig: Signature; hubSig: Signature };
 const isRegistrySignedMsgMatch = (
@@ -47,7 +46,8 @@ describe("UserStore", () => {
   it("set, get, and size succeed when adding reigstry", async () => {
     await userStore.set(msgs[0].userPubkey, {
       userSig: msgs[0].userSig,
-      hubSig: msgs[0].hubSig
+      hubSig: msgs[0].hubSig,
+      userHost: "127.0.0.1:8080"
     });
     expect(await userStore.getLength()).to.eql(1);
     const registry = await userStore.get(msgs[0].userPubkey);
@@ -57,7 +57,8 @@ describe("UserStore", () => {
     isRegistrySignedMsgMatch(registry, msgs[0]);
     await userStore.set(msgs[1].userPubkey, {
       userSig: msgs[1].userSig,
-      hubSig: msgs[1].hubSig
+      hubSig: msgs[1].hubSig,
+      userHost: "127.0.0.1:8080"
     });
     expect(await userStore.getLength()).to.eql(2);
     const registryAnother = await userStore.get(msgs[1].userPubkey);
@@ -81,7 +82,7 @@ describe("UserStore", () => {
   });
 });
 
-describe("HubServer", function() {
+describe("HubServer", function () {
   this.timeout(timeoutTotal);
 
   // NOTE: We only have **one** hub server in our tests. This means the order of the
@@ -107,19 +108,14 @@ describe("HubServer", function() {
     const hubRateLimit = {
       join: rateLimit,
       search: rateLimit,
-      global: rateLimit,
-    }
+      global: rateLimit
+    };
     const db = new MemoryDB();
     await HubServer.setHubRegistryToDB(db, {
       hubRegistry: hubRegistry,
       merkleProof: merkleProof
     });
-    hub = new HubServer(
-      hubkeypair,
-      adminAddress,
-      hubRateLimit,
-      db
-    );
+    hub = new HubServer(hubkeypair, adminAddress, hubRateLimit, db);
     await hub.start();
 
     const addr = hub.address as WebSocket.AddressInfo;
@@ -147,6 +143,7 @@ describe("HubServer", function() {
       port,
       signedMsg.userPubkey,
       signedMsg.userSig,
+      host,
       signedMsg.hubPubkey
     );
     expect(await hub.userStore.getLength()).to.eql(1);
@@ -160,6 +157,7 @@ describe("HubServer", function() {
       port,
       signedMsgAnother.userPubkey,
       signedMsgAnother.userSig,
+      host,
       signedMsgAnother.hubPubkey
     );
     expect(await hub.userStore.getLength()).to.eql(2);
@@ -190,6 +188,7 @@ describe("HubServer", function() {
         port,
         signedMsg.userPubkey,
         signedMsg.userSig,
+        host,
         signedMsg.hubPubkey,
         timeoutExpectedToFail
       )
@@ -210,12 +209,7 @@ describe("HubServer", function() {
         hubRegistry: hubRegistry,
         merkleProof: merkleProof
       });
-      const hub = new HubServer(
-        hubkeypair,
-        adminAddress,
-        rateLimit,
-        db
-      );
+      const hub = new HubServer(hubkeypair, adminAddress, rateLimit, db);
       await hub.start();
       const port = hub.address.port;
       return { hub, port };
@@ -229,7 +223,7 @@ describe("HubServer", function() {
       const { hub, port } = await createHub({
         join: zeroRateLimit,
         search: normalRateLimit,
-        global: normalRateLimit,
+        global: normalRateLimit
       });
       const signedMsg = signedJoinMsgFactory(user1, hubkeypair);
       await expect(
@@ -238,6 +232,7 @@ describe("HubServer", function() {
           port,
           signedMsg.userPubkey,
           signedMsg.userSig,
+          host,
           signedMsg.hubPubkey
         )
       ).to.be.rejected;
@@ -251,7 +246,7 @@ describe("HubServer", function() {
       const { hub, port } = await createHub({
         join: normalRateLimit,
         search: zeroRateLimit,
-        global: normalRateLimit,
+        global: normalRateLimit
       });
       await expect(sendSearchReq(ip, port, user1.pubKey)).to.be.rejected;
       hub.close();
@@ -262,7 +257,7 @@ describe("HubServer", function() {
       const { hub, port } = await createHub({
         join: normalRateLimit,
         search: normalRateLimit,
-        global: zeroRateLimit,
+        global: zeroRateLimit
       });
       const signedMsg = signedJoinMsgFactory(user1, hubkeypair);
       await expect(
@@ -271,6 +266,7 @@ describe("HubServer", function() {
           port,
           signedMsg.userPubkey,
           signedMsg.userSig,
+          host,
           signedMsg.hubPubkey
         )
       ).to.be.rejected;

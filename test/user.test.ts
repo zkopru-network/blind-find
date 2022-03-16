@@ -21,7 +21,7 @@ const expectedNumSMPs = 2;
 const timeoutTotal = timeoutBeginAndEnd + expectedNumSMPs * timeoutOneSMP;
 
 // TODO: Use hardhat
-describe("User", function() {
+describe("User", function () {
   this.timeout(timeoutTotal);
 
   let hub: HubServer;
@@ -39,8 +39,8 @@ describe("User", function() {
   const hubRateLimit = {
     join: rateLimit,
     search: rateLimit,
-    global: rateLimit,
-  }
+    global: rateLimit
+  };
   let ip: string;
   let port: number;
 
@@ -59,12 +59,7 @@ describe("User", function() {
       hubRegistry: hubRegistryToObj(hubRegistry),
       merkleProof: merkleProof
     });
-    hub = new HubServer(
-      hubKeypair,
-      adminAddress,
-      hubRateLimit,
-      db
-    );
+    hub = new HubServer(hubKeypair, adminAddress, hubRateLimit, db);
     await hub.start();
     await blindFindContract.updateMerkleRoot(merkleProof.root);
     expect((await blindFindContract.getAllMerkleRoots()).size).to.eql(1);
@@ -98,7 +93,10 @@ describe("User", function() {
     expect((await userJoined.getJoinedHubs()).length).to.eql(0);
 
     // Number of joinedHubs is incremented after joining a hub.
-    await userJoined.join(ip, port, hubKeypair.pubKey);
+    await userJoined.join(ip, port, hubKeypair.pubKey, {
+      hostname: "127.0.0.1",
+      port: 3000
+    });
     expect((await userJoined.getJoinedHubs()).length).to.eql(1);
 
     // Persistence: data should persist in the database
@@ -123,6 +121,10 @@ describe("User", function() {
     const validMerkleRoots = await blindFindContract.getAllMerkleRoots();
     expect(await verifyProofIndirectConnection(proof, validMerkleRoots)).to.be
       .true;
+    expect(proof.userHost).to.deep.equal({
+      hostname: "127.0.0.1",
+      port: 3000
+    });
     // Search fails
     const keypairNotFound = genKeypair();
     expect(await userAnother.search(ip, port, keypairNotFound.pubKey)).to.be

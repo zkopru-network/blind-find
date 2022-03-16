@@ -1,5 +1,5 @@
 import * as http from "http";
-import { Keypair, PubKey, Signature } from "maci-crypto";
+import { encrypt, Keypair, PubKey, Signature } from "maci-crypto";
 import { AddressInfo } from "ws";
 
 import { logger } from "./logger";
@@ -27,19 +27,24 @@ import { BaseServer } from "./server";
 import { TIMEOUT, TIMEOUT_LARGE } from "./configs";
 import { objToHubRegistry, THubRegistryObj } from "./dataProvider";
 import { SMPStateMachine } from "./smp";
-import { hashPointToScalar } from "./utils";
+import { hashPointToScalar, stringToPlaintext } from "./utils";
 import { IAtomicDB, MerkleProof } from "./interfaces";
 import { genProofOfSMP } from "./circuits";
 import { IDBMap, DBMap } from "./db";
-import { SMPState1, SMPState2 } from "./smp/state";
+import { SMPState1, SMPState2, SMPState4 } from "./smp/state";
 import {
   Point,
   SMPMessage1Wire,
   SMPMessage2Wire,
   SMPMessage3Wire
 } from "./smp/v4/serialization";
+import { BabyJubPoint } from "./smp/v4/babyJub";
 
-type TUserRegistry = { userSig: Signature; hubSig: Signature };
+type TUserRegistry = {
+  userSig: Signature;
+  hubSig: Signature;
+  userHost: string;
+};
 type TIterItem = [PubKey, TUserRegistry];
 
 interface IUserStore extends AsyncIterable<TIterItem> {
@@ -223,7 +228,8 @@ export class HubServer extends BaseServer {
     rwtor.write(new JoinResp(hubSig).serialize());
     await this.userStore.set(req.userPubkey, {
       userSig: req.userSig,
-      hubSig: hubSig
+      hubSig: hubSig,
+      userHost: JSON.stringify(req.userHost)
     });
   }
 
@@ -273,6 +279,15 @@ export class HubServer extends BaseServer {
           "hubRegistryWithProof should have been loaded when server started"
         );
       }
+
+      const state3 = stateMachine.state as SMPState4;
+      const g2 = state3.g2 as BabyJubPoint;
+      const s = hashPointToScalar(g2.point);
+      const encryptedAddress = encrypt(
+        stringToPlaintext(userRegistry.userHost),
+        s
+      );
+
       const proofOfSMP = await genProofOfSMP({
         h2,
         h3,
@@ -287,7 +302,7 @@ export class HubServer extends BaseServer {
         sigJoinMsgC: userRegistry.userSig,
         sigJoinMsgHub: userRegistry.hubSig
       });
-      const msg3 = new SearchMessage3(smpMsg3, proofOfSMP);
+      const msg3 = new SearchMessage3(smpMsg3, proofOfSMP, encryptedAddress);
       logger.debug(`${this.name}: sending msg3`);
       rwtor.write(msg3.serialize());
     }
